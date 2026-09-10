@@ -70,14 +70,12 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin }) =>
             <div className="flex items-center space-x-2 border-l border-gray-200 pl-4">
               <button
                 onClick={onNavigateToAdmin}
-                aria-label="Open Hotel Operations Admin Dashboard"
-                className="text-xs font-semibold bg-[#c2410c] hover:bg-[#9a3412] text-white px-3.5 py-1.5 rounded transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-orange-500/20 flex items-center gap-1.5"
+                className="text-xs font-semibold bg-[#c2410c] hover:bg-[#9a3412] text-white px-3 py-1.5 rounded transition-colors cursor-pointer shadow-2xs"
               >
-                <span>Admin Dashboard</span>
+                Admin Dashboard
               </button>
               <button
                 onClick={onLogout}
-                aria-label="Sign Out"
                 className="text-xs font-medium text-gray-600 hover:text-red-600 px-2 py-1.5 transition-colors cursor-pointer"
               >
                 Log Out
@@ -149,11 +147,11 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin }) =>
 
       {/* Mobile Navigation Drawer / Overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="lg:hidden fixed inset-0 z-40 bg-dark-900/50 backdrop-blur-xs animate-fade-in"
           onClick={() => setIsMobileMenuOpen(false)}
         >
-          <div 
+          <div
             className="bg-white border-b border-gray-200 px-6 pt-5 pb-8 shadow-2xl max-h-[90vh] overflow-y-auto animate-slide-down"
             onClick={(e) => e.stopPropagation()}
           >
