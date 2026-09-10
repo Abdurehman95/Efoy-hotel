@@ -1,7 +1,15 @@
 // Grand Horizon Privilege Club - Authentication Modal Component
 // Provides seamless switching between Log In and Sign Up with social auth options
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Lock, User, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { X, Mail, Lock, User, ArrowRight, CheckCircle2, KeyRound } from 'lucide-react';
+
+export const DEMO_ADMIN_CREDENTIALS = {
+  email: 'admin@efoyhotel.com',
+  password: 'admin123',
+  name: 'Alexander Sterling',
+  role: 'admin',
+  title: 'General Manager'
+};
 
 const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) => {
   const [mode, setMode] = useState(initialMode);
