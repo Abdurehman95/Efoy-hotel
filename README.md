@@ -62,16 +62,23 @@ A Five-Star luxury hotel management and operations platform built with **React 1
 
 ---
 
-## 🔑 Demo Admin Credentials
+## 🔑 Multi-Role Demo Credentials
 
-To access the Admin Dashboard:
+The platform supports 5 authenticated personas with full cross-operational synchronization:
+
+| Role | Email | Password | Primary Functions |
+|------|-------|----------|-------------------|
+| **Administrator** | `admin@efoyhotel.com` | `admin123` | Property analytics, Chart.js curves, room & menu inventory, staff directory |
+| **Front Desk** | `reception@efoyhotel.com` | `reception123` | Walk-in reservations, dirty room alerts, folio settlement, printable invoices |
+| **Kitchen KDS** | `kitchen@efoyhotel.com` | `kitchen123` | Real-time order dispatch, culinary timers, server assignments |
+| **Housekeeping** | `housekeeping@efoyhotel.com` | `house123` | One-click turnover certification, sanitization audit logs |
+| **Guest Member** | `guest@efoyhotel.com` | `guest123` | Digital suite booking, room service ordering, folio tracking |
+
+To test any role:
 1. Click **Log In** in the top navigation bar.
-2. Use the **Auto Fill** button in the Demo Admin box, or enter:
-   - **Email**: `admin@efoyhotel.com` (or `admin@auragrand.com`)
-   - **Password**: `admin123` (or `admin`)
-3. Click **Log In to Account**.
-4. The application automatically authorizes and redirects to the **Admin Dashboard**.
-5. To return to the public site, click **Public Website** in the sidebar or use the **Log Out** button.
+2. Select any quick persona chip or enter the credentials above.
+3. Click **Authenticate & Enter Dashboard**.
+4. To return to the public site, click **Public Website** in the sidebar or use the top status bar.
 
 ---
 
