@@ -1,5 +1,5 @@
 // Grand Horizon Hotel & Suites - Main Application Layout
-// Features responsive hero banner, dynamic reservation bar, modular sections, and authenticated Admin Dashboard
+// Features responsive hero banner, dynamic reservation bar, modular sections, and authenticated Dashboards for all 5 roles
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import RoomsSection from './components/RoomsSection';
@@ -8,9 +8,13 @@ import DiningSection from './components/DiningSection';
 import ServicesSection from './components/ServicesSection';
 import ContactSection from './components/ContactSection';
 import AdminDashboard from './components/admin/AdminDashboard';
-import { ShieldAlert } from 'lucide-react';
+import ReceptionistDashboard from './components/receptionist/ReceptionistDashboard';
+import KitchenDashboard from './components/kitchen/KitchenDashboard';
+import HousekeepingDashboard from './components/housekeeping/HousekeepingDashboard';
+import GuestDashboard from './components/guest/GuestDashboard';
+import { HotelProvider } from './context/HotelContext';
 
-function App() {
+function AppContent() {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = localStorage.getItem('efoy_hotel_auth');
@@ -24,8 +28,11 @@ function App() {
     try {
       const saved = localStorage.getItem('efoy_hotel_auth');
       const parsed = saved ? JSON.parse(saved) : null;
-      if (parsed?.role === 'admin' && (window.location.hash === '#admin' || window.location.pathname.includes('/admin'))) {
-        return 'admin';
+      if (parsed?.role) {
+        const hash = window.location.hash.replace('#', '');
+        if (hash === parsed.role) {
+          return parsed.role;
+        }
       }
     } catch {
       // fallback
@@ -36,10 +43,13 @@ function App() {
   // Sync hash changes
   useEffect(() => {
     const handleHashChange = () => {
-      if (window.location.hash === '#admin' && currentUser?.role === 'admin') {
-        setCurrentView('admin');
+      const hash = window.location.hash.replace('#', '');
+      if (currentUser && ['admin', 'receptionist', 'kitchen', 'housekeeping', 'guest'].includes(hash)) {
+        if (currentUser.role === hash) {
+          setCurrentView(hash);
+        }
       } else if (window.location.hash === '' || window.location.hash === '#') {
-        if (currentView !== 'admin') {
+        if (currentView !== 'home') {
           setCurrentView('home');
         }
       }
@@ -51,61 +61,107 @@ function App() {
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
-    if (user?.role === 'admin') {
-      setCurrentView('admin');
-      window.location.hash = 'admin';
-    } else {
-      setCurrentView('home');
-    }
+    const targetView = user?.role || 'home';
+    setCurrentView(targetView);
+    window.location.hash = targetView;
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     setCurrentView('home');
     localStorage.removeItem('efoy_hotel_auth');
-    if (window.location.hash === '#admin') {
-      window.location.hash = '';
-    }
+    window.location.hash = '';
   };
 
   const handleBackToSite = () => {
     setCurrentView('home');
-    if (window.location.hash === '#admin') {
-      window.location.hash = '';
+    window.location.hash = '';
+  };
+
+  const handleNavigateToDashboard = (role) => {
+    const target = role || currentUser?.role;
+    if (target) {
+      setCurrentView(target);
+      window.location.hash = target;
     }
   };
 
-  // If user is admin and current view is admin, display the Admin Dashboard matching admin.png
-  if (currentView === 'admin' && currentUser?.role === 'admin') {
-    return (
-      <AdminDashboard
-        user={currentUser}
-        onLogout={handleLogout}
-        onBackToSite={handleBackToSite}
-      />
-    );
+  // Render role-specific dashboards when active and user authenticated
+  if (currentUser) {
+    if (currentView === 'admin' && currentUser.role === 'admin') {
+      return (
+        <AdminDashboard
+          user={currentUser}
+          onLogout={handleLogout}
+          onBackToSite={handleBackToSite}
+        />
+      );
+    }
+
+    if (currentView === 'receptionist' && currentUser.role === 'receptionist') {
+      return (
+        <ReceptionistDashboard
+          user={currentUser}
+          onLogout={handleLogout}
+          onBackToSite={handleBackToSite}
+        />
+      );
+    }
+
+    if (currentView === 'kitchen' && currentUser.role === 'kitchen') {
+      return (
+        <KitchenDashboard
+          user={currentUser}
+          onLogout={handleLogout}
+          onBackToSite={handleBackToSite}
+        />
+      );
+    }
+
+    if (currentView === 'housekeeping' && currentUser.role === 'housekeeping') {
+      return (
+        <HousekeepingDashboard
+          user={currentUser}
+          onLogout={handleLogout}
+          onBackToSite={handleBackToSite}
+        />
+      );
+    }
+
+    if (currentView === 'guest' && currentUser.role === 'guest') {
+      return (
+        <GuestDashboard
+          user={currentUser}
+          onLogout={handleLogout}
+          onBackToSite={handleBackToSite}
+        />
+      );
+    }
   }
 
-  // Home Landing Page (completely preserved)
+  // Home Landing Page (completely preserved and intact)
   return (
     <div className="min-h-screen bg-white overflow-x-hidden relative">
-      {/* Floating Admin Banner shortcut when logged in as admin on public site */}
-      {currentUser?.role === 'admin' && (
-        <div className="bg-slate-900 text-white text-xs px-4 py-2 flex items-center justify-between z-50 sticky top-0 border-b border-amber-500/30">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="font-medium text-amber-400">Admin Mode Active:</span>
-            <span className="text-slate-300">Logged in as {currentUser.name} ({currentUser.email})</span>
+      {/* Floating Role Banner shortcut when logged in on public site */}
+      {currentUser && (
+        <div className="bg-slate-900 text-white text-xs px-3 sm:px-4 py-2 flex flex-col sm:flex-row items-center justify-between gap-2.5 z-50 sticky top-0 border-b border-amber-500/30">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2 text-center sm:text-left">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+            <span className="font-medium text-amber-400">
+              {currentUser.role === 'admin' && '👑 Admin Mode Active:'}
+              {currentUser.role === 'receptionist' && '🔔 Front Desk Active:'}
+              {currentUser.role === 'kitchen' && '👨‍🍳 Kitchen KDS Active:'}
+              {currentUser.role === 'housekeeping' && '🧹 Housekeeping Active:'}
+              {currentUser.role === 'guest' && '👤 Member Portal Active:'}
+            </span>
+            <span className="text-slate-300 hidden md:inline">Logged in as {currentUser.name} ({currentUser.email})</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button
-              onClick={() => {
-                setCurrentView('admin');
-                window.location.hash = 'admin';
-              }}
+              onClick={() => handleNavigateToDashboard(currentUser.role)}
               className="bg-amber-600 hover:bg-amber-500 text-white font-semibold px-3 py-1 rounded text-xs transition-colors cursor-pointer"
             >
-              Open Admin Dashboard →
+              Open {currentUser.role === 'admin' ? 'Admin Dashboard' : currentUser.role === 'receptionist' ? 'Front Desk' : currentUser.role === 'kitchen' ? 'Kitchen KDS' : currentUser.role === 'housekeeping' ? 'Housekeeping Hub' : 'Guest Portal'} →
             </button>
             <button
               onClick={handleLogout}
@@ -121,10 +177,8 @@ function App() {
         currentUser={currentUser}
         onLoginSuccess={handleLoginSuccess}
         onLogout={handleLogout}
-        onNavigateToAdmin={() => {
-          setCurrentView('admin');
-          window.location.hash = 'admin';
-        }}
+        onNavigateToAdmin={() => handleNavigateToDashboard('admin')}
+        onNavigateToDashboard={handleNavigateToDashboard}
       />
       
       <main>
@@ -147,7 +201,7 @@ function App() {
               </p>
             </div>
             
-            <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-serif mb-4 sm:mb-6 leading-tight tracking-tight drop-shadow-md">
+            <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-serif mb-4 sm:mb-6 leading-tight tracking-tight drop-shadow-md text-white">
               Stay somewhere exceptional.
             </h2>
             
@@ -254,4 +308,10 @@ function App() {
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <HotelProvider>
+      <AppContent />
+    </HotelProvider>
+  );
+}
