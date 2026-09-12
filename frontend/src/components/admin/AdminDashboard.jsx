@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Chart, registerables } from 'chart.js';
 import { useHotel } from '../../context/HotelContext';
+import ConfirmModal from '../shared/ConfirmModal';
 
 Chart.register(...registerables);
 
@@ -48,6 +49,22 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
+
+  const handleConfirmDelete = () => {
+    if (!deleteConfirmTarget) return;
+    if (deleteConfirmTarget.type === 'room') {
+      deleteRoom(deleteConfirmTarget.id);
+      showToast(`Room ${deleteConfirmTarget.id} removed from inventory`);
+    } else if (deleteConfirmTarget.type === 'dish') {
+      deleteMenuItem(deleteConfirmTarget.id);
+      showToast(`"${deleteConfirmTarget.name || 'Dish'}" removed from menu`);
+    } else if (deleteConfirmTarget.type === 'staff') {
+      deleteStaff(deleteConfirmTarget.id);
+      showToast('Staff member removed from directory');
+    }
+    setDeleteConfirmTarget(null);
+  };
   const [bookingStatusFilter, setBookingStatusFilter] = useState('All');
 
   // Modals state
@@ -1074,10 +1091,15 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                             </button>
                             <button
                               onClick={() => {
-                                deleteRoom(r.roomNumber);
-                                showToast(`Room ${r.roomNumber} removed`);
+                                setDeleteConfirmTarget({
+                                  type: 'room',
+                                  id: r.roomNumber,
+                                  name: `Room ${r.roomNumber}`,
+                                  title: 'Delete Room',
+                                  message: `Are you sure you want to delete Room ${r.roomNumber} (${r.type})? This will permanently remove the suite from active inventory.`,
+                                });
                               }}
-                              className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded cursor-pointer"
+                              className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded cursor-pointer transition-colors"
                               title="Delete Room"
                             >
                               <Trash2 size={13} />
@@ -1193,10 +1215,16 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                         </button>
                         <button
                           onClick={() => {
-                            deleteMenuItem(dish.id);
-                            showToast(`Removed ${dish.name}`);
+                            setDeleteConfirmTarget({
+                              type: 'dish',
+                              id: dish.id,
+                              name: dish.name,
+                              title: 'Delete Menu Item',
+                              message: `Are you sure you want to delete "${dish.name}" from the in-room dining catalog?`,
+                            });
                           }}
-                          className="p-1.5 hover:bg-red-50 text-red-600 rounded cursor-pointer"
+                          className="p-1.5 hover:bg-red-50 text-red-600 rounded cursor-pointer transition-colors"
+                          title="Delete Dish"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -1314,10 +1342,15 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                             </button>
                             <button
                               onClick={() => {
-                                deleteStaff(staff.id);
-                                showToast(`Staff member removed`);
+                                setDeleteConfirmTarget({
+                                  type: 'staff',
+                                  id: staff.id,
+                                  name: staff.name,
+                                  title: 'Remove Staff Member',
+                                  message: `Are you sure you want to remove ${staff.name} (${staff.role}) from the staff directory?`,
+                                });
                               }}
-                              className="p-1.5 hover:bg-red-50 text-red-600 rounded cursor-pointer"
+                              className="p-1.5 hover:bg-red-50 text-red-600 rounded cursor-pointer transition-colors"
                               title="Delete Staff"
                             >
                               <Trash2 size={13} />
@@ -1822,6 +1855,22 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
           </div>
         </div>
       )}
+
+      {/* CONFIRMATION MODAL FOR DELETIONS */}
+      <ConfirmModal
+        isOpen={Boolean(deleteConfirmTarget)}
+        onClose={() => setDeleteConfirmTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title={deleteConfirmTarget?.title || 'Confirm Deletion'}
+        message={
+          deleteConfirmTarget?.message ||
+          'Are you sure you want to delete this item? This action cannot be undone.'
+        }
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        variant="danger"
+        icon="trash"
+      />
     </div>
   );
 };
