@@ -1,4 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import {
+  roomsApi,
+  bookingsApi,
+  menuApi,
+  ordersApi,
+  staffApi,
+  hkApi,
+  logsApi,
+  settingsApi,
+} from '../api/client';
 
 const HotelContext = createContext(null);
 
@@ -559,6 +569,56 @@ export const HotelProvider = ({ children }) => {
     }
   }, [rooms, bookings, menuItems, orders, housekeepingHistory, staffList, activityLogs]);
 
+  // Load live data from PERN PostgreSQL Backend on mount
+  useEffect(() => {
+    let isMounted = true;
+    const fetchBackendData = async () => {
+      try {
+        const [roomsRes, bookingsRes, menuRes, ordersRes, staffRes, hkRes, logsRes] =
+          await Promise.allSettled([
+            roomsApi.getAll(),
+            bookingsApi.getAll(),
+            menuApi.getAll(),
+            ordersApi.getAll(),
+            staffApi.getAll(),
+            hkApi.getHistory(),
+            logsApi.getAll(),
+          ]);
+
+        if (isMounted) {
+          if (roomsRes.status === 'fulfilled' && roomsRes.value?.rooms?.length) {
+            setRooms(roomsRes.value.rooms);
+          }
+          if (bookingsRes.status === 'fulfilled' && bookingsRes.value?.bookings?.length) {
+            setBookings(bookingsRes.value.bookings);
+          }
+          if (menuRes.status === 'fulfilled' && menuRes.value?.menu?.length) {
+            setMenuItems(menuRes.value.menu);
+          }
+          if (ordersRes.status === 'fulfilled' && ordersRes.value?.orders?.length) {
+            setOrders(ordersRes.value.orders);
+          }
+          if (staffRes.status === 'fulfilled' && staffRes.value?.staff?.length) {
+            setStaffList(staffRes.value.staff);
+          }
+          if (hkRes.status === 'fulfilled' && hkRes.value?.history?.length) {
+            setHousekeepingHistory(hkRes.value.history);
+          }
+          if (logsRes.status === 'fulfilled' && logsRes.value?.logs?.length) {
+            setActivityLogs(logsRes.value.logs);
+          }
+        }
+      } catch (err) {
+        console.warn('Backend sync note:', err.message);
+      }
+    };
+
+    fetchBackendData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Activity logger helper
   const addLog = (title, category, description, tag = category) => {
     const newLog = {
@@ -608,6 +668,11 @@ export const HotelProvider = ({ children }) => {
       `${cleanerName} completed cleaning for Room ${roomNumber}. Receptionist room status updated in real-time.`,
       'Housekeeping'
     );
+
+    // Sync with backend API
+    hkApi.certifyClean({ roomNumber, cleanerName }).catch((err) => {
+      console.warn('hkApi.certifyClean sync error:', err.message);
+    });
   };
 
   // Mark room dirty (e.g. from receptionist or guest checkout)
@@ -625,6 +690,10 @@ export const HotelProvider = ({ children }) => {
       `Room ${roomNumber} flagged as dirty: ${reason}`,
       'Housekeeping'
     );
+
+    roomsApi.updateCleanliness(roomNumber, 'Dirty', reason).catch((err) => {
+      console.warn('roomsApi.updateCleanliness sync error:', err.message);
+    });
   };
 
   // 2. Receptionist: Assign Room (with dirty check alert)
@@ -662,6 +731,10 @@ export const HotelProvider = ({ children }) => {
       `Booking ${bookingId} assigned to Room ${targetRoomNumber} (${targetRoom.type}).`,
       'Front Desk'
     );
+
+    bookingsApi.assign(bookingId, targetRoomNumber, forceOverride).catch((err) => {
+      console.warn('bookingsApi.assign sync error:', err.message);
+    });
 
     return { success: true, message: `Guest successfully assigned to Room ${targetRoomNumber}` };
   };
@@ -707,6 +780,10 @@ export const HotelProvider = ({ children }) => {
       `${guestData.name} checked in to Room ${guestData.roomNumber} (${nights} nights, $${roomRate}/nt).`,
       'Walk-In'
     );
+
+    bookingsApi.create(newBooking).catch((err) => {
+      console.warn('bookingsApi.create sync error:', err.message);
+    });
 
     return newBooking;
   };
@@ -773,6 +850,10 @@ export const HotelProvider = ({ children }) => {
       'Checkout'
     );
 
+    bookingsApi.checkout(roomNumber, paymentMethod).catch((err) => {
+      console.warn('bookingsApi.checkout sync error:', err.message);
+    });
+
     return { success: true, folio };
   };
 
@@ -808,6 +889,10 @@ export const HotelProvider = ({ children }) => {
       'Front Desk'
     );
 
+    bookingsApi.undoCheckout(bookingId).catch((err) => {
+      console.warn('bookingsApi.undoCheckout sync error:', err.message);
+    });
+
     return { success: true, message: `Stay for Room ${booking.roomNumber} reopened and restored to In-House!` };
   };
 
@@ -838,6 +923,10 @@ export const HotelProvider = ({ children }) => {
       'Kitchen KDS'
     );
 
+    ordersApi.create(newOrder).catch((err) => {
+      console.warn('ordersApi.create sync error:', err.message);
+    });
+
     return newOrder;
   };
 
@@ -855,6 +944,10 @@ export const HotelProvider = ({ children }) => {
       `Order for Room ${targetOrder?.roomNumber || 'Unknown'} is now ${newStatus.toUpperCase()}.`,
       'Kitchen KDS'
     );
+
+    ordersApi.updateStatus(orderId, newStatus).catch((err) => {
+      console.warn('ordersApi.updateStatus sync error:', err.message);
+    });
   };
 
   // 8. Kitchen / Admin: Dish Stock Toggle
@@ -862,6 +955,9 @@ export const HotelProvider = ({ children }) => {
     setMenuItems((prev) =>
       prev.map((d) => (d.id === dishId ? { ...d, inStock: !d.inStock } : d))
     );
+    menuApi.toggleStock(dishId).catch((err) => {
+      console.warn('menuApi.toggleStock sync error:', err.message);
+    });
   };
 
   // 9. Admin: Manage Menu
@@ -869,17 +965,26 @@ export const HotelProvider = ({ children }) => {
     const newItem = { ...item, id: Date.now(), inStock: true };
     setMenuItems((prev) => [...prev, newItem]);
     addLog(`Menu Item Added: ${item.name}`, 'Menu', `Added new dish priced at $${item.price}.`, 'Admin');
+    menuApi.create(item).catch((err) => {
+      console.warn('menuApi.create sync error:', err.message);
+    });
   };
 
   const editMenuItem = (item) => {
     setMenuItems((prev) => prev.map((m) => (m.id === item.id ? item : m)));
     addLog(`Menu Item Updated: ${item.name}`, 'Menu', `Updated pricing and recipe details.`, 'Admin');
+    menuApi.update(item.id, item).catch((err) => {
+      console.warn('menuApi.update sync error:', err.message);
+    });
   };
 
   const deleteMenuItem = (id) => {
     const item = menuItems.find((m) => m.id === id);
     setMenuItems((prev) => prev.filter((m) => m.id !== id));
     addLog(`Menu Item Removed: ${item?.name || id}`, 'Menu', `Removed from in-room dining catalog.`, 'Admin');
+    menuApi.delete(id).catch((err) => {
+      console.warn('menuApi.delete sync error:', err.message);
+    });
   };
 
   // 10. Admin: Manage Staff (Add, Edit, Delete)
@@ -892,33 +997,51 @@ export const HotelProvider = ({ children }) => {
     };
     setStaffList((prev) => [...prev, newStaff]);
     addLog(`Staff Member Added: ${staff.name}`, 'Staff', `Assigned as ${staff.role} in ${staff.department}.`, 'Admin');
+    staffApi.create(staff).catch((err) => {
+      console.warn('staffApi.create sync error:', err.message);
+    });
   };
 
   const editStaff = (staff) => {
     setStaffList((prev) => prev.map((s) => (s.id === staff.id ? staff : s)));
     addLog(`Staff Updated: ${staff.name}`, 'Staff', `Role and shift schedules updated.`, 'Admin');
+    staffApi.update(staff.id, staff).catch((err) => {
+      console.warn('staffApi.update sync error:', err.message);
+    });
   };
 
   const deleteStaff = (id) => {
     const staff = staffList.find((s) => s.id === id);
     setStaffList((prev) => prev.filter((s) => s.id !== id));
     addLog(`Staff Removed: ${staff?.name || id}`, 'Staff', `Removed from hotel system directory.`, 'Admin');
+    staffApi.delete(id).catch((err) => {
+      console.warn('staffApi.delete sync error:', err.message);
+    });
   };
 
   // 11. Admin: Manage Rooms (Pricing, Capacity, Type)
   const updateRoom = (updatedRoom) => {
     setRooms((prev) => prev.map((r) => (r.roomNumber === updatedRoom.roomNumber ? updatedRoom : r)));
     addLog(`Room ${updatedRoom.roomNumber} Modified`, 'Rooms', `Rate updated to $${updatedRoom.rate}/nt, capacity: ${updatedRoom.capacity}.`, 'Admin');
+    roomsApi.update(updatedRoom.roomNumber, updatedRoom).catch((err) => {
+      console.warn('roomsApi.update sync error:', err.message);
+    });
   };
 
   const addRoom = (newRoom) => {
     setRooms((prev) => [...prev, { ...newRoom, cleanliness: 'Clean', occupancy: 'Available', guestId: null }]);
     addLog(`New Room Added: ${newRoom.roomNumber}`, 'Rooms', `Added ${newRoom.type} with capacity ${newRoom.capacity}.`, 'Admin');
+    roomsApi.create(newRoom).catch((err) => {
+      console.warn('roomsApi.create sync error:', err.message);
+    });
   };
 
   const deleteRoom = (roomNumber) => {
     setRooms((prev) => prev.filter((r) => r.roomNumber !== roomNumber));
     addLog(`Room ${roomNumber} Deleted`, 'Rooms', `Removed from property inventory.`, 'Admin');
+    roomsApi.delete(roomNumber).catch((err) => {
+      console.warn('roomsApi.delete sync error:', err.message);
+    });
   };
 
   // 12. Guest: Online Room Booking
@@ -961,6 +1084,10 @@ export const HotelProvider = ({ children }) => {
       'Online Booking'
     );
 
+    bookingsApi.create(newBooking).catch((err) => {
+      console.warn('bookingsApi.create online sync error:', err.message);
+    });
+
     return newBooking;
   };
 
@@ -980,6 +1107,10 @@ export const HotelProvider = ({ children }) => {
     localStorage.removeItem('efoy_hotel_hk_history');
     localStorage.removeItem('efoy_hotel_staff');
     localStorage.removeItem('efoy_hotel_logs');
+
+    settingsApi.resetDemo().catch((err) => {
+      console.warn('settingsApi.resetDemo sync error:', err.message);
+    });
   };
 
   const value = {
@@ -1017,6 +1148,7 @@ export const HotelProvider = ({ children }) => {
   return <HotelContext.Provider value={value}>{children}</HotelContext.Provider>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useHotel = () => {
   const context = useContext(HotelContext);
   if (!context) {
