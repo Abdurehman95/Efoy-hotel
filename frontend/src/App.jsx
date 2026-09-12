@@ -12,6 +12,7 @@ import ReceptionistDashboard from './components/receptionist/ReceptionistDashboa
 import KitchenDashboard from './components/kitchen/KitchenDashboard';
 import HousekeepingDashboard from './components/housekeeping/HousekeepingDashboard';
 import GuestDashboard from './components/guest/GuestDashboard';
+import ConfirmModal from './components/shared/ConfirmModal';
 import { HotelProvider } from './context/HotelContext';
 
 function AppContent() {
@@ -39,6 +40,8 @@ function AppContent() {
     }
     return 'home';
   });
+
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Sync hash changes
   useEffect(() => {
@@ -73,6 +76,15 @@ function AppContent() {
     window.location.hash = '';
   };
 
+  const promptLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutConfirm(false);
+    handleLogout();
+  };
+
   const handleBackToSite = () => {
     setCurrentView('home');
     window.location.hash = '';
@@ -88,53 +100,66 @@ function AppContent() {
 
   // Render role-specific dashboards when active and user authenticated
   if (currentUser) {
+    let dashboardElement = null;
+
     if (currentView === 'admin' && currentUser.role === 'admin') {
-      return (
+      dashboardElement = (
         <AdminDashboard
           user={currentUser}
-          onLogout={handleLogout}
+          onLogout={promptLogout}
           onBackToSite={handleBackToSite}
         />
       );
-    }
-
-    if (currentView === 'receptionist' && currentUser.role === 'receptionist') {
-      return (
+    } else if (currentView === 'receptionist' && currentUser.role === 'receptionist') {
+      dashboardElement = (
         <ReceptionistDashboard
           user={currentUser}
-          onLogout={handleLogout}
+          onLogout={promptLogout}
           onBackToSite={handleBackToSite}
         />
       );
-    }
-
-    if (currentView === 'kitchen' && currentUser.role === 'kitchen') {
-      return (
+    } else if (currentView === 'kitchen' && currentUser.role === 'kitchen') {
+      dashboardElement = (
         <KitchenDashboard
           user={currentUser}
-          onLogout={handleLogout}
+          onLogout={promptLogout}
           onBackToSite={handleBackToSite}
         />
       );
-    }
-
-    if (currentView === 'housekeeping' && currentUser.role === 'housekeeping') {
-      return (
+    } else if (currentView === 'housekeeping' && currentUser.role === 'housekeeping') {
+      dashboardElement = (
         <HousekeepingDashboard
           user={currentUser}
-          onLogout={handleLogout}
+          onLogout={promptLogout}
+          onBackToSite={handleBackToSite}
+        />
+      );
+    } else if (currentView === 'guest' && currentUser.role === 'guest') {
+      dashboardElement = (
+        <GuestDashboard
+          user={currentUser}
+          onLogout={promptLogout}
           onBackToSite={handleBackToSite}
         />
       );
     }
 
-    if (currentView === 'guest' && currentUser.role === 'guest') {
+    if (dashboardElement) {
       return (
-        <GuestDashboard
-          user={currentUser}
-          onLogout={handleLogout}
-          onBackToSite={handleBackToSite}
-        />
+        <>
+          {dashboardElement}
+          <ConfirmModal
+            isOpen={showLogoutConfirm}
+            onClose={() => setShowLogoutConfirm(false)}
+            onConfirm={confirmLogout}
+            title="Confirm Logout"
+            message="Are you sure you want to end your current session and sign out of the portal?"
+            confirmText="Yes, Log Out"
+            cancelText="Cancel"
+            variant="danger"
+            icon="logout"
+          />
+        </>
       );
     }
   }
@@ -142,6 +167,17 @@ function AppContent() {
   // Home Landing Page (completely preserved and intact)
   return (
     <div className="min-h-screen bg-white overflow-x-hidden relative">
+      <ConfirmModal
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={confirmLogout}
+        title="Confirm Logout"
+        message="Are you sure you want to end your current session and sign out of the portal?"
+        confirmText="Yes, Log Out"
+        cancelText="Cancel"
+        variant="danger"
+        icon="logout"
+      />
       {/* Floating Role Banner shortcut when logged in on public site */}
       {currentUser && (
         <div className="bg-slate-900 text-white text-xs px-3 sm:px-4 py-2 flex flex-col sm:flex-row items-center justify-between gap-2.5 z-50 sticky top-0 border-b border-amber-500/30">
@@ -164,7 +200,7 @@ function AppContent() {
               Open {currentUser.role === 'admin' ? 'Admin Dashboard' : currentUser.role === 'receptionist' ? 'Front Desk' : currentUser.role === 'kitchen' ? 'Kitchen KDS' : currentUser.role === 'housekeeping' ? 'Housekeeping Hub' : 'Guest Portal'} →
             </button>
             <button
-              onClick={handleLogout}
+              onClick={promptLogout}
               className="text-slate-400 hover:text-white transition-colors cursor-pointer text-xs"
             >
               Log Out
@@ -176,7 +212,7 @@ function AppContent() {
       <Navbar
         currentUser={currentUser}
         onLoginSuccess={handleLoginSuccess}
-        onLogout={handleLogout}
+        onLogout={promptLogout}
         onNavigateToAdmin={() => handleNavigateToDashboard('admin')}
         onNavigateToDashboard={handleNavigateToDashboard}
       />
