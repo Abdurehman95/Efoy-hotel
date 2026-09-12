@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { User, Menu, X, CalendarCheck, Phone } from 'lucide-react';
 import AuthModal from './AuthModal';
 
-const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin }) => {
+const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNavigateToDashboard }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState('login');
@@ -65,14 +65,20 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin }) =>
             <span>My Booking</span>
           </a>
 
-          {/* Login and Sign Up / Admin controls */}
-          {currentUser?.role === 'admin' ? (
+          {/* Login and Sign Up / Role Dashboard controls */}
+          {currentUser ? (
             <div className="flex items-center space-x-2 border-l border-gray-200 pl-4">
               <button
-                onClick={onNavigateToAdmin}
-                className="text-xs font-semibold bg-[#c2410c] hover:bg-[#9a3412] text-white px-3 py-1.5 rounded transition-colors cursor-pointer shadow-2xs"
+                onClick={() => (onNavigateToDashboard ? onNavigateToDashboard(currentUser.role) : onNavigateToAdmin())}
+                className="text-xs font-semibold bg-[#c2410c] hover:bg-[#9a3412] text-white px-3 py-1.5 rounded transition-colors cursor-pointer shadow-2xs flex items-center gap-1.5"
               >
-                Admin Dashboard
+                <span>
+                  {currentUser.role === 'admin' && '👑 Admin Panel'}
+                  {currentUser.role === 'receptionist' && '🔔 Front Desk'}
+                  {currentUser.role === 'kitchen' && '👨‍🍳 Kitchen KDS'}
+                  {currentUser.role === 'housekeeping' && '🧹 Housekeeping'}
+                  {currentUser.role === 'guest' && '👤 My Guest Portal'}
+                </span>
               </button>
               <button
                 onClick={onLogout}
@@ -205,16 +211,24 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin }) =>
               <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold block mb-2">
                 Horizon Circle Access
               </span>
-              {currentUser?.role === 'admin' ? (
+              {currentUser ? (
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <button
                     onClick={() => {
                       setIsMobileMenuOpen(false);
-                      onNavigateToAdmin();
+                      if (onNavigateToDashboard) {
+                        onNavigateToDashboard(currentUser.role);
+                      } else {
+                        onNavigateToAdmin();
+                      }
                     }}
                     className="w-full py-2.5 px-3 text-center rounded bg-[#c2410c] text-white font-medium text-xs hover:bg-[#9a3412] transition-colors cursor-pointer shadow-sm"
                   >
-                    Admin Dashboard
+                    {currentUser.role === 'admin' && 'Admin Panel'}
+                    {currentUser.role === 'receptionist' && 'Front Desk'}
+                    {currentUser.role === 'kitchen' && 'Kitchen KDS'}
+                    {currentUser.role === 'housekeeping' && 'Housekeeping'}
+                    {currentUser.role === 'guest' && 'My Guest Portal'}
                   </button>
                   <button
                     onClick={() => {
