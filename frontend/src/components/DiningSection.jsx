@@ -9,8 +9,8 @@ const DiningSection = () => {
         <div className="lg:w-1/2 relative w-full">
           <div className="relative h-[300px] sm:h-[400px] lg:h-[500px] w-full overflow-hidden rounded-sm">
             <img 
-              src="/images/room4.jpg" 
-              alt="Dining Experience" 
+              src="/images/dinning.png" 
+              alt="L'Horizon Dining Experience" 
               className="w-full h-full object-cover"
             />
           </div>
