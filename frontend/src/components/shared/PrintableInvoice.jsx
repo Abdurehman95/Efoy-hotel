@@ -2,19 +2,20 @@ import React, { useEffect } from 'react';
 import { Printer, X, Download, ShieldCheck, Building2, Calendar, User, CreditCard } from 'lucide-react';
 
 const PrintableInvoice = ({ folio, onClose }) => {
-  if (!folio) return null;
-
-  const handlePrint = () => {
-    window.print();
-  };
-
   useEffect(() => {
+    if (!folio) return;
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [folio, onClose]);
+
+  if (!folio) return null;
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   const invoiceNumber = `INV-${folio.booking?.id || '8901'}-${new Date().getFullYear()}`;
   const today = new Date().toLocaleDateString('en-US', {
