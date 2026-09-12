@@ -84,11 +84,11 @@ const ContactSection = () => {
       <div className="bg-dark-900 py-16 sm:py-24 px-4 sm:px-8 text-center text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent"></div>
         <div className="max-w-3xl mx-auto relative z-10">
-          <div className="w-12 h-12 border border-white/20 flex items-center justify-center mx-auto mb-5 sm:mb-6">
-            <span className="font-serif text-xl">GH</span>
+          <div className="w-12 h-12 border border-white/20 flex items-center justify-center mx-auto mb-5 sm:mb-6 text-white">
+            <span className="font-serif text-xl text-white">GH</span>
           </div>
-          <span className="text-[10px] sm:text-[11px] tracking-[0.2em] text-gold-500 uppercase mb-3 sm:mb-4 block">Horizon Circle Membership</span>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif mb-4 sm:mb-6 leading-tight">
+          <span className="text-[10px] sm:text-[11px] tracking-[0.2em] text-gold-500 uppercase mb-3 sm:mb-4 block font-semibold">Horizon Circle Membership</span>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif mb-4 sm:mb-6 leading-tight text-white font-semibold">
             Subscribe for Private Rates & Seasonal Invitations
           </h2>
           <p className="text-white/70 font-light mb-8 sm:mb-10 text-xs sm:text-sm max-w-xl mx-auto">
