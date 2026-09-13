@@ -279,6 +279,11 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
         <div className="p-6 sm:p-8">
           {/* Brand Header */}
           <div className="text-center mb-6">
+            <img
+              src="/images/logo.png"
+              alt="Efoy Hotel & Suites"
+              className="h-20 sm:h-24 w-auto mx-auto object-contain mb-3 drop-shadow-xs"
+            />
             <span className="text-[10px] tracking-[0.28em] text-amber-600 uppercase font-bold block mb-1">
               Efoy Hotel & Suites
             </span>
