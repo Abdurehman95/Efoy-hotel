@@ -279,15 +279,19 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-serif font-bold text-sm shadow-md">
-                  GH
+              <div className="flex items-center gap-3">
+                <div className="bg-white rounded-xl px-2.5 py-1.5 shadow-md flex items-center justify-center shrink-0">
+                  <img
+                    src="/images/logo.png"
+                    alt="Efoy Hotel"
+                    className="h-10 sm:h-11 w-auto object-contain"
+                  />
                 </div>
                 <div>
-                  <h1 className="font-serif text-sm font-bold tracking-wider text-white uppercase">
-                    Grand Horizon
+                  <h1 className="font-serif text-base font-bold tracking-wider text-white uppercase">
+                    Efoy Hotel
                   </h1>
-                  <p className="text-[9px] tracking-[0.25em] text-slate-400 uppercase font-medium">
+                  <p className="text-[9px] tracking-[0.25em] text-amber-400 uppercase font-medium">
                     Front Desk Portal
                   </p>
                 </div>
@@ -370,15 +374,19 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
       <aside className="hidden lg:flex lg:w-64 bg-slate-900 border-r border-slate-800 flex-col shrink-0">
         {/* Brand Header */}
         <div className="p-5 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-serif font-bold text-sm shadow-md">
-              GH
+          <div className="flex items-center gap-3">
+            <div className="bg-white rounded-xl px-2.5 py-1.5 shadow-md flex items-center justify-center shrink-0">
+              <img
+                src="/images/logo.png"
+                alt="Efoy Hotel"
+                className="h-10 sm:h-11 w-auto object-contain"
+              />
             </div>
             <div>
-              <h1 className="font-serif text-sm font-bold tracking-wider text-white uppercase">
-                Grand Horizon
+              <h1 className="font-serif text-base font-bold tracking-wider text-white uppercase">
+                Efoy Hotel
               </h1>
-              <p className="text-[9px] tracking-[0.25em] text-slate-400 uppercase font-medium">
+              <p className="text-[9px] tracking-[0.25em] text-amber-400 uppercase font-medium">
                 Front Desk Portal
               </p>
             </div>
