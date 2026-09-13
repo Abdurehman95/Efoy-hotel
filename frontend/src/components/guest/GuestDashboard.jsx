@@ -189,16 +189,20 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-serif font-bold text-sm shadow-md">
-                  GH
+              <div className="flex items-center gap-3">
+                <div className="bg-white rounded-xl px-2.5 py-1.5 shadow-md flex items-center justify-center shrink-0">
+                  <img
+                    src="/images/logo.png"
+                    alt="Efoy Hotel"
+                    className="h-10 sm:h-11 w-auto object-contain"
+                  />
                 </div>
                 <div>
-                  <h1 className="font-serif text-sm font-bold tracking-wider text-white uppercase">
-                    Grand Horizon
+                  <h1 className="font-serif text-base font-bold tracking-wider text-white uppercase">
+                    Efoy Hotel
                   </h1>
-                  <p className="text-[9px] tracking-[0.25em] text-slate-400 uppercase font-medium">
-                    Guest Experience Portal
+                  <p className="text-[9px] tracking-[0.25em] text-amber-400 uppercase font-medium">
+                    Guest Portal
                   </p>
                 </div>
               </div>
@@ -286,16 +290,20 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
       {/* DESKTOP SIDEBAR */}
       <aside className="hidden lg:flex lg:w-64 bg-slate-900 border-r border-slate-800 flex-col shrink-0">
         <div className="p-5 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-serif font-bold text-sm shadow-md">
-              GH
+          <div className="flex items-center gap-3">
+            <div className="bg-white rounded-xl px-2.5 py-1.5 shadow-md flex items-center justify-center shrink-0">
+              <img
+                src="/images/logo.png"
+                alt="Efoy Hotel"
+                className="h-10 sm:h-11 w-auto object-contain"
+              />
             </div>
             <div>
-              <h1 className="font-serif text-sm font-bold tracking-wider text-white uppercase">
-                Grand Horizon
+              <h1 className="font-serif text-base font-bold tracking-wider text-white uppercase">
+                Efoy Hotel
               </h1>
-              <p className="text-[9px] tracking-[0.25em] text-slate-400 uppercase font-medium">
-                Guest Experience Portal
+              <p className="text-[9px] tracking-[0.25em] text-amber-400 uppercase font-medium">
+                Guest Portal
               </p>
             </div>
           </div>
@@ -403,7 +411,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
               <Menu size={20} />
             </button>
             <div className="truncate">
-              <span className="text-xs text-slate-500 hidden sm:inline">Welcome to Grand Horizon, </span>
+              <span className="text-xs text-slate-500 hidden sm:inline">Welcome to Efoy Hotel, </span>
               <span className="text-xs font-bold text-slate-900">{user?.name || 'Alexander Wright'}</span>
             </div>
           </div>
@@ -462,9 +470,13 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
 
                 <div>
                   <div className="flex items-center justify-between mb-8">
-                    <span className="font-serif text-sm tracking-widest uppercase text-amber-400 font-bold">
-                      Grand Horizon
-                    </span>
+                    <div className="bg-white/95 rounded-lg px-2.5 py-1 flex items-center shadow-xs">
+                      <img
+                        src="/images/logo.png"
+                        alt="Efoy Hotel"
+                        className="h-9 w-auto object-contain"
+                      />
+                    </div>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-xs font-mono text-amber-200">
                       NFC KEYCARD
                     </span>
