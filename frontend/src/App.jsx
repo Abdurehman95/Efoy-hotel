@@ -7,6 +7,7 @@ import AboutSection from './components/AboutSection';
 import DiningSection from './components/DiningSection';
 import ServicesSection from './components/ServicesSection';
 import ContactSection from './components/ContactSection';
+import BookingBar from './components/BookingBar';
 import AdminDashboard from './components/admin/AdminDashboard';
 import ReceptionistDashboard from './components/receptionist/ReceptionistDashboard';
 import KitchenDashboard from './components/kitchen/KitchenDashboard';
@@ -261,73 +262,8 @@ function AppContent() {
             </div>
           </div>
 
-          {/* Booking Bar Component - fully responsive */}
-          <div className="relative z-30 w-full max-w-6xl px-4 mb-8 lg:-mb-16 lg:mt-auto">
-            {/* Perks banner above bar */}
-            <div className="flex flex-wrap items-center justify-between text-[10px] sm:text-[11px] text-gray-300 uppercase tracking-widest px-2 sm:px-4 pb-2 font-medium gap-2">
-              <span className="text-gold-500 font-semibold tracking-[0.2em] flex items-center gap-1">
-                ★ Direct Reservation Perks
-              </span>
-              <div className="flex items-center gap-3 sm:gap-4 text-gray-300">
-                <span>✓ Best Rate Guaranteed</span>
-                <span className="hidden md:inline">• Complimentary Valet & Welcome Cocktails</span>
-              </div>
-            </div>
-
-            {/* Booking fields */}
-            <div className="bg-white rounded-xl shadow-2xl p-3 sm:p-4 border border-gray-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-center">
-              {/* Check-in */}
-              <div className="p-3 border-b sm:border-b-0 sm:border-r border-gray-100 hover:bg-gray-50/80 rounded transition-colors">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Check-in</label>
-                <input 
-                  type="date" 
-                  defaultValue="2026-09-15"
-                  className="w-full text-xs sm:text-sm font-semibold text-dark-900 focus:outline-none bg-transparent cursor-pointer"
-                />
-              </div>
-
-              {/* Check-out */}
-              <div className="p-3 border-b sm:border-b-0 lg:border-r border-gray-100 hover:bg-gray-50/80 rounded transition-colors">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Check-out</label>
-                <input 
-                  type="date" 
-                  defaultValue="2026-09-20"
-                  className="w-full text-xs sm:text-sm font-semibold text-dark-900 focus:outline-none bg-transparent cursor-pointer"
-                />
-              </div>
-
-              {/* Guests & Suites */}
-              <div className="p-3 border-b sm:border-b-0 sm:border-r border-gray-100 hover:bg-gray-50/80 rounded transition-colors">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Guests & Suites</label>
-                <select className="w-full text-xs sm:text-sm font-semibold text-dark-900 focus:outline-none bg-transparent cursor-pointer">
-                  <option>2 Adults, 1 Suite</option>
-                  <option>1 Adult, 1 Suite</option>
-                  <option>2 Adults, 2 Suites</option>
-                  <option>Family (4 Guests, 2 Suites)</option>
-                </select>
-              </div>
-
-              {/* Preferred Tier */}
-              <div className="p-3 hover:bg-gray-50/80 rounded transition-colors">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Preferred Tier</label>
-                <select className="w-full text-xs sm:text-sm font-semibold text-gold-600 focus:outline-none bg-transparent cursor-pointer">
-                  <option>Horizon Member Tier</option>
-                  <option>Standard Rate</option>
-                  <option>Forbes Executive VIP</option>
-                </select>
-              </div>
-
-              {/* Action Button */}
-              <div className="p-1 sm:col-span-2 lg:col-span-1">
-                <a 
-                  href="#rooms" 
-                  className="w-full h-12 bg-dark-900 hover:bg-gold-600 text-white font-semibold text-xs uppercase tracking-widest flex items-center justify-center rounded transition-all duration-300 shadow-sm cursor-pointer"
-                >
-                  Check Availability
-                </a>
-              </div>
-            </div>
-          </div>
+          {/* Booking Bar Component - fully responsive with luxury styling */}
+          <BookingBar />
         </div>
 
         {/* Spacing for overlapping booking bar on large screens */}
