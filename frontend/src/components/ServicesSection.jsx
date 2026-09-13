@@ -19,7 +19,7 @@ const ServicesSection = () => {
           <div className="lg:w-1/2">
             <span className="text-[10px] sm:text-[11px] tracking-[0.2em] text-gray-500 uppercase mb-3 sm:mb-4 block">Restorative Wellness</span>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif text-dark-900 mb-4 sm:mb-6 leading-tight">
-              Geothermal Hydrotherapy & Spa
+              Geothermal Hydrotherapy <span className="font-sans font-light">&amp;</span> Spa
             </h2>
             <p className="text-gray-600 font-light text-sm sm:text-base mb-6 sm:mb-8 leading-relaxed">
               Enter an atmospheric retreat carved from Roman travertine and natural cedarwood. Our 25-meter heated 
