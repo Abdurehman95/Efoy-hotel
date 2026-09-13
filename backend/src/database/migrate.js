@@ -51,7 +51,7 @@ async function runMigration() {
       console.warn('⚠️ Warning checking/creating database:', err.message);
     }
   } finally {
-    await adminClient.end().catch(() => {});
+    await adminClient.end().catch(() => { });
   }
 
   // Step 2: Connect to target database 'efoy_hotel'
@@ -99,7 +99,7 @@ async function runMigration() {
     console.error('❌ Migration failed:', err.message);
     process.exit(1);
   } finally {
-    await appClient.end().catch(() => {});
+    await appClient.end().catch(() => { });
   }
 }
 
