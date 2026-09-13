@@ -36,7 +36,7 @@ const PrintableInvoice = ({ folio, onClose }) => {
         {/* Modal Controls Header - Hidden during print */}
         <div className="px-4 sm:px-6 py-3 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-2 print:hidden border-b border-slate-800">
           <div className="flex items-center gap-2">
-            <span className="text-amber-400 font-serif text-sm font-semibold">Grand Horizon Hotel</span>
+            <span className="text-amber-400 font-serif text-sm font-semibold">Efoy Hotel & Suites</span>
             <span className="text-slate-400 text-xs hidden sm:inline">• Guest Folio & Tax Invoice</span>
           </div>
           <div className="flex items-center gap-2">
@@ -62,12 +62,21 @@ const PrintableInvoice = ({ folio, onClose }) => {
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start pb-6 border-b-2 border-slate-900 gap-4">
             <div>
-              <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-wider text-slate-900 uppercase">
-                Grand Horizon
-              </h1>
-              <p className="text-[10px] tracking-[0.25em] text-slate-500 uppercase font-medium">
-                Hotel & Luxury Suites
-              </p>
+              <div className="flex items-center gap-3.5">
+                <img
+                  src="/images/logo.png"
+                  alt="Efoy Hotel"
+                  className="h-20 sm:h-24 w-auto object-contain"
+                />
+                <div>
+                  <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-wider text-slate-900 uppercase">
+                    Efoy Hotel
+                  </h1>
+                  <p className="text-[10px] tracking-[0.25em] text-slate-500 uppercase font-medium">
+                    Hotel & Luxury Suites
+                  </p>
+                </div>
+              </div>
               <p className="text-xs text-slate-500 mt-2">
                 100 Waterfront Promenade • San Francisco, CA 94105<br />
                 Direct: +1 (800) 555-0199 • concierge@efoyhotel.com
@@ -212,7 +221,7 @@ const PrintableInvoice = ({ folio, onClose }) => {
           {/* Footer Terms & Signatures */}
           <div className="mt-12 pt-6 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-end gap-6 text-[10px] text-slate-500">
             <div>
-              <p className="font-semibold text-slate-700">Grand Horizon Luxury Guarantee</p>
+              <p className="font-semibold text-slate-700">Efoy Hotel Luxury Guarantee</p>
               <p className="mt-0.5 max-w-sm leading-relaxed">
                 Thank you for staying with us. All charges have been settled. Any ancillary mini-bar charges will be reconciled within 24 hours.
               </p>
