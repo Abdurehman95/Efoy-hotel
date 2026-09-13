@@ -2,9 +2,16 @@
 
 @import "tailwindcss";
 
+/* Ensure ampersands (&) render in a clean, legible classic serif or sans glyph instead of Playfair's confusing cursive swirl */
+@font-face {
+  font-family: 'CleanAmpersand';
+  src: local('Georgia'), local('Times New Roman'), local('Inter'), local('Arial');
+  unicode-range: U+0026;
+}
+
 @theme {
   --font-sans: 'Inter', sans-serif;
-  --font-serif: 'Playfair Display', serif;
+  --font-serif: 'CleanAmpersand', 'Playfair Display', serif;
   
   --color-gold-500: #cba258;
   --color-gold-600: #b8904a;
