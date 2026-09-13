@@ -80,16 +80,20 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-serif font-bold text-sm shadow-md">
-                  <Sparkles size={18} />
+              <div className="flex items-center gap-3">
+                <div className="bg-white rounded-xl px-2.5 py-1.5 shadow-md flex items-center justify-center shrink-0">
+                  <img
+                    src="/images/logo.png"
+                    alt="Efoy Hotel"
+                    className="h-10 sm:h-11 w-auto object-contain"
+                  />
                 </div>
                 <div>
-                  <h1 className="font-serif text-sm font-bold tracking-wider text-white uppercase">
-                    Housekeeping
+                  <h1 className="font-serif text-base font-bold tracking-wider text-white uppercase">
+                    Efoy Cleaning
                   </h1>
-                  <p className="text-[9px] tracking-[0.25em] text-slate-400 uppercase font-medium">
-                    Sanitization & Turnover
+                  <p className="text-[9px] tracking-[0.25em] text-amber-400 uppercase font-medium">
+                    Housekeeping Hub
                   </p>
                 </div>
               </div>
@@ -170,16 +174,20 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
       {/* DESKTOP SIDEBAR */}
       <aside className="hidden lg:flex lg:w-64 bg-slate-900 border-r border-slate-800 flex-col shrink-0">
         <div className="p-5 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-serif font-bold text-sm shadow-md">
-              <Sparkles size={18} />
+          <div className="flex items-center gap-3">
+            <div className="bg-white rounded-xl px-2.5 py-1.5 shadow-md flex items-center justify-center shrink-0">
+              <img
+                src="/images/logo.png"
+                alt="Efoy Hotel"
+                className="h-10 sm:h-11 w-auto object-contain"
+              />
             </div>
             <div>
-              <h1 className="font-serif text-sm font-bold tracking-wider text-white uppercase">
-                Housekeeping
+              <h1 className="font-serif text-base font-bold tracking-wider text-white uppercase">
+                Efoy Cleaning
               </h1>
-              <p className="text-[9px] tracking-[0.25em] text-slate-400 uppercase font-medium">
-                Sanitization & Turnover
+              <p className="text-[9px] tracking-[0.25em] text-amber-400 uppercase font-medium">
+                Housekeeping Hub
               </p>
             </div>
           </div>
@@ -452,7 +460,7 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
                   Full Property Cleanliness Grid
                 </h1>
                 <p className="text-xs text-slate-500 mt-1">
-                  Overall status of every room across all floors of Grand Horizon.
+                  Overall status of every room across all floors of Efoy Hotel & Suites.
                 </p>
               </div>
 
