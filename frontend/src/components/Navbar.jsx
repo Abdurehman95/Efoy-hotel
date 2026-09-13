@@ -32,13 +32,12 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
     <>
       <nav className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4 bg-white/95 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50 transition-all">
         {/* Brand Logo */}
-        <a href="#" className="flex flex-col items-start sm:items-center justify-center cursor-pointer group">
-          <h1 className="font-serif text-xl sm:text-2xl tracking-widest text-dark-900 uppercase leading-none group-hover:text-gold-600 transition-colors">
-            Grand Horizon
-          </h1>
-          <span className="text-[9px] sm:text-[10px] tracking-[0.25em] text-gray-500 uppercase mt-1">
-            Hotel & Suites
-          </span>
+        <a href="#" className="flex items-center gap-3 cursor-pointer group">
+          <img
+            src="/images/logo.png"
+            alt="Efoy Hotel & Suites"
+            className="h-16 sm:h-20 w-auto object-contain transition-transform duration-300 group-hover:scale-105 drop-shadow-xs"
+          />
         </a>
 
         {/* Center Desktop Links */}
@@ -163,13 +162,12 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
           >
             {/* Header in drawer */}
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
-              <div>
-                <span className="text-[10px] tracking-[0.2em] text-gold-600 uppercase font-semibold block">
-                  Five-Star Luxury
-                </span>
-                <span className="font-serif text-lg text-dark-900">
-                  Grand Horizon
-                </span>
+              <div className="flex items-center gap-2">
+                <img
+                  src="/images/logo.png"
+                  alt="Efoy Hotel & Suites"
+                  className="h-14 sm:h-16 w-auto object-contain"
+                />
               </div>
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
