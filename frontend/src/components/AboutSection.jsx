@@ -21,7 +21,7 @@ const AboutSection = () => {
             More than a stay.<br/>An architectural sanctuary.
           </h2>
           <p className="text-gray-600 font-light text-sm sm:text-base mb-8 sm:mb-12 leading-relaxed">
-            Conceived as an urban harbor retreat, Grand Horizon fuses timeless classical proportions with 
+            Conceived as an urban harbor retreat, Efoy Hotel & Suites fuses timeless classical proportions with 
             modern glass cantilevers and tranquil water gardens. Every corridor, ambient luminaire, and 
             handcrafted teak finish is calibrated to ease mental tension and evoke pure calm.
           </p>
