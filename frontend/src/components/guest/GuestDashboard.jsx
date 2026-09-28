@@ -59,21 +59,20 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
     setTimeout(() => setToastMessage(''), 3500);
   };
 
-  // Find user's active booking (or fallback to demo booking)
+  // Find user's active booking (secure per-user matching, fallback only for demo guest account)
+  const isDemoGuest = user?.email?.toLowerCase() === 'guest@efoyhotel.com';
   const userBooking =
     bookings.find(
       (b) =>
         b.email?.toLowerCase() === user?.email?.toLowerCase() &&
         b.status !== 'Checked Out'
-    ) ||
-    bookings.find((b) => b.status === 'In-House') ||
-    bookings[0];
+    ) || (isDemoGuest ? bookings.find((b) => b.status === 'In-House') : null);
 
-  const assignedRoomNumber = userBooking ? userBooking.roomNumber : '101';
-  const folio = getGuestFolio(assignedRoomNumber);
+  const assignedRoomNumber = userBooking?.roomNumber || null;
+  const folio = assignedRoomNumber ? getGuestFolio(assignedRoomNumber) : null;
 
   // User's room food orders
-  const guestOrders = orders.filter((o) => o.roomNumber === assignedRoomNumber);
+  const guestOrders = assignedRoomNumber ? orders.filter((o) => o.roomNumber === assignedRoomNumber) : [];
 
   // Cart functions
   const addToCart = (dish) => {
@@ -106,6 +105,10 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
   // Submit food order
   const handlePlaceOrder = (e) => {
     e.preventDefault();
+    if (!assignedRoomNumber) {
+      showToast('⚠️ In-room dining requires an active room reservation. Please reserve a suite first.');
+      return;
+    }
     if (cart.length === 0) {
       showToast('Your dining tray is empty.');
       return;
@@ -357,22 +360,48 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
 
         {/* Active Room Card Widget */}
         <div className="p-4 mx-3 mb-4 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-amber-500/30 shadow-md">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="text-[10px] font-bold text-amber-400 tracking-wider uppercase">
-              Current Stay
-            </span>
-            <span className="text-[10px] font-mono text-slate-400">#AURA-KEY</span>
-          </div>
-          <div className="font-serif text-lg font-bold text-white mb-0.5">
-            Room {assignedRoomNumber}
-          </div>
-          <div className="text-[11px] text-slate-400 mb-2">
-            {userBooking?.roomType || 'Luxury Suite'}
-          </div>
-          <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-700/60 text-slate-300">
-            <span>Folio Balance:</span>
-            <span className="font-mono font-bold text-amber-400">${folio.grandTotal.toFixed(2)}</span>
-          </div>
+          {assignedRoomNumber && folio ? (
+            <>
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-[10px] font-bold text-amber-400 tracking-wider uppercase">
+                  Current Stay
+                </span>
+                <span className="text-[10px] font-mono text-slate-400">#AURA-KEY</span>
+              </div>
+              <div className="font-serif text-lg font-bold text-white mb-0.5">
+                Room {assignedRoomNumber}
+              </div>
+              <div className="text-[11px] text-slate-400 mb-2">
+                {userBooking?.roomType || 'Luxury Suite'}
+              </div>
+              <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-700/60 text-slate-300">
+                <span>Folio Balance:</span>
+                <span className="font-mono font-bold text-amber-400">${folio.grandTotal.toFixed(2)}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-[10px] font-bold text-amber-400 tracking-wider uppercase">
+                  Privilege Club
+                </span>
+                <span className="text-[10px] font-mono text-emerald-400 font-semibold">Active Member</span>
+              </div>
+              <div className="font-serif text-base font-bold text-white mb-0.5">
+                No Active Room
+              </div>
+              <div className="text-[11px] text-slate-400 mb-2.5">
+                Reserve a luxury suite to unlock digital NFC key & in-room dining.
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('Book a Room')}
+                className="w-full py-1.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-semibold text-[11px] rounded-lg transition-all shadow-sm cursor-pointer text-center"
+              >
+                Reserve a Suite →
+              </button>
+            </>
+          )}
         </div>
 
         {/* Guest Profile */}
@@ -444,6 +473,39 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
 
         {/* TAB 1: MY STAY & KEY */}
         {activeTab === 'My Stay & Key' && (
+          !userBooking ? (
+            <div className="p-4 sm:px-6 lg:px-8 py-12 max-w-2xl mx-auto text-center space-y-5">
+              <div className="w-16 h-16 bg-amber-50 text-amber-700 rounded-2xl flex items-center justify-center mx-auto border border-amber-200 shadow-xs">
+                <Bed size={32} />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                  Efoy Privilege Club
+                </span>
+                <h2 className="font-serif text-2xl sm:text-3xl font-bold text-slate-900 mt-3 mb-2">
+                  No Active Reservation
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+                  Welcome, <span className="font-semibold text-slate-900">{user?.name || 'Valued Guest'}</span>. You do not currently have an active checked-in suite assigned. Reserve your luxury sanctuary below.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => setActiveTab('Book a Room')}
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold uppercase tracking-wider transition-all shadow-md cursor-pointer flex items-center gap-2"
+                >
+                  <Plus size={15} />
+                  <span>Reserve a Luxury Suite</span>
+                </button>
+                <button
+                  onClick={onBackToSite}
+                  className="px-5 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer"
+                >
+                  Explore Public Website
+                </button>
+              </div>
+            </div>
+          ) : (
           <div className="p-4 sm:px-6 lg:px-8 py-6 space-y-6">
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -607,6 +669,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
               </div>
             </div>
           </div>
+          )
         )}
 
         {/* TAB 2: BOOK A ROOM */}
@@ -803,7 +866,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                   <div className="flex items-center gap-2">
                     <ShoppingBag size={18} className="text-amber-600" />
                     <h3 className="font-serif font-bold text-base text-slate-900">
-                      Room {assignedRoomNumber} Dining Tray
+                      {assignedRoomNumber ? `Room ${assignedRoomNumber} Dining Tray` : 'Guest Dining Tray'}
                     </h3>
                   </div>
                   <span className="text-xs font-mono font-semibold text-slate-500">
@@ -870,13 +933,29 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                       </div>
                     </div>
 
-                    <button
-                      type="submit"
-                      className="w-full py-2.5 bg-[#c2410c] hover:bg-[#9a3412] text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <Send size={13} />
-                      <span>Place Order to Kitchen</span>
-                    </button>
+                    {!assignedRoomNumber ? (
+                      <div className="space-y-2">
+                        <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-800 leading-tight">
+                          ℹ️ In-room dining charges are posted directly to an active suite folio.
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('Book a Room')}
+                          className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <Bed size={13} />
+                          <span>Reserve Suite to Order</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="submit"
+                        className="w-full py-2.5 bg-[#c2410c] hover:bg-[#9a3412] text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <Send size={13} />
+                        <span>Place Order to Kitchen</span>
+                      </button>
+                    )}
                   </form>
                 )}
               </div>
@@ -921,13 +1000,13 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                 Live In-Room Dining Tracker
               </h1>
               <p className="text-xs text-slate-500 mt-1">
-                Real-time tracking of culinary orders prepared by the brigade and delivered to Room {assignedRoomNumber}.
+                Real-time tracking of culinary orders prepared by the brigade and delivered to {assignedRoomNumber ? `Room ${assignedRoomNumber}` : 'your suite'}.
               </p>
             </div>
 
             {guestOrders.length === 0 ? (
               <div className="bg-white p-12 rounded-xl border border-dashed border-slate-200 text-center text-xs text-slate-400">
-                No active orders found for Room {assignedRoomNumber}.
+                No active orders found{assignedRoomNumber ? ` for Room ${assignedRoomNumber}` : ''}. Once you check into a suite and place in-room dining orders, their live status will be tracked here.
               </div>
             ) : (
               <div className="space-y-4">
@@ -1023,7 +1102,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                   </div>
 
                   <button
-                    onClick={() => showToast(`Concierge dispatched: ${svc.title} for Room ${assignedRoomNumber}`)}
+                    onClick={() => showToast(`Concierge dispatched: ${svc.title}${assignedRoomNumber ? ` for Room ${assignedRoomNumber}` : ' (logged to your profile)'}`)}
                     className="mt-4 w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Request Service
