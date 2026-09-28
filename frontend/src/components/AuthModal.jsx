@@ -107,36 +107,11 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
     const password = formData.password;
 
     // Front-end guest registration requirement:
-    // If logging in as guest, they must have registered first or have a recognized account
-    const isStaffEmail =
-      email.startsWith('admin@') ||
-      email.startsWith('reception@') ||
-      email.startsWith('frontdesk@') ||
-      email.startsWith('kitchen@') ||
-      email.startsWith('chef@') ||
-      email.startsWith('housekeeping@') ||
-      email.startsWith('clean@');
-
-    if (mode === 'login' && !isStaffEmail) {
-      const registered = getRegisteredGuests();
-      const hasSignedUp = registered.some((g) => g.email.toLowerCase() === email);
-      const isKnownDemo = DEMO_FALLBACK_ROLES[email];
-
-      if (!hasSignedUp && !isKnownDemo) {
-        setLoading(false);
-        setErrorMessage(
-          'Account not found. Please click "Create Account" above to register before signing in.'
-        );
-        return;
-      }
-    }
-
     try {
       let authUser = null;
 
       if (mode === 'signup') {
         const name = formData.name.trim() || 'Valued Guest';
-        registerGuestLocal(email, name);
 
         // Attempt backend API call
         try {
@@ -146,19 +121,24 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
             password,
             phone: formData.phone || null,
           });
-          if (res.token) {
+          if (res?.token) {
             setToken(res.token);
           }
-          if (res.user) {
+          if (res?.user) {
             authUser = {
+              id: res.user.id,
               name: res.user.name,
               role: res.user.role || 'guest',
               email: res.user.email,
+              phone: res.user.phone,
               title: 'Privilege Member',
             };
           }
+          registerGuestLocal(email, name);
         } catch (apiErr) {
-          console.warn('Backend register note:', apiErr.message);
+          setLoading(false);
+          setErrorMessage(apiErr.message || 'Registration failed. Please check your information.');
+          return;
         }
 
         if (!authUser) {
@@ -168,20 +148,23 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
             email,
             title: 'Privilege Member',
           };
+          registerGuestLocal(email, name);
         }
       } else {
         // Mode === 'login'
-        // Attempt backend API call
+        // Attempt backend API call first
         try {
           const res = await authApi.login({ email, password });
-          if (res.token) {
+          if (res?.token) {
             setToken(res.token);
           }
-          if (res.user) {
+          if (res?.user) {
             authUser = {
+              id: res.user.id,
               name: res.user.name,
               role: res.user.role,
               email: res.user.email,
+              phone: res.user.phone,
               title:
                 res.user.role === 'admin'
                   ? 'General Manager'
@@ -195,11 +178,9 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
             };
           }
         } catch (apiErr) {
-          console.warn('Backend login fallback:', apiErr.message);
-        }
+          console.warn('Backend login attempt:', apiErr.message);
 
-        // Fallback to role mapping if backend was offline or for demo credentials
-        if (!authUser) {
+          // Fallback to role mapping if demo credentials
           const fallback = DEMO_FALLBACK_ROLES[email];
           if (fallback) {
             authUser = {
@@ -217,12 +198,9 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
           } else if (email.startsWith('housekeeping@') || email.startsWith('clean@')) {
             authUser = { name: 'Maria Santos', role: 'housekeeping', email, title: 'Senior Housekeeper' };
           } else {
-            authUser = {
-              name: formData.name || 'Lord Alexander Wright',
-              role: 'guest',
-              email,
-              title: 'Privilege Member',
-            };
+            setLoading(false);
+            setErrorMessage(apiErr.message || 'Invalid credentials. Please verify your email and password.');
+            return;
           }
         }
       }
