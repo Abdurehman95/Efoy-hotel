@@ -239,32 +239,12 @@ Ensure the following tools are installed on your workstation:
    npm install
    ```
 
-3. Configure environment variables by creating `.env` in the `backend/` directory:
-   ```env
-   PORT=5000
-   NODE_ENV=development
-
-   # PostgreSQL Database Configuration
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_NAME=efoy_hotel
-   DB_USER=postgres
-   DB_PASSWORD=your_postgres_password
-
-   # JWT Secret Key
-   JWT_SECRET=your_super_secret_jwt_key_here
-   JWT_EXPIRES_IN=7d
-
-   # Frontend Client URL
-   FRONTEND_URL=http://localhost:5173
-   ```
-
-4. Initialize the PostgreSQL database and execute automated schema migrations:
+3. Initialize the PostgreSQL database and execute automated schema migrations:
    ```bash
    npm run migrate
    ```
 
-5. Start the backend development server:
+4. Start the backend development server:
    ```bash
    npm run dev
    ```
