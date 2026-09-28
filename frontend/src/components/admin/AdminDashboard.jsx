@@ -16,7 +16,15 @@ import {
   Home,
   Trash2,
   Menu,
-  X
+  X,
+  ShieldCheck,
+  UserCheck,
+  Key,
+  Lock,
+  Eye,
+  EyeOff,
+  User,
+  ShieldAlert,
 } from 'lucide-react';
 import { Chart, registerables } from 'chart.js';
 import { useHotel } from '../../context/HotelContext';
@@ -43,6 +51,10 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     addRoom,
     deleteRoom,
     resetDemoData,
+    usersList,
+    addUser,
+    editUser,
+    deleteUser,
   } = useHotel();
 
   const [activeTab, setActiveTab] = useState('Dashboard');
@@ -51,7 +63,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deleteConfirmTarget) return;
     if (deleteConfirmTarget.type === 'room') {
       deleteRoom(deleteConfirmTarget.id);
@@ -62,6 +74,13 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     } else if (deleteConfirmTarget.type === 'staff') {
       deleteStaff(deleteConfirmTarget.id);
       showToast('Staff member removed from directory');
+    } else if (deleteConfirmTarget.type === 'user') {
+      const res = await deleteUser(deleteConfirmTarget.id);
+      if (res?.success) {
+        showToast(`User account removed from database`);
+      } else {
+        showToast(res?.message || 'Failed to remove user account');
+      }
     }
     setDeleteConfirmTarget(null);
   };
@@ -97,6 +116,16 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     prepTime: '15-20 mins',
     description: '',
   });
+
+  const [userRoleFilter, setUserRoleFilter] = useState('All');
+  const [userForm, setUserForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    role: 'guest',
+    password: '',
+  });
+  const [showUserPassword, setShowUserPassword] = useState(false);
 
   // Chart Canvas Refs
   const revenueChartRef = useRef(null);
@@ -162,6 +191,19 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     );
   });
 
+  const filteredUsers = (usersList || []).filter((u) => {
+    const matchesRole =
+      userRoleFilter === 'All' || u.role?.toLowerCase() === userRoleFilter.toLowerCase();
+    if (!matchesRole) return false;
+    if (!q) return true;
+    return (
+      u.name?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q) ||
+      (u.phone && u.phone.toLowerCase().includes(q)) ||
+      u.role?.toLowerCase().includes(q)
+    );
+  });
+
   const filteredActivityLogs = activityLogs.filter((log) => {
     if (!q) return true;
     return (
@@ -180,6 +222,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     { name: 'Room Management', icon: DoorClosed },
     { name: 'Menu Management', icon: UtensilsCrossed },
     { name: 'Staff Management', icon: Users },
+    { name: 'User Accounts', icon: ShieldCheck },
     { name: 'Activity Logs', icon: Clock },
     { name: 'Settings', icon: Settings },
   ];
@@ -405,6 +448,49 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     }
     setModalType(null);
     setSelectedItemForEdit(null);
+  };
+
+  // Handle User Account Form
+  const handleSaveUser = async (e) => {
+    e.preventDefault();
+    if (modalType === 'addUser') {
+      if (!userForm.name?.trim() || !userForm.email?.trim() || !userForm.password?.trim()) {
+        showToast('⚠️ Full name, email, and password are required.');
+        return;
+      }
+      const res = await addUser({
+        name: userForm.name.trim(),
+        email: userForm.email.trim(),
+        phone: userForm.phone?.trim() || null,
+        role: userForm.role || 'guest',
+        password: userForm.password.trim(),
+      });
+      if (res?.success) {
+        showToast(`🎉 User account for ${userForm.name} created successfully!`);
+        setModalType(null);
+        setSelectedItemForEdit(null);
+      } else {
+        showToast(res?.message || 'Failed to create user account');
+      }
+    } else if (modalType === 'editUser' && selectedItemForEdit) {
+      const payload = {
+        name: userForm.name.trim(),
+        email: userForm.email.trim(),
+        phone: userForm.phone?.trim() || null,
+        role: userForm.role || 'guest',
+      };
+      if (userForm.password?.trim()) {
+        payload.password = userForm.password.trim();
+      }
+      const res = await editUser(selectedItemForEdit.id, payload);
+      if (res?.success) {
+        showToast(`✅ User account ${userForm.name} updated!`);
+        setModalType(null);
+        setSelectedItemForEdit(null);
+      } else {
+        showToast(res?.message || 'Failed to update user account');
+      }
+    }
   };
 
   // Occupancy calc
@@ -1374,6 +1460,262 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
           </div>
         )}
 
+        {/* TAB: USER ACCOUNTS (Admin PostgreSQL User Table Management) */}
+        {activeTab === 'User Accounts' && (
+          <div className="p-4 sm:px-6 lg:px-8 py-6 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    PostgreSQL Authentication
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-500">
+                    Table: users ({usersList?.length || 0} accounts)
+                  </span>
+                </div>
+                <h1 className="font-serif text-2xl font-bold text-slate-900">
+                  User Accounts & Authentication Management
+                </h1>
+                <p className="text-xs text-slate-500 mt-1">
+                  Manage registered guest accounts, staff credentials, and administrative roles directly in the relational database.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setUserForm({
+                    name: '',
+                    email: '',
+                    phone: '',
+                    role: 'guest',
+                    password: '',
+                  });
+                  setShowUserPassword(false);
+                  setModalType('addUser');
+                }}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+              >
+                <Plus size={14} />
+                <span>+ Create New User</span>
+              </button>
+            </div>
+
+            {/* Metrics Overview Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Total Accounts
+                </span>
+                <div className="text-2xl font-serif font-bold text-slate-900">
+                  {usersList?.length || 0}
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">Database credentials</div>
+              </div>
+
+              <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block mb-1">
+                  Guest Accounts
+                </span>
+                <div className="text-2xl font-serif font-bold text-slate-900">
+                  {usersList?.filter((u) => u.role === 'guest').length || 0}
+                </div>
+                <div className="text-[11px] text-emerald-600 mt-1 font-medium">Privilege Members</div>
+              </div>
+
+              <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block mb-1">
+                  Operational Staff
+                </span>
+                <div className="text-2xl font-serif font-bold text-slate-900">
+                  {usersList?.filter((u) => ['receptionist', 'kitchen', 'housekeeping'].includes(u.role)).length || 0}
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">Front desk & services</div>
+              </div>
+
+              <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block mb-1">
+                  Administrators
+                </span>
+                <div className="text-2xl font-serif font-bold text-slate-900">
+                  {usersList?.filter((u) => u.role === 'admin').length || 0}
+                </div>
+                <div className="text-[11px] text-amber-600 mt-1 font-medium">Full management access</div>
+              </div>
+            </div>
+
+            {/* Role Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+              {[
+                { label: 'All Users', value: 'All', count: usersList?.length || 0 },
+                { label: 'Guests', value: 'guest', count: usersList?.filter((u) => u.role === 'guest').length || 0 },
+                { label: 'Admins', value: 'admin', count: usersList?.filter((u) => u.role === 'admin').length || 0 },
+                { label: 'Receptionists', value: 'receptionist', count: usersList?.filter((u) => u.role === 'receptionist').length || 0 },
+                { label: 'Kitchen Brigade', value: 'kitchen', count: usersList?.filter((u) => u.role === 'kitchen').length || 0 },
+                { label: 'Housekeeping', value: 'housekeeping', count: usersList?.filter((u) => u.role === 'housekeeping').length || 0 },
+              ].map((pill) => (
+                <button
+                  key={pill.value}
+                  onClick={() => setUserRoleFilter(pill.value)}
+                  className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                    userRoleFilter === pill.value
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300'
+                  }`}
+                >
+                  <span>{pill.label}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                      userRoleFilter === pill.value ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {pill.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Users Relational Table */}
+            <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-wider">
+                    <tr>
+                      <th className="py-3 px-4">User & Email</th>
+                      <th className="py-3 px-4">Assigned Role</th>
+                      <th className="py-3 px-4">Phone / Contact</th>
+                      <th className="py-3 px-4">Account ID</th>
+                      <th className="py-3 px-4">Registered Date</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
+                          No user accounts match your filter criteria.
+                          {searchQuery && (
+                            <button
+                              onClick={() => setSearchQuery('')}
+                              className="ml-2 text-amber-600 underline font-medium cursor-pointer"
+                            >
+                              Clear search
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredUsers.map((u) => {
+                        const isSelf = user?.email?.toLowerCase() === u.email?.toLowerCase();
+                        const roleColors = {
+                          admin: 'bg-amber-50 text-amber-800 border-amber-200',
+                          receptionist: 'bg-blue-50 text-blue-800 border-blue-200',
+                          kitchen: 'bg-orange-50 text-orange-800 border-orange-200',
+                          housekeeping: 'bg-purple-50 text-purple-800 border-purple-200',
+                          guest: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+                        };
+                        const roleBadges = {
+                          admin: '👑 Administrator',
+                          receptionist: '🔔 Front Desk Reception',
+                          kitchen: '👨‍🍳 Kitchen Culinary',
+                          housekeeping: '🧹 Housekeeping Lead',
+                          guest: '👤 Guest / Privilege',
+                        };
+
+                        return (
+                          <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-semibold text-xs flex items-center justify-center shrink-0 uppercase">
+                                  {u.name ? u.name.slice(0, 2) : 'US'}
+                                </div>
+                                <div>
+                                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                    <span>{u.name}</span>
+                                    {isSelf && (
+                                      <span className="text-[10px] bg-amber-100 text-amber-800 font-semibold px-1.5 py-0.2 rounded">
+                                        You (Current)
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 font-mono">{u.email}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                                  roleColors[u.role] || 'bg-slate-100 text-slate-700 border-slate-200'
+                                }`}
+                              >
+                                {roleBadges[u.role] || u.role}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-slate-600 font-mono text-[11px]">
+                              {u.phone || '—'}
+                            </td>
+                            <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">
+                              #{u.id}
+                            </td>
+                            <td className="py-3 px-4 text-slate-500 text-[11px]">
+                              {u.createdAt ? new Date(u.createdAt).toLocaleDateString(undefined, {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              }) : 'Recent'}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  onClick={() => {
+                                    setSelectedItemForEdit(u);
+                                    setUserForm({
+                                      name: u.name || '',
+                                      email: u.email || '',
+                                      phone: u.phone || '',
+                                      role: u.role || 'guest',
+                                      password: '',
+                                    });
+                                    setShowUserPassword(false);
+                                    setModalType('editUser');
+                                  }}
+                                  className="p-1.5 hover:bg-slate-100 text-slate-600 rounded cursor-pointer transition-colors"
+                                  title="Edit User Role & Details"
+                                >
+                                  <Edit2 size={13} />
+                                </button>
+                                <button
+                                  disabled={isSelf}
+                                  onClick={() => {
+                                    if (isSelf) return;
+                                    setDeleteConfirmTarget({
+                                      type: 'user',
+                                      id: u.id,
+                                      name: u.name,
+                                      title: 'Delete User Account',
+                                      message: `Are you sure you want to permanently delete the ${u.role?.toUpperCase()} account for "${u.name}" (${u.email})? This action cannot be undone.`,
+                                    });
+                                  }}
+                                  className={`p-1.5 rounded transition-colors ${
+                                    isSelf
+                                      ? 'text-slate-300 cursor-not-allowed'
+                                      : 'hover:bg-red-50 text-red-600 cursor-pointer'
+                                  }`}
+                                  title={isSelf ? 'Cannot delete current account' : 'Delete User Account'}
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* TAB 7: ACTIVITY LOGS */}
         {activeTab === 'Activity Logs' && (
           <div className="p-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -1857,6 +2199,156 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   className="px-5 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm cursor-pointer"
                 >
                   Save Item
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* USER ACCOUNT MODAL (Add / Edit User in Postgres users table) */}
+      {(modalType === 'addUser' || modalType === 'editUser') && (
+        <div
+          className="fixed inset-0 z-[140] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => {
+            setModalType(null);
+            setSelectedItemForEdit(null);
+          }}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full p-6 animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center">
+                  <UserCheck size={16} />
+                </div>
+                <div>
+                  <h3 className="font-serif font-bold text-base text-slate-900">
+                    {modalType === 'addUser' ? 'Create User Account' : 'Edit User Account'}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Direct synchronization with database users table
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setModalType(null);
+                  setSelectedItemForEdit(null);
+                }}
+                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUser} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Eleanor Vance"
+                  value={userForm.name}
+                  onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="name@efoyhotel.com"
+                  value={userForm.email}
+                  onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    System Role *
+                  </label>
+                  <select
+                    value={userForm.role}
+                    onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}
+                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                  >
+                    <option value="guest">Guest / Member</option>
+                    <option value="receptionist">Receptionist</option>
+                    <option value="kitchen">Kitchen Staff</option>
+                    <option value="housekeeping">Housekeeping</option>
+                    <option value="admin">Administrator</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Phone Contact
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="+1 (555) 234-5678"
+                    value={userForm.phone}
+                    onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })}
+                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  {modalType === 'addUser' ? 'Password *' : 'New Password (Optional)'}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showUserPassword ? 'text' : 'password'}
+                    required={modalType === 'addUser'}
+                    placeholder={modalType === 'addUser' ? 'Min 6 characters' : 'Leave blank to preserve current password'}
+                    value={userForm.password}
+                    onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                    className="w-full text-xs pl-3 pr-10 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowUserPassword(!showUserPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                  >
+                    {showUserPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+                {modalType === 'editUser' && (
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Only fill if you wish to reset or change the user's password.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalType(null);
+                    setSelectedItemForEdit(null);
+                  }}
+                  className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm cursor-pointer transition-colors"
+                >
+                  {modalType === 'addUser' ? 'Create Account' : 'Save Changes'}
                 </button>
               </div>
             </form>
