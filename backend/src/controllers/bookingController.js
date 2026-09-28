@@ -1,4 +1,5 @@
 import { pool, query } from '../config/db.js';
+import { emitPmsEvent } from '../socket.js';
 
 export const getBookings = async (req, res, next) => {
   try {
@@ -125,11 +126,67 @@ export const createBooking = async (req, res, next) => {
       });
     }
 
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+    if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime()) || checkOutDate <= checkInDate) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date range: checkOut must be strictly after checkIn.',
+      });
+    }
+
+    // Double-Booking Collision Prevention (Date-Range Overlap Check)
+    if (roomNumber) {
+      const collisionCheck = await client.query(
+        `SELECT id, guest_name, TO_CHAR(check_in, 'YYYY-MM-DD') AS "checkIn", TO_CHAR(check_out, 'YYYY-MM-DD') AS "checkOut"
+         FROM bookings 
+         WHERE room_number = $1
+           AND status NOT IN ('Cancelled', 'Checked Out')
+           AND check_in < $3::date
+           AND check_out > $2::date
+         LIMIT 1`,
+        [roomNumber, checkIn, checkOut]
+      );
+
+      if (collisionCheck.rows.length > 0) {
+        await client.query('ROLLBACK');
+        const c = collisionCheck.rows[0];
+        return res.status(409).json({
+          success: false,
+          isCollision: true,
+          message: `Room ${roomNumber} is already booked from ${c.checkIn} to ${c.checkOut} by ${c.guest_name}. Double-booking prevented by PMS safeguard.`,
+        });
+      }
+
+      // Check Maintenance Out-of-Order collision
+      const maintenanceCheck = await client.query(
+        `SELECT id, issue_description 
+         FROM maintenance_tickets 
+         WHERE room_number = $1 
+           AND status IN ('REPORTED', 'IN_PROGRESS')
+           AND inventory_impact = 'OUT_OF_ORDER'
+           AND start_date < $3::date
+           AND COALESCE(end_date, CURRENT_DATE + INTERVAL '30 days') > $2::date
+         LIMIT 1`,
+        [roomNumber, checkIn, checkOut]
+      );
+
+      if (maintenanceCheck.rows.length > 0) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({
+          success: false,
+          isMaintenanceBlocked: true,
+          message: `Room ${roomNumber} is currently designated Out-of-Order for maintenance (${maintenanceCheck.rows[0].issue_description}). Cannot assign arriving guest.`,
+        });
+      }
+    }
+
     // Generate Booking ID
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const bookingId = req.body.id || `BK-${randomSuffix}`;
     const bookingStatus = status || 'Arriving Today';
-    const computedNights = nights || 1;
+    const computedNights = nights || Math.max(1, Math.round((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)));
 
     const bookingRes = await client.query(
       `INSERT INTO bookings (
@@ -169,6 +226,39 @@ export const createBooking = async (req, res, next) => {
       ]
     );
 
+    // Initialize Immutable Financial Folio
+    const folioId = `FOL-${bookingId.replace(/[^a-zA-Z0-9]/g, '')}`;
+    const totalRoomCost = parseFloat(roomRate) * parseInt(computedNights, 10);
+    const taxAmount = Number((totalRoomCost * 0.12).toFixed(2));
+    const grandInitial = Number((totalRoomCost + taxAmount).toFixed(2));
+
+    await client.query(
+      `INSERT INTO folios (id, booking_id, room_number, folio_type, status, balance)
+       VALUES ($1, $2, $3, 'GUEST', $4, $5)
+       ON CONFLICT (id) DO UPDATE SET balance = EXCLUDED.balance`,
+      [folioId, bookingId, roomNumber || null, paid ? 'SETTLED' : 'OPEN', paid ? 0 : grandInitial]
+    );
+
+    // Record Immutable Room Charge Transaction
+    await client.query(
+      `INSERT INTO folio_transactions (folio_id, transaction_type, department, description, amount, tax_amount)
+       VALUES ($1, 'CHARGE', 'ROOM', $2, $3, $4)`,
+      [
+        folioId,
+        `Room Accommodation (${computedNights} night${computedNights > 1 ? 's' : ''} @ $${parseFloat(roomRate).toFixed(2)}/nt)`,
+        totalRoomCost,
+        taxAmount,
+      ]
+    );
+
+    if (paid === true) {
+      await client.query(
+        `INSERT INTO folio_transactions (folio_id, transaction_type, department, description, amount, tax_amount)
+         VALUES ($1, 'PAYMENT', 'PAYMENT', $2, $3, 0)`,
+        [folioId, `Advance Payment Received (${paymentMethod || 'Credit Card On File'})`, -grandInitial]
+      );
+    }
+
     // If assigned to a room and in-house or arriving, set room occupancy
     if (roomNumber) {
       const roomOccupancy = bookingStatus === 'In-House' ? 'Occupied' : 'Reserved';
@@ -184,16 +274,20 @@ export const createBooking = async (req, res, next) => {
        VALUES ($1, 'Front Desk', $2, 'Reservation')`,
       [
         `New Reservation: ${bookingId}`,
-        `Booked for ${guestName} (${roomType}${roomNumber ? ` - Room ${roomNumber}` : ''}). Check-in: ${checkIn}.`,
+        `Booked for ${guestName} (${roomType}${roomNumber ? ` - Room ${roomNumber}` : ''}). Check-in: ${checkIn}. Folio #${folioId} created.`,
       ]
     );
 
     await client.query('COMMIT');
 
+    // Broadcast new booking to Front Desk and Admin
+    emitPmsEvent('PMS_BOOKING_CREATED', bookingRes.rows[0]);
+
     return res.status(201).json({
       success: true,
-      message: 'Reservation created successfully.',
+      message: 'Reservation and financial folio created successfully.',
       booking: bookingRes.rows[0],
+      folioId,
     });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -298,6 +392,9 @@ export const assignRoom = async (req, res, next) => {
 
     await client.query('COMMIT');
 
+    // Broadcast room assignment to all stations
+    emitPmsEvent('PMS_ROOM_ASSIGNED', { booking: updatedBooking.rows[0], roomNumber });
+
     return res.status(200).json({
       success: true,
       message: `Room ${roomNumber} successfully assigned to ${booking.guest_name}.`,
@@ -374,12 +471,40 @@ export const getFolio = async (req, res, next) => {
     const tax = Number((subtotal * taxRate).toFixed(2));
     const grandTotal = Number((subtotal + tax).toFixed(2));
 
+    // Fetch ledger transactions if folio exists
+    const folioRow = await query(
+      `SELECT id, folio_type AS "folioType", status, balance::FLOAT AS balance 
+       FROM folios WHERE booking_id = $1 LIMIT 1`,
+      [booking.id]
+    );
+
+    let transactions = [];
+    if (folioRow.rows.length > 0) {
+      const transRes = await query(
+        `SELECT 
+          id,
+          transaction_type AS "transactionType",
+          department,
+          description,
+          amount::FLOAT AS amount,
+          tax_amount::FLOAT AS "taxAmount",
+          TO_CHAR(created_at, 'YYYY-MM-DD HH12:MI AM') AS "postedAt"
+        FROM folio_transactions
+        WHERE folio_id = $1
+        ORDER BY created_at ASC`,
+        [folioRow.rows[0].id]
+      );
+      transactions = transRes.rows;
+    }
+
     return res.status(200).json({
       success: true,
       folio: {
         roomNumber,
         booking,
         orders: ordersRes.rows,
+        folioRecord: folioRow.rows[0] || null,
+        transactions,
         breakdown: {
           nights: booking.nights,
           roomRate: booking.roomRate,
@@ -446,6 +571,27 @@ export const checkoutGuest = async (req, res, next) => {
       [paymentMethod, booking.id]
     );
 
+    // Settle ledger folio if exists
+    const folioRes = await client.query(
+      `SELECT id, balance::FLOAT AS balance FROM folios WHERE booking_id = $1 LIMIT 1`,
+      [booking.id]
+    );
+
+    if (folioRes.rows.length > 0) {
+      const f = folioRes.rows[0];
+      if (f.balance > 0) {
+        await client.query(
+          `INSERT INTO folio_transactions (folio_id, transaction_type, department, description, amount, tax_amount)
+           VALUES ($1, 'PAYMENT', 'PAYMENT', $2, $3, 0)`,
+          [f.id, `Settlement at Checkout (${paymentMethod || 'Terminal Verified'})`, -f.balance]
+        );
+      }
+      await client.query(
+        `UPDATE folios SET status = 'SETTLED', balance = 0, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+        [f.id]
+      );
+    }
+
     // Flag room as Available + Dirty with turnover reason
     await client.query(
       `UPDATE rooms 
@@ -470,6 +616,9 @@ export const checkoutGuest = async (req, res, next) => {
     );
 
     await client.query('COMMIT');
+
+    // Broadcast checkout event to Housekeeping and Front Desk
+    emitPmsEvent('PMS_GUEST_CHECKED_OUT', { roomNumber, booking: updatedBooking.rows[0] });
 
     return res.status(200).json({
       success: true,
