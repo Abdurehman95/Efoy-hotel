@@ -74,14 +74,7 @@ async function runMigration() {
     await appClient.query(schemaSql);
     console.log('✅ Schema tables and indices applied successfully.');
 
-    // Step 4: Run seed.sql
-    const seedPath = path.join(__dirname, 'seed.sql');
-    const seedSql = fs.readFileSync(seedPath, 'utf8');
-    console.log('🌱 Populating initial seed data...');
-    await appClient.query(seedSql);
-    console.log('✅ Luxury hotel seed records populated successfully.');
-
-    // Step 5: Verification check
+    // Step 4: Verification check
     const roomCount = await appClient.query('SELECT COUNT(*) FROM rooms');
     const bookingCount = await appClient.query('SELECT COUNT(*) FROM bookings');
     const staffCount = await appClient.query('SELECT COUNT(*) FROM staff');
