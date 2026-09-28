@@ -133,6 +133,90 @@ CREATE TABLE IF NOT EXISTS system_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 11. FINANCIAL FOLIOS & IMMUTABLE LEDGER
+CREATE TABLE IF NOT EXISTS folios (
+    id VARCHAR(50) PRIMARY KEY,
+    booking_id VARCHAR(50) REFERENCES bookings(id) ON DELETE CASCADE,
+    room_number VARCHAR(20) REFERENCES rooms(room_number) ON DELETE SET NULL,
+    folio_type VARCHAR(30) NOT NULL DEFAULT 'GUEST' CHECK (folio_type IN ('GUEST', 'MASTER_CORPORATE', 'INCIDENTAL')),
+    status VARCHAR(20) NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'SETTLED', 'CLOSED')),
+    balance NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS folio_transactions (
+    id SERIAL PRIMARY KEY,
+    folio_id VARCHAR(50) REFERENCES folios(id) ON DELETE CASCADE,
+    transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('CHARGE', 'PAYMENT', 'REFUND', 'VOID', 'DISCOUNT')),
+    department VARCHAR(50) NOT NULL CHECK (department IN ('ROOM', 'F&B', 'SPA', 'MINIBAR', 'LAUNDRY', 'TAX', 'PAYMENT')),
+    description TEXT NOT NULL,
+    amount NUMERIC(10, 2) NOT NULL,
+    tax_amount NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+    reference_id VARCHAR(100),
+    posted_by INT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 12. MAINTENANCE & OUT-OF-ORDER (OOO / OOS) WORK ORDERS
+CREATE TABLE IF NOT EXISTS maintenance_tickets (
+    id VARCHAR(50) PRIMARY KEY,
+    room_number VARCHAR(20) REFERENCES rooms(room_number) ON DELETE CASCADE,
+    severity VARCHAR(20) NOT NULL CHECK (severity IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')),
+    status VARCHAR(20) NOT NULL DEFAULT 'REPORTED' CHECK (status IN ('REPORTED', 'IN_PROGRESS', 'RESOLVED', 'CANCELLED')),
+    inventory_impact VARCHAR(20) NOT NULL DEFAULT 'OUT_OF_ORDER' CHECK (inventory_impact IN ('OUT_OF_ORDER', 'OUT_OF_SERVICE', 'NONE')),
+    issue_description TEXT NOT NULL,
+    resolution_notes TEXT,
+    reported_by VARCHAR(150) NOT NULL,
+    assigned_to VARCHAR(150),
+    start_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    end_date DATE,
+    estimated_cost NUMERIC(10, 2) DEFAULT 0.00,
+    actual_cost NUMERIC(10, 2) DEFAULT 0.00,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 13. GUEST CRM & PASSPORT / ID PROFILES
+CREATE TABLE IF NOT EXISTS guest_profiles (
+    id VARCHAR(50) PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(50),
+    nationality VARCHAR(100),
+    id_type VARCHAR(50) CHECK (id_type IN ('PASSPORT', 'NATIONAL_ID', 'DRIVERS_LICENSE')),
+    id_number VARCHAR(100),
+    id_scan_url TEXT,
+    vip_tier VARCHAR(50) DEFAULT 'STANDARD' CHECK (vip_tier IN ('STANDARD', 'SILVER', 'GOLD', 'VIP_PRESIDENTIAL')),
+    preferences TEXT,
+    dietary_allergies TEXT,
+    is_blacklisted BOOLEAN DEFAULT FALSE,
+    blacklist_reason TEXT,
+    total_stays INT DEFAULT 0,
+    lifetime_spend NUMERIC(12, 2) DEFAULT 0.00,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 14. NIGHT AUDIT & DAILY FINANCIAL CLOSING LOGS
+CREATE TABLE IF NOT EXISTS night_audit_logs (
+    id SERIAL PRIMARY KEY,
+    business_date DATE NOT NULL UNIQUE,
+    closed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    auditor_id INT REFERENCES users(id) ON DELETE SET NULL,
+    rooms_occupied INT NOT NULL,
+    total_available_rooms INT NOT NULL,
+    rooms_out_of_order INT NOT NULL DEFAULT 0,
+    occupancy_rate NUMERIC(5, 2) NOT NULL,
+    total_room_revenue NUMERIC(12, 2) NOT NULL,
+    total_fnb_revenue NUMERIC(12, 2) NOT NULL,
+    total_tax_collected NUMERIC(12, 2) NOT NULL,
+    adr NUMERIC(10, 2) NOT NULL,
+    revpar NUMERIC(10, 2) NOT NULL,
+    notes TEXT
+);
+
 -- INDICES FOR HIGH QUERY PERFORMANCE
 CREATE INDEX IF NOT EXISTS idx_rooms_occupancy ON rooms(occupancy);
 CREATE INDEX IF NOT EXISTS idx_rooms_cleanliness ON rooms(cleanliness);
@@ -141,3 +225,9 @@ CREATE INDEX IF NOT EXISTS idx_bookings_dates ON bookings(check_in, check_out);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_room ON orders(room_number);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON activity_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_folio_booking ON folios(booking_id);
+CREATE INDEX IF NOT EXISTS idx_folio_trans_folio ON folio_transactions(folio_id);
+CREATE INDEX IF NOT EXISTS idx_maintenance_room ON maintenance_tickets(room_number);
+CREATE INDEX IF NOT EXISTS idx_maintenance_status ON maintenance_tickets(status);
+CREATE INDEX IF NOT EXISTS idx_guest_profiles_email ON guest_profiles(email);
+CREATE INDEX IF NOT EXISTS idx_night_audit_date ON night_audit_logs(business_date);
