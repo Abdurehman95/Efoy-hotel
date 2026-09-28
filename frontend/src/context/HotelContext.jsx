@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import {
   roomsApi,
   bookingsApi,
@@ -8,6 +9,7 @@ import {
   hkApi,
   logsApi,
   settingsApi,
+  usersApi,
 } from '../api/client';
 
 const HotelContext = createContext(null);
@@ -489,6 +491,14 @@ const INITIAL_LOGS = [
   },
 ];
 
+const INITIAL_USERS = [
+  { id: 1, name: 'Alexander Sterling', email: 'admin@efoyhotel.com', role: 'admin', phone: '+1 (555) 100-0001', createdAt: '2026-09-12T22:24:05.956Z' },
+  { id: 2, name: 'Julian Vance', email: 'reception@efoyhotel.com', role: 'receptionist', phone: '+1 (555) 100-0002', createdAt: '2026-09-12T22:24:05.956Z' },
+  { id: 3, name: 'Chef Marco Bellini', email: 'kitchen@efoyhotel.com', role: 'kitchen', phone: '+1 (555) 100-0003', createdAt: '2026-09-12T22:24:05.956Z' },
+  { id: 4, name: 'Maria Santos', email: 'housekeeping@efoyhotel.com', role: 'housekeeping', phone: '+1 (555) 100-0004', createdAt: '2026-09-12T22:24:05.956Z' },
+  { id: 5, name: 'Lord Alexander Wright', email: 'guest@efoyhotel.com', role: 'guest', phone: '+1 (555) 234-5678', createdAt: '2026-09-12T22:24:05.956Z' },
+];
+
 export const HotelProvider = ({ children }) => {
   // Load or fallback to initial states
   const [rooms, setRooms] = useState(() => {
@@ -554,6 +564,15 @@ export const HotelProvider = ({ children }) => {
     }
   });
 
+  const [usersList, setUsersList] = useState(() => {
+    try {
+      const saved = localStorage.getItem('efoy_hotel_users');
+      return saved ? JSON.parse(saved) : INITIAL_USERS;
+    } catch {
+      return INITIAL_USERS;
+    }
+  });
+
   // Sync states to localStorage
   useEffect(() => {
     try {
@@ -564,17 +583,18 @@ export const HotelProvider = ({ children }) => {
       localStorage.setItem('efoy_hotel_hk_history', JSON.stringify(housekeepingHistory));
       localStorage.setItem('efoy_hotel_staff', JSON.stringify(staffList));
       localStorage.setItem('efoy_hotel_logs', JSON.stringify(activityLogs));
+      localStorage.setItem('efoy_hotel_users', JSON.stringify(usersList));
     } catch (e) {
       console.error('Failed to sync hotel state to storage', e);
     }
-  }, [rooms, bookings, menuItems, orders, housekeepingHistory, staffList, activityLogs]);
+  }, [rooms, bookings, menuItems, orders, housekeepingHistory, staffList, activityLogs, usersList]);
 
   // Load live data from PERN PostgreSQL Backend on mount
   useEffect(() => {
     let isMounted = true;
     const fetchBackendData = async () => {
       try {
-        const [roomsRes, bookingsRes, menuRes, ordersRes, staffRes, hkRes, logsRes] =
+        const [roomsRes, bookingsRes, menuRes, ordersRes, staffRes, hkRes, logsRes, usersRes] =
           await Promise.allSettled([
             roomsApi.getAll(),
             bookingsApi.getAll(),
@@ -583,6 +603,7 @@ export const HotelProvider = ({ children }) => {
             staffApi.getAll(),
             hkApi.getHistory(),
             logsApi.getAll(),
+            usersApi.getAll(),
           ]);
 
         if (isMounted) {
@@ -607,6 +628,9 @@ export const HotelProvider = ({ children }) => {
           if (logsRes.status === 'fulfilled' && logsRes.value?.logs?.length) {
             setActivityLogs(logsRes.value.logs);
           }
+          if (usersRes.status === 'fulfilled' && usersRes.value?.users?.length) {
+            setUsersList(usersRes.value.users);
+          }
         }
       } catch (err) {
         console.warn('Backend sync note:', err.message);
@@ -616,6 +640,148 @@ export const HotelProvider = ({ children }) => {
     fetchBackendData();
     return () => {
       isMounted = false;
+    };
+  }, []);
+
+  // Real-time PMS Synchronization Gateway via Socket.io
+  useEffect(() => {
+    const socketUrl =
+      window.location.port === '5173' || window.location.port === '3000'
+        ? window.location.origin
+        : 'http://localhost:5000';
+
+    const socket = io(socketUrl, {
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+    });
+
+    socket.on('connect', () => {
+      console.log('[PMS Real-Time] Connected to WebSocket Hub, ID:', socket.id);
+    });
+
+    // 1. Room Cleanliness & Status
+    socket.on('PMS_ROOM_CLEANLINESS_UPDATED', (updatedRoom) => {
+      if (!updatedRoom || !updatedRoom.roomNumber) return;
+      setRooms((prevRooms) =>
+        prevRooms.map((r) =>
+          r.roomNumber === updatedRoom.roomNumber
+            ? {
+                ...r,
+                cleanliness: updatedRoom.cleanliness,
+                dirtyReason:
+                  updatedRoom.dirtyReason !== undefined
+                    ? updatedRoom.dirtyReason
+                    : updatedRoom.cleanliness === 'Clean'
+                    ? null
+                    : r.dirtyReason,
+                occupancy: updatedRoom.occupancy ?? r.occupancy,
+                guestId: updatedRoom.guestId !== undefined ? updatedRoom.guestId : r.guestId,
+              }
+            : r
+        )
+      );
+    });
+
+    // 2. New Booking Created
+    socket.on('PMS_BOOKING_CREATED', (newBooking) => {
+      if (!newBooking || !newBooking.id) return;
+      setBookings((prev) => {
+        if (prev.some((b) => b.id === newBooking.id)) {
+          return prev.map((b) => (b.id === newBooking.id ? { ...b, ...newBooking } : b));
+        }
+        return [newBooking, ...prev];
+      });
+
+      if (newBooking.roomNumber) {
+        setRooms((prev) =>
+          prev.map((r) =>
+            r.roomNumber === newBooking.roomNumber
+              ? {
+                  ...r,
+                  occupancy: newBooking.status === 'In-House' ? 'Occupied' : 'Reserved',
+                  guestId: newBooking.id,
+                }
+              : r
+          )
+        );
+      }
+    });
+
+    // 3. Room Assigned
+    socket.on('PMS_ROOM_ASSIGNED', ({ booking, roomNumber }) => {
+      if (!roomNumber) return;
+      if (booking?.id) {
+        setBookings((prev) =>
+          prev.map((b) =>
+            b.id === booking.id
+              ? { ...b, ...booking, roomNumber, status: booking.status || 'In-House' }
+              : b
+          )
+        );
+      }
+      setRooms((prev) =>
+        prev.map((r) =>
+          r.roomNumber === roomNumber
+            ? { ...r, occupancy: 'Occupied', guestId: booking?.id || r.guestId }
+            : r
+        )
+      );
+    });
+
+    // 4. Guest Checked Out
+    socket.on('PMS_GUEST_CHECKED_OUT', ({ roomNumber, booking }) => {
+      if (booking?.id) {
+        setBookings((prev) =>
+          prev.map((b) =>
+            b.id === booking.id ? { ...b, ...booking, status: 'Checked Out' } : b
+          )
+        );
+      }
+      if (roomNumber) {
+        setRooms((prev) =>
+          prev.map((r) =>
+            r.roomNumber === roomNumber
+              ? {
+                  ...r,
+                  occupancy: 'Available',
+                  cleanliness: 'Dirty',
+                  dirtyReason: 'Turnover requested upon checkout',
+                  guestId: null,
+                }
+              : r
+          )
+        );
+      }
+    });
+
+    // 5. Kitchen Food Order Created
+    socket.on('PMS_NEW_ORDER', (newOrder) => {
+      if (!newOrder || !newOrder.id) return;
+      setOrders((prev) => {
+        if (prev.some((o) => o.id === newOrder.id)) {
+          return prev.map((o) => (o.id === newOrder.id ? newOrder : o));
+        }
+        return [newOrder, ...prev];
+      });
+    });
+
+    // 6. Order Status Changed
+    socket.on('PMS_ORDER_STATUS_CHANGED', (updatedOrder) => {
+      if (!updatedOrder || !updatedOrder.id) return;
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === updatedOrder.id ? { ...o, ...updatedOrder, status: updatedOrder.status } : o
+        )
+      );
+    });
+
+    socket.on('disconnect', () => {
+      console.log('[PMS Real-Time] Disconnected from WebSocket Hub');
+    });
+
+    return () => {
+      socket.disconnect();
     };
   }, []);
 
@@ -1045,10 +1211,13 @@ export const HotelProvider = ({ children }) => {
   };
 
   // 12. Guest: Online Room Booking
-  const createGuestOnlineBooking = ({ guestName, email, phone, roomNumber, checkIn, checkOut, nights, notes }) => {
+  const createGuestOnlineBooking = async ({ guestName, email, phone, roomNumber, checkIn, checkOut, nights, notes }) => {
     const selectedRoom = rooms.find((r) => r.roomNumber === roomNumber);
     const roomRate = selectedRoom ? selectedRoom.rate : 220;
     const newId = `BK-${Math.floor(2000 + Math.random() * 8000)}`;
+
+    const isToday = new Date(checkIn).toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
+    const bookingStatus = isToday ? 'In-House' : 'Arriving Today';
 
     const newBooking = {
       id: newId,
@@ -1061,34 +1230,38 @@ export const HotelProvider = ({ children }) => {
       checkOut,
       nights,
       roomRate,
-      status: 'In-House', // Instant digital check-in
+      status: bookingStatus,
       notes: notes || 'Online booking via Guest Portal',
       paid: false,
       paymentMethod: 'Credit Card (Online Pre-Authorized)',
     };
 
-    setBookings((prev) => [newBooking, ...prev]);
-
-    setRooms((prev) =>
-      prev.map((r) =>
-        r.roomNumber === roomNumber
-          ? { ...r, occupancy: 'Occupied', guestId: newId }
-          : r
-      )
-    );
-
-    addLog(
-      `Online Booking Confirmed (#${newId})`,
-      'Guest Portal',
-      `${guestName} booked Room ${roomNumber} (${nights} nights). Check-in completed online.`,
-      'Online Booking'
-    );
-
-    bookingsApi.create(newBooking).catch((err) => {
+    try {
+      const res = await bookingsApi.create(newBooking);
+      if (res && res.booking) {
+        setBookings((prev) => [res.booking, ...prev]);
+        if (roomNumber && isToday) {
+          setRooms((prev) =>
+            prev.map((r) =>
+              r.roomNumber === roomNumber
+                ? { ...r, occupancy: 'Occupied', guestId: res.booking.id }
+                : r
+            )
+          );
+        }
+        addLog(
+          `Online Booking Confirmed (#${res.booking.id})`,
+          'Guest Portal',
+          `${guestName} booked Room ${roomNumber} (${nights} nights). Check-in: ${checkIn}.`,
+          'Online Booking'
+        );
+        return { success: true, booking: res.booking, folioId: res.folioId };
+      }
+      return { success: true, booking: newBooking };
+    } catch (err) {
       console.warn('bookingsApi.create online sync error:', err.message);
-    });
-
-    return newBooking;
+      return { success: false, message: err.message };
+    }
   };
 
   // Reset to initial demo data
@@ -1143,6 +1316,56 @@ export const HotelProvider = ({ children }) => {
     deleteRoom,
     createGuestOnlineBooking,
     resetDemoData,
+    // User Accounts Management
+    usersList,
+    addUser: async (userData) => {
+      try {
+        const res = await usersApi.create(userData);
+        if (res?.user) {
+          setUsersList((prev) => [res.user, ...prev]);
+          addLog(`User Created: ${res.user.name}`, 'Users', `Account created with role ${res.user.role}.`, 'Admin');
+          return { success: true, user: res.user };
+        }
+        return { success: true };
+      } catch (err) {
+        const newUser = {
+          ...userData,
+          id: Date.now(),
+          createdAt: new Date().toISOString(),
+        };
+        setUsersList((prev) => [newUser, ...prev]);
+        addLog(`User Created: ${userData.name}`, 'Users', `Account created locally with role ${userData.role}.`, 'Admin');
+        return { success: true, user: newUser, warning: err.message };
+      }
+    },
+    editUser: async (id, userData) => {
+      try {
+        const res = await usersApi.update(id, userData);
+        if (res?.user) {
+          setUsersList((prev) => prev.map((u) => (u.id === id ? res.user : u)));
+          addLog(`User Updated: ${res.user.name}`, 'Users', `Updated details for ${res.user.email}.`, 'Admin');
+          return { success: true, user: res.user };
+        }
+        return { success: true };
+      } catch (err) {
+        setUsersList((prev) => prev.map((u) => (u.id === id ? { ...u, ...userData } : u)));
+        addLog(`User Updated: #${id}`, 'Users', `Updated user details locally.`, 'Admin');
+        return { success: true, warning: err.message };
+      }
+    },
+    deleteUser: async (id) => {
+      try {
+        await usersApi.delete(id);
+        const user = usersList.find((u) => u.id === id);
+        setUsersList((prev) => prev.filter((u) => u.id !== id));
+        addLog(`User Deleted: ${user?.name || id}`, 'Users', `Removed user account from system.`, 'Admin');
+        return { success: true };
+      } catch (err) {
+        setUsersList((prev) => prev.filter((u) => u.id !== id));
+        addLog(`User Deleted: #${id}`, 'Users', `Removed user account locally.`, 'Admin');
+        return { success: true, warning: err.message };
+      }
+    },
   };
 
   return <HotelContext.Provider value={value}>{children}</HotelContext.Provider>;
