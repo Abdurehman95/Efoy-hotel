@@ -1,6 +1,6 @@
 // Grand Horizon Hotel & Suites - Primary Navigation Component
 // Supports sticky luxury glassmorphism, responsive mobile drawer, and Auth modal
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Menu, X, CalendarCheck, Phone } from 'lucide-react';
 import AuthModal from './AuthModal';
 
@@ -8,6 +8,16 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState('login');
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const navLinks = [
     { label: 'Home', href: '#' },
@@ -30,13 +40,21 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
 
   return (
     <>
-      <nav className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4 bg-white/95 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50 transition-all">
+      <nav
+        className={`w-full flex items-center justify-between px-4 sm:px-6 lg:px-8 transition-all duration-300 bg-white/95 backdrop-blur-md border-b ${
+          isScrolled
+            ? 'py-2.5 sm:py-3 shadow-md border-gray-200/90'
+            : 'py-3.5 sm:py-4 border-gray-100 shadow-2xs'
+        }`}
+      >
         {/* Brand Logo */}
         <a href="#" className="flex items-center gap-3 cursor-pointer group">
           <img
             src="/images/logo.png"
             alt="Efoy Hotel & Suites"
-            className="h-16 sm:h-20 w-auto object-contain transition-transform duration-300 group-hover:scale-105 drop-shadow-xs"
+            className={`w-auto object-contain transition-all duration-300 group-hover:scale-105 drop-shadow-xs ${
+              isScrolled ? 'h-12 sm:h-14' : 'h-14 sm:h-18'
+            }`}
           />
         </a>
 
@@ -153,7 +171,7 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
       {/* Mobile Navigation Drawer / Overlay */}
       {isMobileMenuOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-dark-900/50 backdrop-blur-xs animate-fade-in"
+          className="lg:hidden fixed inset-0 z-[60] bg-dark-900/50 backdrop-blur-xs animate-fade-in"
           onClick={() => setIsMobileMenuOpen(false)}
         >
           <div
