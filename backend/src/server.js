@@ -2,11 +2,15 @@ import http from 'http';
 import dotenv from 'dotenv';
 import app from './app.js';
 import { pool } from './config/db.js';
+import { initSocket } from './socket.js';
 
 dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
+
+// Initialize Real-time WebSocket Gateway
+initSocket(server);
 
 server.listen(PORT, async () => {
   console.log('──────────────────────────────────────────────────');
