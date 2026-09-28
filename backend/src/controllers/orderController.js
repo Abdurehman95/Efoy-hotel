@@ -1,4 +1,5 @@
 import { pool, query } from '../config/db.js';
+import { emitPmsEvent } from '../socket.js';
 
 export const getOrders = async (req, res, next) => {
   try {
@@ -120,6 +121,28 @@ export const createOrder = async (req, res, next) => {
       );
     }
 
+    // Automatically post F&B charge to guest's immutable financial folio
+    if (bookingId) {
+      const folioRes = await client.query(
+        `SELECT id, balance::FLOAT AS balance FROM folios WHERE booking_id = $1 LIMIT 1`,
+        [bookingId]
+      );
+      if (folioRes.rows.length > 0) {
+        const folioId = folioRes.rows[0].id;
+        const taxAmount = Number((total * 0.12).toFixed(2));
+        const orderCharge = Number((total + taxAmount).toFixed(2));
+        await client.query(
+          `INSERT INTO folio_transactions (folio_id, transaction_type, department, description, amount, tax_amount, reference_id)
+           VALUES ($1, 'CHARGE', 'F&B', $2, $3, $4, $5)`,
+          [folioId, `In-Room Dining Order #${orderId} (${items.length} item${items.length > 1 ? 's' : ''})`, total, taxAmount, orderId]
+        );
+        await client.query(
+          `UPDATE folios SET balance = balance + $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+          [orderCharge, folioId]
+        );
+      }
+    }
+
     // Audit log
     await client.query(
       `INSERT INTO activity_logs (title, category, description, tag)
@@ -136,6 +159,9 @@ export const createOrder = async (req, res, next) => {
       ...orderRes.rows[0],
       items,
     };
+
+    // Broadcast real-time event to Kitchen KDS and Front Desk
+    emitPmsEvent('PMS_NEW_ORDER', fullOrder);
 
     return res.status(201).json({
       success: true,
@@ -195,6 +221,9 @@ export const updateOrderStatus = async (req, res, next) => {
         `Kitchen updated order #${id} for Room ${result.rows[0].roomNumber} to ${status}.`,
       ]
     );
+
+    // Broadcast order status change to Guest, Front Desk, and Kitchen
+    emitPmsEvent('PMS_ORDER_STATUS_CHANGED', result.rows[0]);
 
     return res.status(200).json({
       success: true,
