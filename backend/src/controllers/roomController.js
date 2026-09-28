@@ -1,4 +1,5 @@
 import { query } from '../config/db.js';
+import { emitPmsEvent } from '../socket.js';
 
 export const getRooms = async (req, res, next) => {
   try {
@@ -241,6 +242,9 @@ export const updateCleanliness = async (req, res, next) => {
       ]
     );
 
+    // Broadcast real-time room cleanliness update to all terminals (Reception, HK, Admin)
+    emitPmsEvent('PMS_ROOM_CLEANLINESS_UPDATED', result.rows[0]);
+
     return res.status(200).json({
       success: true,
       message: `Room ${roomNumber} cleanliness updated to ${cleanliness}.`,
@@ -272,8 +276,87 @@ export const deleteRoom = async (req, res, next) => {
   }
 };
 
+export const getAvailableRooms = async (req, res, next) => {
+  try {
+    const { checkIn, checkOut, category, guests } = req.query;
+
+    if (!checkIn || !checkOut) {
+      return res.status(400).json({
+        success: false,
+        message: 'Both checkIn and checkOut dates (YYYY-MM-DD) are required to query room availability.',
+      });
+    }
+
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+    if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime()) || checkOutDate <= checkInDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date range. checkOut must be strictly after checkIn.',
+      });
+    }
+
+    let sql = `
+      SELECT 
+        r.room_number AS "roomNumber",
+        r.type,
+        r.floor,
+        r.capacity,
+        r.rate::FLOAT AS rate,
+        r.features,
+        r.cleanliness,
+        r.dirty_reason AS "dirtyReason",
+        r.occupancy
+      FROM rooms r
+      WHERE r.occupancy != 'Out of Order'
+      AND NOT EXISTS (
+        SELECT 1 FROM bookings b
+        WHERE b.room_number = r.room_number
+          AND b.status NOT IN ('Cancelled', 'Checked Out')
+          AND b.check_in < $2::date
+          AND b.check_out > $1::date
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM maintenance_tickets m
+        WHERE m.room_number = r.room_number
+          AND m.status IN ('REPORTED', 'IN_PROGRESS')
+          AND m.inventory_impact = 'OUT_OF_ORDER'
+          AND m.start_date < $2::date
+          AND COALESCE(m.end_date, CURRENT_DATE + INTERVAL '30 days') > $1::date
+      )
+    `;
+
+    const params = [checkIn, checkOut];
+
+    if (category && category !== 'All' && category !== 'All Suites') {
+      params.push(`%${category}%`);
+      sql += ` AND r.type ILIKE $${params.length}`;
+    }
+
+    if (guests) {
+      params.push(`%${guests}%`);
+      sql += ` AND r.capacity ILIKE $${params.length}`;
+    }
+
+    sql += ` ORDER BY r.rate ASC, r.room_number ASC`;
+
+    const result = await query(sql, params);
+
+    return res.status(200).json({
+      success: true,
+      checkIn,
+      checkOut,
+      count: result.rowCount,
+      rooms: result.rows,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getRooms,
+  getAvailableRooms,
   getRoomByNumber,
   createRoom,
   updateRoom,

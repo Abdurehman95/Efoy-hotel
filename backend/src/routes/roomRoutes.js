@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getRooms,
+  getAvailableRooms,
   getRoomByNumber,
   createRoom,
   updateRoom,
@@ -13,6 +14,7 @@ import { authorize } from '../middleware/roleMiddleware.js';
 const router = express.Router();
 
 router.get('/', optionalAuth, getRooms);
+router.get('/available', optionalAuth, getAvailableRooms);
 router.get('/:roomNumber', optionalAuth, getRoomByNumber);
 router.post('/', authenticate, authorize(['admin']), createRoom);
 router.put('/:roomNumber', authenticate, authorize(['admin']), updateRoom);
