@@ -72,6 +72,14 @@ export const authApi = {
 // Rooms API
 export const roomsApi = {
   getAll: () => apiFetch('/rooms'),
+  getAvailable: (checkIn, checkOut, category = '', guests = '') => {
+    const params = new URLSearchParams();
+    if (checkIn) params.append('checkIn', checkIn);
+    if (checkOut) params.append('checkOut', checkOut);
+    if (category) params.append('category', category);
+    if (guests) params.append('guests', guests);
+    return apiFetch(`/rooms/available?${params.toString()}`);
+  },
   getByNumber: (roomNumber) => apiFetch(`/rooms/${roomNumber}`),
   create: (room) =>
     apiFetch('/rooms', {
@@ -229,6 +237,28 @@ export const settingsApi = {
     }),
 };
 
+// Users API (Admin User Accounts Management)
+export const usersApi = {
+  getAll: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiFetch(`/users${query ? `?${query}` : ''}`);
+  },
+  create: (userData) =>
+    apiFetch('/users', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    }),
+  update: (id, userData) =>
+    apiFetch(`/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    }),
+  delete: (id) =>
+    apiFetch(`/users/${id}`, {
+      method: 'DELETE',
+    }),
+};
+
 export default {
   auth: authApi,
   rooms: roomsApi,
@@ -240,4 +270,5 @@ export default {
   analytics: analyticsApi,
   logs: logsApi,
   settings: settingsApi,
+  users: usersApi,
 };
