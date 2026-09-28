@@ -56,11 +56,14 @@ npm run lint
 
 ---
 
-## 🔑 Demo Access
+## 🔐 Role-Based Access
 
-Click **Log In** in the top navigation bar and select any persona:
-- **Admin**: `admin@efoyhotel.com` (password: `admin123`)
-- **Receptionist**: `reception@efoyhotel.com` (password: `reception123`)
-- **Kitchen**: `kitchen@efoyhotel.com` (password: `kitchen123`)
-- **Housekeeping**: `housekeeping@efoyhotel.com` (password: `house123`)
-- **Guest**: `guest@efoyhotel.com` (password: `guest123`)
+The frontend supports distinct authenticated views depending on the user's role:
+- **Administrator**: Comprehensive operations, revenue analytics, inventory, staff, and user account management.
+- **Receptionist**: Front desk console, walk-in check-ins, room rack, and folio settlements.
+- **Kitchen Staff**: Real-time Kitchen Display System (KDS) order tracking and preparation workflows.
+- **Housekeeping**: Room sanitization turnover and inspection certification.
+- **Guest Member**: Digital suite reservation, NFC keycard, in-room dining, and concierge requests.
+
+Accounts can be registered directly through the Guest Registration modal or provisioned securely by an Administrator in the Admin Console.
+

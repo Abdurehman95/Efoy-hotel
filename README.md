@@ -1,121 +1,322 @@
-# Efoy Hotel & Suites (Grand Horizon / Aura Grand)
+# 🏨 Efoy Hotel & Suites — Enterprise Property Management System (PMS)
 
-A Five-Star luxury hotel management and operations platform built with **React 19**, **Vite**, and **Tailwind CSS v4**. The system features a public guest-facing landing page alongside an authenticated real-time **Hotel Operations & Admin Dashboard Portal** matching enterprise property management systems.
+[![License: MIT](https://img.shields.io/badge/License-MIT-amber.svg)](https://opensource.org/licenses/MIT)
+[![Stack: PERN](https://img.shields.io/badge/Stack-PERN%20(Postgres%20%7C%20Express%20%7C%20React%20%7C%20Node)-blue.svg)](#tech-stack)
+[![Frontend: React 19](https://img.shields.io/badge/Frontend-React%2019%20%7C%20Vite%208%20%7C%20Tailwind%20v4-61DAFB.svg)](https://react.dev/)
+[![Real-Time: Socket.io](https://img.shields.io/badge/Real--Time-WebSocket%20%2F%20Socket.io-orange.svg)](https://socket.io/)
+[![Database: PostgreSQL 16+](https://img.shields.io/badge/Database-PostgreSQL%2016+-336791.svg)](https://www.postgresql.org/)
 
----
-
-## 🌟 Architecture & Features
-
-### 1. Public Guest Experience (Home Landing Page)
-- **Forbes Five-Star Accolades & Hero Banner**: High-resolution showcase with dynamic booking reservation bar (Check-in, Check-out, Guests, Preferred Tier).
-- **Suites & Accommodations Rack**: Interactive suite listings (Rooms 1 through 8) with category filtering and reservation triggers.
-- **Dining & Culinary Artistry**: Fine dining presentation, Michelin-star dining showcases, and reservations.
-- **Wellness, Spa & Services**: Hydrotherapy, wellness retreats, 24/7 concierge, chauffeur, and butler services.
-- **Location & Contact**: Waterfront map with transit markers and direct contact form.
-- **Privilege Club Authentication Modal**:
-  - Seamless tabs for **Log In** and **Sign Up**.
-  - One-click **Demo Admin Credentials** auto-fill helper.
+An enterprise-grade, five-star luxury Property Management System (PMS) and public guest booking engine built with the **PERN stack** (PostgreSQL, Express.js, React 19, Node.js) and real-time bidirectional WebSocket synchronization.
 
 ---
 
-### 2. Hotel Operations & Admin Dashboard Portal
-*Accessible exclusively when logged in as administrator with automatic redirection.*
+## 📑 Table of Contents
 
-- **Left Luxury Operations Sidebar**:
-  - Brand header & navigation: Dashboard, Analytics, Bookings, Room Management, Menu Management, Staff Management, Activity Logs, Settings.
-  - **Live Occupancy Widget**: Real-time 84% capacity tracker (`142/170 Filled`, `28 Free`).
-  - Help Center documentation trigger and system version tag.
-- **Top Operations Bar**:
-  - Global guest search with keyboard shortcut (`⌘K`).
-  - Live clock and date display (`Wednesday, Oct 24 • 10:45AM`).
-  - Property switcher dropdown (`Aura Grand Downtown (Main)`).
-  - Notification center and Administrator Profile (*Alexander Sterling, General Manager*).
-  - One-click session logout and "Public Website" switchers.
-- **Operations Overview Header**:
-  - System status indicator (`● SYSTEM OPTIMAL`).
-  - Date filter ranges: `Today`, `Last 7 Days`, `MTD`, `YTD`.
-  - Action buttons: `+ Reservation`, `Check-in`, and `Export Report`.
-- **6 Operational KPI Cards**:
-  1. **Total Revenue**: `$48,920 today` (+14.2%, MTD $342,800, progress to goal $55k at 88.9%).
-  2. **Occupancy Rate**: `83.5% capacity` (+5.1%, 142/170 keys, visual segment bars).
-  3. **Inventory Keys**: `170 Total` (8 Floors, Operational 100%, 0 Out of Order).
-  4. **Ready Available**: `24 clean` (Immediate status, 4 in housekeeping).
-  5. **Today's Bookings**: `38 reservations` (+18%, Channel split 18 Web / 20 OTA, Direct 47%).
-  6. **In-House Guests**: `216 heads` (VIP: 12, Turnover 42 Arrive / 31 Depart, Peak 2-4 PM).
-- **Analytics & Performance Row**:
-  - **Revenue & Occupancy Trend**: Comparative dual-bar chart (ADR $345 vs RevPAR $288) over 7 days with peak indicator.
-  - **Room Category Yield**: Occupancy and revenue contribution for Double Executive, Single Deluxe, Luxury Suite, and Penthouse.
-  - **Booking Acquisition**: Donut chart breakdown (Direct Web 45%, Corp Direct 25%, OTA GDS 22%, Walk-in 8%) and OTA commission savings ($6,480).
-- **Room Inventory & Live Rack (Interactive Table)**:
-  - Filters by room type (Single, Double, Suites) and status (Available, Occupied, Housekeeping, Maintenance).
-  - Real-time guest details, folio management, and action triggers (Assign Guest, Inspect Room, Concierge VIP, Work Order).
-- **Staff Directory & Roster**:
-  - Departmental filters (Reception, Kitchen & F&B, Housekeeping).
-  - Shift schedules, duty statuses (Active Duty, On Break), and personnel management actions.
-- **In-Room Dining & Culinary Inventory**:
-  - Category filters (Breakfast, All-Day Dining, Chef Specials, Desserts).
-  - Dynamic dish cards with prep times, daily order counts, pricing, and live interactive stock toggle switches.
-- **Operational Logs & Audit Trail**:
-  - Real-time synchronized system event logs across front desk, F&B, turnover, and cashiering with live sync pulse (`1.5s`).
-- **Interactive Action Dialogs**:
-  - Quick modals for creating reservations, front desk check-in, adding rooms, adding staff, and menu item updates.
+- [Overview](#-overview)
+- [System Architecture](#-system-architecture)
+- [Key Modules & Operational Portals](#-key-modules--operational-portals)
+- [Role-Based Access Control (RBAC)](#-role-based-access-control-rbac)
+- [Tech Stack](#-tech-stack)
+- [Database Schema](#-database-schema)
+- [API Reference](#-api-reference)
+- [Getting Started](#-getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Backend Configuration](#1-backend-setup)
+  - [Frontend Configuration](#2-frontend-setup)
+  - [Running the Application](#3-running-locally)
+- [Security & Authentication](#-security--authentication)
+- [License](#-license)
 
 ---
 
-## 🔑 Multi-Role Demo Credentials
+## 🌟 Overview
 
-The platform supports 5 authenticated personas with full cross-operational synchronization:
+**Efoy Hotel & Suites** is designed to meet the rigorous operational requirements of modern five-star hotels and luxury resorts. It provides a guest-facing digital presence and reservation system combined with a unified back-office operational dashboard for general managers, front desk receptionists, culinary brigades, housekeeping supervisors, and verified guests.
 
-| Role | Email | Password | Primary Functions |
-|------|-------|----------|-------------------|
-| **Administrator** | `admin@efoyhotel.com` | `admin123` | Property analytics, Chart.js curves, room & menu inventory, staff directory |
-| **Front Desk** | `reception@efoyhotel.com` | `reception123` | Walk-in reservations, dirty room alerts, folio settlement, printable invoices |
-| **Kitchen KDS** | `kitchen@efoyhotel.com` | `kitchen123` | Real-time order dispatch, culinary timers, server assignments |
-| **Housekeeping** | `housekeeping@efoyhotel.com` | `house123` | One-click turnover certification, sanitization audit logs |
-| **Guest Member** | `guest@efoyhotel.com` | `guest123` | Digital suite booking, room service ordering, folio tracking |
+---
 
-To test any role:
-1. Click **Log In** in the top navigation bar.
-2. Select any quick persona chip or enter the credentials above.
-3. Click **Authenticate & Enter Dashboard**.
-4. To return to the public site, click **Public Website** in the sidebar or use the top status bar.
+## 🏛️ System Architecture
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                        EFOY HOTEL & SUITES PMS                         │
+└────────────────────────────────────────────────────────────────────────┘
+                                    │
+          ┌─────────────────────────┴─────────────────────────┐
+          ▼                                                   ▼
+┌───────────────────────────┐                       ┌────────────────────┐
+│   Public Website & Web    │                       │  Role-Specific     │
+│   Booking Reservation     │                       │  Dashboards (5)    │
+└───────────────────────────┘                       └────────────────────┘
+          │                                                   │
+          └─────────────────────────┬─────────────────────────┘
+                                    ▼
+                ┌───────────────────────────────────────┐
+                │     React 19 Single Page App (SPA)    │
+                │  Tailwind CSS v4 • Vite • Context API │
+                └───────────────────────────────────────┘
+                                    │
+                     REST API / WebSocket Gateway
+                                    │
+                                    ▼
+                ┌───────────────────────────────────────┐
+                │      Node.js / Express.js Backend     │
+                │   JWT Auth • RBAC • Helmet • Morgan   │
+                └───────────────────────────────────────┘
+                                    │
+                    Connection Pooling (node-pg)
+                                    │
+                                    ▼
+                ┌───────────────────────────────────────┐
+                │        PostgreSQL 16+ Database        │
+                │ Relational Schema • Foreign Keys • FK │
+                └───────────────────────────────────────┘
+```
+
+---
+
+## 🖥️ Key Modules & Operational Portals
+
+### 1. Public Guest Experience & Online Reservation
+- **Dynamic Booking Bar**: Instant search across check-in/check-out dates, guest counts, and suite categories.
+- **Luxury Suite Showcase**: Interactive room selection with real-time rate calculation, capacity indicators, and direct reservation modal.
+- **Culinary & Dining**: Presentation of executive menus, private dining, and Michelin-inspired showcases.
+- **Wellness & Concierge Highlights**: White-glove amenities, spa offerings, and private chauffeur services.
+
+### 2. General Manager & Executive Administration
+- **Operational KPI Cards**: Live tracking of RevPAR, ADR, occupancy percentages, clean/dirty room distribution, and gross revenue.
+- **Financial Analytics & Charts**: Interactive Chart.js visualizations for revenue trends, category yield analysis, and channel attribution.
+- **Room Inventory Control**: Real-time management of room tariffs, floor locations, bed configurations, and capacity limits.
+- **In-Room Dining Catalog**: Menu curation, item pricing, preparation time estimates, and instant live inventory 86/stock toggling.
+- **Staff Directory & Roster**: Department assignments, shift schedules, and personnel duty status tracking.
+- **User Accounts Management**: Full CRUD interface for managing registered database accounts, changing roles, resetting passwords, and auditing authentication records.
+- **Activity Logs & Audit Trail**: Real-time logging of reservations, turnovers, checkouts, and culinary orders.
+
+### 3. Front Desk & Receptionist Console
+- **Interactive Room Rack**: Live status indicators for all rooms (`Clean`, `Dirty`, `Cleaning`, `Inspected`) and occupancy (`Available`, `Occupied`, `Reserved`).
+- **One-Step Walk-In Check-In**: Instant booking creation and key assignment with occupancy conflict prevention.
+- **Smart Turnover Protection**: Automatic validation preventing front desk staff from assigning uninspected or dirty rooms.
+- **Live Folio Calculation**: Automated billing combining room tariffs, luxury hospitality taxes, and in-room dining charges.
+- **Checkout & Invoice Generator**: Settlement processing with printable, high-resolution guest invoices and immediate room dirty flagging.
+
+### 4. Kitchen Display System (KDS)
+- **Live Culinary Ticket Stream**: Real-time order dispatch directly from guest suites with kitchen countdown timers.
+- **Four-Stage Status Progression**: Order status workflow (`Pending` → `Cooking` → `Ready` → `Delivered`).
+- **Brigade Assignment**: Dish quantities, preparation times, server assignments, and custom dietary requests.
+
+### 5. Housekeeping & Turnover Hub
+- **One-Tap Sanitization Certification**: Turn dirty rooms into inspected, clean keys in real time.
+- **Turnover Reason Tracking**: Checkout turnover notes and deep-cleaning logs.
+- **Real-Time Cross-Department Sync**: Instant status updates visible immediately to Front Desk upon cleaning certification.
+
+### 6. Guest Self-Service Portal
+- **Digital Suite Keycard**: Interactive NFC keycard simulation for assigned suites.
+- **Direct In-Room Dining**: Browse chef specials and order dishes charged directly to the active room folio.
+- **Live Order Tracking**: Four-step culinary order progress tracker.
+- **24/7 White-Glove Concierge**: One-tap requests for extra linens, valet retrieval, late checkout, and airport limousine transfers.
+- **Graceful Account Onboarding**: First-class onboarding for newly registered guests with instant booking capabilities.
+
+---
+
+## 🔐 Role-Based Access Control (RBAC)
+
+The system enforces strict multi-tier role authorization across both backend REST endpoints and frontend routing:
+
+| Role Identifier | Portal Interface | Primary Permissions & Responsibilities |
+|---|---|---|
+| `admin` | **Administrator Portal** | Full platform management, user account management, analytics, inventory, pricing, staff directory |
+| `receptionist` | **Front Desk Console** | Check-ins, walk-in bookings, room assignments, folio settlement, printable invoices |
+| `kitchen` | **Kitchen Display (KDS)** | Order status updates, culinary timers, menu stock toggling, brigade management |
+| `housekeeping` | **Housekeeping Hub** | Room inspection certification, sanitization turnover audit, status updates |
+| `guest` | **Member Portal** | Suite reservation, digital NFC room key, in-room dining orders, concierge dispatch |
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React 19, Vite 8, Tailwind CSS v4
-- **Icons**: Lucide React
-- **Typography**: Google Fonts (Inter, Playfair Display)
-- **Code Quality**: Oxlint
+### Frontend Architecture
+- **Framework**: React 19 (Hooks, Context API, Suspense)
+- **Bundler & Tooling**: Vite 8 with Hot Module Replacement (HMR)
+- **Styling**: Tailwind CSS v4 & custom design tokens
+- **Data Visualization**: Chart.js (Line, Bar, Donut curves)
+- **Real-Time Gateway**: Socket.io Client
+- **Iconography**: Lucide React
+- **Code Standards**: Oxlint
+
+### Backend Architecture
+- **Runtime**: Node.js (ES Modules)
+- **Server Framework**: Express.js 4.x
+- **Real-Time Engine**: Socket.io Server (WebSocket & HTTP Long-Polling)
+- **Security Middleware**: Helmet, CORS origin controls
+- **Logging**: Morgan request logger
+- **Authentication**: JSON Web Tokens (`jsonwebtoken`), password hashing (`bcryptjs`)
+
+### Database Infrastructure
+- **Database Engine**: PostgreSQL 16+
+- **Driver**: `pg` (node-postgres connection pool)
+- **Migrations**: Automated relational schema migrator with foreign keys and check constraints
+
+---
+
+## 🗄️ Database Schema
+
+The relational database architecture is organized into normalized tables:
+
+```text
+├── users              (Account authentication, role-based authorization, contact info)
+├── rooms              (Room inventory, classification, rates, cleanliness, occupancy)
+├── bookings           (Guest stays, arrival/departure dates, tariff calculations, payments)
+├── menu_items         (Culinary catalog, category breakdown, prep time, live stock status)
+├── orders             (Room service dining tickets, items array, total costs, order status)
+├── staff              (Operational roster, department shifts, duty status)
+├── housekeeping_logs  (Audit trail of sanitized rooms, turnover dates, inspector names)
+├── activity_logs      (Cross-system event log, category tagging, live timestamping)
+└── system_settings    (Hotel parameters, currency, tax rates, operational metadata)
+```
+
+---
+
+## 📡 API Reference
+
+All backend endpoints are prefixed with `/api` and require appropriate JWT Bearer tokens for protected resources:
+
+### Authentication & Users
+- `POST /api/auth/login` — Authenticate user and receive JWT session token
+- `POST /api/auth/register` — Register a new guest account
+- `GET  /api/auth/me` — Retrieve currently authenticated user profile
+- `GET  /api/users` — *(Admin only)* List all registered users with role and text filters
+- `POST /api/users` — *(Admin only)* Create user account with assigned role
+- `PUT  /api/users/:id` — *(Admin only)* Update user details, role permissions, or password
+- `DELETE /api/users/:id` — *(Admin only)* Permanently delete a user account
+
+### Rooms & Inventory
+- `GET   /api/rooms` — List all rooms with filter criteria
+- `GET   /api/rooms/available` — Query available rooms for specific dates and guest counts
+- `POST  /api/rooms` — *(Admin only)* Add new room to property inventory
+- `PUT   /api/rooms/:number` — *(Admin only)* Update room rates, features, or capacity
+- `PATCH /api/rooms/:number/cleanliness` — Update cleanliness state (`Clean`, `Dirty`, `Cleaning`, `Inspected`)
+- `DELETE /api/rooms/:number` — *(Admin only)* Remove room from inventory
+
+### Bookings & Reservations
+- `GET   /api/bookings` — Retrieve all bookings with status filters
+- `POST  /api/bookings` — Create walk-in or online reservation
+- `PATCH /api/bookings/:id/assign` — Assign room key with dirty status validation
+- `GET   /api/bookings/folio/:roomNumber` — Retrieve live guest bill and room service total
+- `POST  /api/bookings/checkout/:roomNumber` — Settle guest bill, checkout, and flag room dirty
+- `POST  /api/bookings/:id/undo-checkout` — Revert accidental checkout
+
+### Culinary & Room Service
+- `GET   /api/menu` — Retrieve culinary catalog
+- `POST  /api/menu` — *(Admin only)* Create new dish item
+- `PUT   /api/menu/:id` — *(Admin only)* Update dish pricing and recipe
+- `PATCH /api/menu/:id/toggle-stock` — Toggle live dish stock (86)
+- `GET   /api/orders` — List active room service tickets
+- `POST  /api/orders` — Place culinary order linked to room folio
+- `PATCH /api/orders/:id/status` — Update culinary ticket stage (`Pending` → `Cooking` → `Ready` → `Delivered`)
 
 ---
 
 ## 🚀 Getting Started
 
-### Installation & Run
+### Prerequisites
 
-```bash
-# Clone the repository
-git clone https://github.com/Abdurehman95/Efoy-hotel.git
+Ensure the following tools are installed on your workstation:
+- **Node.js**: v18.0.0 or higher
+- **npm**: v9.0.0 or higher
+- **PostgreSQL**: v14.0 or higher
 
-# Navigate to frontend
-cd Efoy-hotel/frontend
+---
 
-# Install dependencies
-npm install
+### 1. Backend Setup
 
-# Start development server
-npm run dev
-```
+1. Open your terminal and navigate to the `backend` directory:
+   ```bash
+   cd Efoy-hotel/backend
+   ```
 
-### Production Build
+2. Install backend dependencies:
+   ```bash
+   npm install
+   ```
 
+3. Configure environment variables by creating `.env` in the `backend/` directory:
+   ```env
+   PORT=5000
+   NODE_ENV=development
+
+   # PostgreSQL Database Configuration
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_NAME=efoy_hotel
+   DB_USER=postgres
+   DB_PASSWORD=your_postgres_password
+
+   # JWT Secret Key
+   JWT_SECRET=your_super_secret_jwt_key_here
+   JWT_EXPIRES_IN=7d
+
+   # Frontend Client URL
+   FRONTEND_URL=http://localhost:5173
+   ```
+
+4. Initialize the PostgreSQL database and execute automated schema migrations:
+   ```bash
+   npm run migrate
+   ```
+
+5. Start the backend development server:
+   ```bash
+   npm run dev
+   ```
+   *The backend will be running at [http://localhost:5000](http://localhost:5000) with a health check at [http://localhost:5000/api/health](http://localhost:5000/api/health).*
+
+---
+
+### 2. Frontend Setup
+
+1. Open a new terminal window and navigate to the `frontend` directory:
+   ```bash
+   cd Efoy-hotel/frontend
+   ```
+
+2. Install frontend dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Start the Vite development server:
+   ```bash
+   npm run dev
+   ```
+   *The frontend application will be running at [http://localhost:5173](http://localhost:5173).*
+
+---
+
+### 3. Running Locally
+
+With both services active:
+- Open your browser and navigate to **[http://localhost:5173](http://localhost:5173)**.
+- Explore the public luxury landing page, review suite categories, and utilize the reservation engine.
+- To access specific role consoles, sign in with your authorized credentials or register a new guest membership.
+
+To build the client application for production deployment:
 ```bash
 npm run build
 ```
 
 ---
 
+## 🔒 Security & Authentication
+
+- **Password Hashing**: Passwords are securely hashed using `bcryptjs` with salt rounds before database persistence.
+- **Stateless Tokens**: Authenticated sessions utilize signed JSON Web Tokens (JWT) transmitted via `Authorization: Bearer <token>` headers.
+- **HTTP Protection**: Express leverages `helmet` to establish secure HTTP headers, Cross-Origin Resource Policies, and XSS filtering.
+- **Self-Account Deletion Guard**: Administrators are prevented from deleting their own active profile, protecting against lockout.
+
+---
+
 ## 📄 License
-MIT License. © 2026 Efoy Hotel & Suites. All rights reserved.
+
+This project is licensed under the [MIT License](LICENSE).
+
+Copyright © 2026 Efoy Hotel & Suites. All rights reserved.
