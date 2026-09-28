@@ -35,6 +35,10 @@ function AppContent() {
         if (hash === parsed.role) {
           return parsed.role;
         }
+        if (!hash) {
+          window.location.hash = parsed.role;
+          return parsed.role;
+        }
       }
     } catch {
       // fallback
@@ -179,44 +183,49 @@ function AppContent() {
         variant="danger"
         icon="logout"
       />
-      {/* Floating Role Banner shortcut when logged in on public site */}
-      {currentUser && (
-        <div className="bg-slate-900 text-white text-xs px-3 sm:px-4 py-2 flex flex-col sm:flex-row items-center justify-between gap-2.5 z-50 sticky top-0 border-b border-amber-500/30">
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2 text-center sm:text-left">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
-            <span className="font-medium text-amber-400">
-              {currentUser.role === 'admin' && '👑 Admin Mode Active:'}
-              {currentUser.role === 'receptionist' && '🔔 Front Desk Active:'}
-              {currentUser.role === 'kitchen' && '👨‍🍳 Kitchen KDS Active:'}
-              {currentUser.role === 'housekeeping' && '🧹 Housekeeping Active:'}
-              {currentUser.role === 'guest' && '👤 Member Portal Active:'}
-            </span>
-            <span className="text-slate-300 hidden md:inline">Logged in as {currentUser.name} ({currentUser.email})</span>
+      {/* Fixed Navigation & Operational Header */}
+      <header className="fixed top-0 left-0 right-0 w-full z-50">
+        {currentUser && (
+          <div className="bg-slate-900 text-white text-xs px-3 sm:px-4 py-2 flex flex-col sm:flex-row items-center justify-between gap-2.5 border-b border-amber-500/30 shadow-xs">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2 text-center sm:text-left">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+              <span className="font-medium text-amber-400">
+                {currentUser.role === 'admin' && '👑 Admin Mode Active:'}
+                {currentUser.role === 'receptionist' && '🔔 Front Desk Active:'}
+                {currentUser.role === 'kitchen' && '👨‍🍳 Kitchen KDS Active:'}
+                {currentUser.role === 'housekeeping' && '🧹 Housekeeping Active:'}
+                {currentUser.role === 'guest' && '👤 Member Portal Active:'}
+              </span>
+              <span className="text-slate-300 hidden md:inline">Logged in as {currentUser.name} ({currentUser.email})</span>
+            </div>
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <button
+                onClick={() => handleNavigateToDashboard(currentUser.role)}
+                className="bg-amber-600 hover:bg-amber-500 text-white font-semibold px-3 py-1 rounded text-xs transition-colors cursor-pointer"
+              >
+                Open {currentUser.role === 'admin' ? 'Admin Dashboard' : currentUser.role === 'receptionist' ? 'Front Desk' : currentUser.role === 'kitchen' ? 'Kitchen KDS' : currentUser.role === 'housekeeping' ? 'Housekeeping Hub' : 'Guest Portal'} →
+              </button>
+              <button
+                onClick={promptLogout}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer text-xs"
+              >
+                Log Out
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <button
-              onClick={() => handleNavigateToDashboard(currentUser.role)}
-              className="bg-amber-600 hover:bg-amber-500 text-white font-semibold px-3 py-1 rounded text-xs transition-colors cursor-pointer"
-            >
-              Open {currentUser.role === 'admin' ? 'Admin Dashboard' : currentUser.role === 'receptionist' ? 'Front Desk' : currentUser.role === 'kitchen' ? 'Kitchen KDS' : currentUser.role === 'housekeeping' ? 'Housekeeping Hub' : 'Guest Portal'} →
-            </button>
-            <button
-              onClick={promptLogout}
-              className="text-slate-400 hover:text-white transition-colors cursor-pointer text-xs"
-            >
-              Log Out
-            </button>
-          </div>
-        </div>
-      )}
+        )}
 
-      <Navbar
-        currentUser={currentUser}
-        onLoginSuccess={handleLoginSuccess}
-        onLogout={promptLogout}
-        onNavigateToAdmin={() => handleNavigateToDashboard('admin')}
-        onNavigateToDashboard={handleNavigateToDashboard}
-      />
+        <Navbar
+          currentUser={currentUser}
+          onLoginSuccess={handleLoginSuccess}
+          onLogout={promptLogout}
+          onNavigateToAdmin={() => handleNavigateToDashboard('admin')}
+          onNavigateToDashboard={handleNavigateToDashboard}
+        />
+      </header>
+
+      {/* Spacer to prevent page content from being obscured under the fixed header */}
+      <div className={currentUser ? "h-[128px] sm:h-[136px]" : "h-[74px] sm:h-[84px]"} aria-hidden="true" />
       
       <main>
         {/* Hero Section with public image background */}
