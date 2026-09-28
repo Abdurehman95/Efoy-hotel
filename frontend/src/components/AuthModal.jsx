@@ -229,7 +229,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
 
   const handleForgotPassword = () => {
     setInfoMessage(
-      'Password reset link has been dispatched to your email address. (For demo accounts, use password "admin123", "recep123", "chef123", "clean123", or "guest123").'
+      'Password reset instructions have been dispatched to your registered email address.'
     );
   };
 
