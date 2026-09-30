@@ -14,6 +14,14 @@ export const getRooms = async (req, res, next) => {
         cleanliness,
         dirty_reason AS "dirtyReason",
         occupancy,
+        COALESCE(occupancy_status, CASE WHEN occupancy = 'Occupied' THEN 'OCCUPIED' ELSE 'VACANT' END) AS "occupancyStatus",
+        COALESCE(housekeeping_status, CASE 
+          WHEN cleanliness ILIKE 'Dirty' THEN 'DIRTY' 
+          WHEN cleanliness ILIKE 'Cleaning' THEN 'CLEANING' 
+          WHEN cleanliness ILIKE 'Inspected' OR cleanliness ILIKE 'Inspection' THEN 'INSPECTION' 
+          ELSE 'CLEAN' 
+        END) AS "housekeepingStatus",
+        COALESCE(maintenance_status, 'AVAILABLE') AS "maintenanceStatus",
         guest_id AS "guestId"
       FROM rooms
       ORDER BY room_number ASC`
@@ -43,6 +51,14 @@ export const getRoomByNumber = async (req, res, next) => {
         cleanliness,
         dirty_reason AS "dirtyReason",
         occupancy,
+        COALESCE(occupancy_status, CASE WHEN occupancy = 'Occupied' THEN 'OCCUPIED' ELSE 'VACANT' END) AS "occupancyStatus",
+        COALESCE(housekeeping_status, CASE 
+          WHEN cleanliness ILIKE 'Dirty' THEN 'DIRTY' 
+          WHEN cleanliness ILIKE 'Cleaning' THEN 'CLEANING' 
+          WHEN cleanliness ILIKE 'Inspected' OR cleanliness ILIKE 'Inspection' THEN 'INSPECTION' 
+          ELSE 'CLEAN' 
+        END) AS "housekeepingStatus",
+        COALESCE(maintenance_status, 'AVAILABLE') AS "maintenanceStatus",
         guest_id AS "guestId"
       FROM rooms
       WHERE room_number = $1`,
@@ -67,7 +83,17 @@ export const getRoomByNumber = async (req, res, next) => {
 
 export const createRoom = async (req, res, next) => {
   try {
-    const { roomNumber, type, floor, capacity, rate, features, cleanliness, occupancy } = req.body;
+    const { 
+      roomNumber, 
+      type, 
+      floor, 
+      capacity, 
+      rate, 
+      features, 
+      occupancyStatus = 'VACANT', 
+      housekeepingStatus = 'CLEAN', 
+      maintenanceStatus = 'AVAILABLE' 
+    } = req.body;
 
     if (!roomNumber || !type || !floor || !capacity || rate === undefined) {
       return res.status(400).json({
@@ -84,10 +110,15 @@ export const createRoom = async (req, res, next) => {
       });
     }
 
+    const legacyClean = housekeepingStatus === 'DIRTY' ? 'Dirty' : housekeepingStatus === 'CLEANING' ? 'Cleaning' : housekeepingStatus === 'INSPECTION' ? 'Inspected' : 'Clean';
+    const legacyOcc = occupancyStatus === 'OCCUPIED' ? 'Occupied' : 'Available';
+
     const result = await query(
-      `INSERT INTO rooms (room_number, type, floor, capacity, rate, features, cleanliness, occupancy)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING 
+      `INSERT INTO rooms (
+        room_number, type, floor, capacity, rate, features, 
+        cleanliness, occupancy, occupancy_status, housekeeping_status, maintenance_status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING 
         room_number AS "roomNumber",
         type,
         floor,
@@ -97,6 +128,9 @@ export const createRoom = async (req, res, next) => {
         cleanliness,
         dirty_reason AS "dirtyReason",
         occupancy,
+        occupancy_status AS "occupancyStatus",
+        housekeeping_status AS "housekeepingStatus",
+        maintenance_status AS "maintenanceStatus",
         guest_id AS "guestId"`,
       [
         roomNumber.trim(),
@@ -105,8 +139,11 @@ export const createRoom = async (req, res, next) => {
         capacity.trim(),
         parseFloat(rate),
         features || '',
-        cleanliness || 'Clean',
-        occupancy || 'Available',
+        legacyClean,
+        legacyOcc,
+        occupancyStatus,
+        housekeepingStatus,
+        maintenanceStatus,
       ]
     );
 
@@ -133,7 +170,24 @@ export const createRoom = async (req, res, next) => {
 export const updateRoom = async (req, res, next) => {
   try {
     const { roomNumber } = req.params;
-    const { type, floor, capacity, rate, features, cleanliness, occupancy, dirtyReason } = req.body;
+    const { 
+      type, 
+      floor, 
+      capacity, 
+      rate, 
+      features, 
+      occupancyStatus, 
+      housekeepingStatus, 
+      maintenanceStatus, 
+      dirtyReason 
+    } = req.body;
+
+    const legacyClean = housekeepingStatus 
+      ? (housekeepingStatus === 'DIRTY' ? 'Dirty' : housekeepingStatus === 'CLEANING' ? 'Cleaning' : housekeepingStatus === 'INSPECTION' ? 'Inspected' : 'Clean') 
+      : null;
+    const legacyOcc = occupancyStatus 
+      ? (occupancyStatus === 'OCCUPIED' ? 'Occupied' : 'Available') 
+      : null;
 
     const result = await query(
       `UPDATE rooms 
@@ -143,11 +197,14 @@ export const updateRoom = async (req, res, next) => {
         capacity = COALESCE($3, capacity),
         rate = COALESCE($4, rate),
         features = COALESCE($5, features),
-        cleanliness = COALESCE($6, cleanliness),
-        occupancy = COALESCE($7, occupancy),
-        dirty_reason = COALESCE($8, dirty_reason),
+        occupancy_status = COALESCE($6, occupancy_status),
+        housekeeping_status = COALESCE($7, housekeeping_status),
+        maintenance_status = COALESCE($8, maintenance_status),
+        dirty_reason = COALESCE($9, dirty_reason),
+        cleanliness = COALESCE($10, cleanliness),
+        occupancy = COALESCE($11, occupancy),
         updated_at = CURRENT_TIMESTAMP
-       WHERE room_number = $9
+       WHERE room_number = $12
        RETURNING 
         room_number AS "roomNumber",
         type,
@@ -158,6 +215,9 @@ export const updateRoom = async (req, res, next) => {
         cleanliness,
         dirty_reason AS "dirtyReason",
         occupancy,
+        occupancy_status AS "occupancyStatus",
+        housekeeping_status AS "housekeepingStatus",
+        maintenance_status AS "maintenanceStatus",
         guest_id AS "guestId"`,
       [
         type,
@@ -165,9 +225,12 @@ export const updateRoom = async (req, res, next) => {
         capacity,
         rate !== undefined ? parseFloat(rate) : null,
         features,
-        cleanliness,
-        occupancy,
+        occupancyStatus,
+        housekeepingStatus,
+        maintenanceStatus,
         dirtyReason,
+        legacyClean,
+        legacyOcc,
         roomNumber,
       ]
     );
@@ -178,6 +241,8 @@ export const updateRoom = async (req, res, next) => {
         message: `Room ${roomNumber} not found.`,
       });
     }
+
+    emitPmsEvent('PMS_ROOM_STATUS_UPDATED', result.rows[0]);
 
     return res.status(200).json({
       success: true,
@@ -192,22 +257,105 @@ export const updateRoom = async (req, res, next) => {
 export const updateCleanliness = async (req, res, next) => {
   try {
     const { roomNumber } = req.params;
-    const { cleanliness, dirtyReason } = req.body;
+    let { cleanliness, housekeepingStatus, dirtyReason } = req.body;
 
-    if (!cleanliness) {
+    const statusVal = housekeepingStatus || cleanliness;
+    if (!statusVal) {
       return res.status(400).json({
         success: false,
-        message: 'Cleanliness status is required.',
+        message: 'Housekeeping status is required.',
       });
     }
 
-    const clearReason = cleanliness === 'Clean' || cleanliness === 'Inspected';
+    const normalizedHk = statusVal.toUpperCase() === 'DIRTY' ? 'DIRTY'
+      : statusVal.toUpperCase() === 'CLEANING' ? 'CLEANING'
+      : (statusVal.toUpperCase() === 'INSPECTED' || statusVal.toUpperCase() === 'INSPECTION') ? 'INSPECTION'
+      : 'CLEAN';
+
+    const legacyClean = normalizedHk === 'DIRTY' ? 'Dirty'
+      : normalizedHk === 'CLEANING' ? 'Cleaning'
+      : normalizedHk === 'INSPECTION' ? 'Inspected'
+      : 'Clean';
+
+    const clearReason = normalizedHk === 'CLEAN' || normalizedHk === 'INSPECTION';
 
     const result = await query(
       `UPDATE rooms 
        SET 
-        cleanliness = $1,
-        dirty_reason = $2,
+        housekeeping_status = $1,
+        cleanliness = $2,
+        dirty_reason = $3,
+        updated_at = CURRENT_TIMESTAMP
+       WHERE room_number = $4
+       RETURNING 
+        room_number AS "roomNumber",
+        type,
+        floor,
+        capacity,
+        rate::FLOAT AS rate,
+        features,
+        cleanliness,
+        dirty_reason AS "dirtyReason",
+        occupancy,
+        occupancy_status AS "occupancyStatus",
+        housekeeping_status AS "housekeepingStatus",
+        maintenance_status AS "maintenanceStatus",
+        guest_id AS "guestId"`,
+      [normalizedHk, legacyClean, clearReason ? null : dirtyReason || null, roomNumber]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `Room ${roomNumber} not found.`,
+      });
+    }
+
+    // Log event
+    const userName = req.user?.name || 'Housekeeping Staff';
+    await query(
+      `INSERT INTO activity_logs (title, category, description, tag)
+       VALUES ($1, 'Housekeeping', $2, 'Housekeeping')`,
+      [
+        `Room ${roomNumber} Marked ${normalizedHk}`,
+        `${userName} updated Room ${roomNumber} housekeeping status to ${normalizedHk}.`,
+      ]
+    );
+
+    // Broadcast real-time room cleanliness update to all terminals
+    emitPmsEvent('PMS_ROOM_CLEANLINESS_UPDATED', result.rows[0]);
+
+    return res.status(200).json({
+      success: true,
+      message: `Room ${roomNumber} housekeeping status updated to ${normalizedHk}.`,
+      room: result.rows[0],
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateMaintenanceStatus = async (req, res, next) => {
+  try {
+    const { roomNumber } = req.params;
+    const { maintenanceStatus, status, reason, defectNote } = req.body;
+    const statusVal = maintenanceStatus || status;
+
+    const valid = ['AVAILABLE', 'MAINTENANCE', 'OUT_OF_SERVICE'];
+    if (!statusVal || !valid.includes(statusVal.toUpperCase())) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid maintenance status. Must be one of: ${valid.join(', ')}`,
+      });
+    }
+
+    const normStatus = statusVal.toUpperCase();
+
+    const result = await query(
+      `UPDATE rooms 
+       SET 
+        maintenance_status = $1,
+        dirty_reason = CASE WHEN $1 != 'AVAILABLE' THEN COALESCE($2, dirty_reason) ELSE dirty_reason END,
         updated_at = CURRENT_TIMESTAMP
        WHERE room_number = $3
        RETURNING 
@@ -220,8 +368,11 @@ export const updateCleanliness = async (req, res, next) => {
         cleanliness,
         dirty_reason AS "dirtyReason",
         occupancy,
+        occupancy_status AS "occupancyStatus",
+        housekeeping_status AS "housekeepingStatus",
+        maintenance_status AS "maintenanceStatus",
         guest_id AS "guestId"`,
-      [cleanliness, clearReason ? null : dirtyReason || null, roomNumber]
+      [normStatus, reason || null, roomNumber]
     );
 
     if (result.rows.length === 0) {
@@ -231,23 +382,11 @@ export const updateCleanliness = async (req, res, next) => {
       });
     }
 
-    // Log event
-    const userName = req.user?.name || 'Staff';
-    await query(
-      `INSERT INTO activity_logs (title, category, description, tag)
-       VALUES ($1, 'Housekeeping', $2, 'Housekeeping')`,
-      [
-        `Room ${roomNumber} Marked ${cleanliness}`,
-        `${userName} updated Room ${roomNumber} cleanliness to ${cleanliness}.`,
-      ]
-    );
-
-    // Broadcast real-time room cleanliness update to all terminals (Reception, HK, Admin)
-    emitPmsEvent('PMS_ROOM_CLEANLINESS_UPDATED', result.rows[0]);
+    emitPmsEvent('PMS_ROOM_STATUS_UPDATED', result.rows[0]);
 
     return res.status(200).json({
       success: true,
-      message: `Room ${roomNumber} cleanliness updated to ${cleanliness}.`,
+      message: `Room ${roomNumber} maintenance status updated to ${normStatus}.`,
       room: result.rows[0],
     });
   } catch (error) {
@@ -306,13 +445,16 @@ export const getAvailableRooms = async (req, res, next) => {
         r.features,
         r.cleanliness,
         r.dirty_reason AS "dirtyReason",
-        r.occupancy
+        r.occupancy,
+        COALESCE(r.occupancy_status, 'VACANT') AS "occupancyStatus",
+        COALESCE(r.housekeeping_status, 'CLEAN') AS "housekeepingStatus",
+        COALESCE(r.maintenance_status, 'AVAILABLE') AS "maintenanceStatus"
       FROM rooms r
-      WHERE r.occupancy != 'Out of Order'
+      WHERE COALESCE(r.maintenance_status, 'AVAILABLE') = 'AVAILABLE'
       AND NOT EXISTS (
         SELECT 1 FROM bookings b
         WHERE b.room_number = r.room_number
-          AND b.status NOT IN ('Cancelled', 'Checked Out')
+          AND b.status NOT IN ('CANCELLED', 'CHECKED_OUT', 'Cancelled', 'Checked Out')
           AND b.check_in < $2::date
           AND b.check_out > $1::date
       )
@@ -320,7 +462,7 @@ export const getAvailableRooms = async (req, res, next) => {
         SELECT 1 FROM maintenance_tickets m
         WHERE m.room_number = r.room_number
           AND m.status IN ('REPORTED', 'IN_PROGRESS')
-          AND m.inventory_impact = 'OUT_OF_ORDER'
+          AND m.inventory_impact IN ('OUT_OF_ORDER', 'OUT_OF_SERVICE')
           AND m.start_date < $2::date
           AND COALESCE(m.end_date, CURRENT_DATE + INTERVAL '30 days') > $1::date
       )
@@ -354,6 +496,105 @@ export const getAvailableRooms = async (req, res, next) => {
   }
 };
 
+// ROOM CATEGORIES
+export const getRoomCategories = async (req, res, next) => {
+  try {
+    const result = await query(
+      `SELECT 
+        id, 
+        name, 
+        base_rate::FLOAT AS "baseRate", 
+        capacity, 
+        description, 
+        features, 
+        image_url AS "imageUrl"
+      FROM room_categories 
+      ORDER BY base_rate ASC`
+    );
+    return res.status(200).json({
+      success: true,
+      count: result.rowCount,
+      categories: result.rows,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createRoomCategory = async (req, res, next) => {
+  try {
+    const { name, baseRate, capacity, description, features, imageUrl } = req.body;
+    if (!name || baseRate === undefined || !capacity) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, baseRate, and capacity are required for a room category.',
+      });
+    }
+
+    const result = await query(
+      `INSERT INTO room_categories (name, base_rate, capacity, description, features, image_url)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, name, base_rate::FLOAT AS "baseRate", capacity, description, features, image_url AS "imageUrl"`,
+      [name.trim(), parseFloat(baseRate), capacity.trim(), description || '', features || '', imageUrl || '']
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: `Room category "${name}" created.`,
+      category: result.rows[0],
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateRoomCategory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name, baseRate, capacity, description, features, imageUrl } = req.body;
+
+    const result = await query(
+      `UPDATE room_categories 
+       SET 
+        name = COALESCE($1, name),
+        base_rate = COALESCE($2, base_rate),
+        capacity = COALESCE($3, capacity),
+        description = COALESCE($4, description),
+        features = COALESCE($5, features),
+        image_url = COALESCE($6, image_url),
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = $7
+       RETURNING id, name, base_rate::FLOAT AS "baseRate", capacity, description, features, image_url AS "imageUrl"`,
+      [name, baseRate !== undefined ? parseFloat(baseRate) : null, capacity, description, features, imageUrl, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Room category not found.' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Room category updated.',
+      category: result.rows[0],
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteRoomCategory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await query('DELETE FROM room_categories WHERE id = $1 RETURNING id, name', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Room category not found.' });
+    }
+    return res.status(200).json({ success: true, message: `Category "${result.rows[0].name}" removed.` });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getRooms,
   getAvailableRooms,
@@ -361,5 +602,11 @@ export default {
   createRoom,
   updateRoom,
   updateCleanliness,
+  updateMaintenanceStatus,
   deleteRoom,
+  getRoomCategories,
+  createRoomCategory,
+  updateRoomCategory,
+  deleteRoomCategory,
 };
+
