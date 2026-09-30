@@ -87,7 +87,7 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
             <div className="flex items-center space-x-2 border-l border-gray-200 pl-4">
               <button
                 onClick={() => (onNavigateToDashboard ? onNavigateToDashboard(currentUser.role) : onNavigateToAdmin())}
-                className="text-xs font-semibold bg-[#c2410c] hover:bg-[#9a3412] text-white px-3 py-1.5 rounded transition-colors cursor-pointer shadow-2xs flex items-center gap-1.5"
+                className="text-xs font-semibold bg-gold-500 hover:bg-gold-600 text-white px-3 py-1.5 rounded transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
               >
                 <span>
                   {currentUser.role === 'admin' && '👑 Admin Panel'}
@@ -238,7 +238,7 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
                         onNavigateToAdmin();
                       }
                     }}
-                    className="w-full py-2.5 px-3 text-center rounded bg-[#c2410c] text-white font-medium text-xs hover:bg-[#9a3412] transition-colors cursor-pointer shadow-sm"
+                    className="w-full py-2.5 px-3 text-center rounded bg-gold-500 text-white font-medium text-xs hover:bg-gold-600 transition-colors cursor-pointer shadow-sm"
                   >
                     {currentUser.role === 'admin' && 'Admin Panel'}
                     {currentUser.role === 'receptionist' && 'Front Desk'}

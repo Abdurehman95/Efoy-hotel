@@ -235,20 +235,20 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
 
   return (
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-dark-900/75 backdrop-blur-xs animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 transition-all"
+        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100 transition-all"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Luxury Gold Accent Bar */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-amber-600 via-amber-400 to-orange-500" />
+        <div className="h-1.5 w-full bg-gradient-to-r from-gold-600 via-gold-400 to-amber-500" />
 
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-dark-900 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
           aria-label="Close modal"
         >
           <X size={18} />
@@ -262,13 +262,13 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
               alt="Efoy Hotel & Suites"
               className="h-20 sm:h-24 w-auto mx-auto object-contain mb-3 drop-shadow-xs"
             />
-            <span className="text-[10px] tracking-[0.28em] text-amber-600 uppercase font-bold block mb-1">
+            <span className="text-[10px] tracking-[0.28em] text-gold-600 uppercase font-bold block mb-1">
               Efoy Hotel & Suites
             </span>
-            <h3 className="font-serif text-2xl text-slate-900 font-bold tracking-tight">
+            <h3 className="font-serif text-2xl text-dark-900 font-bold tracking-tight">
               {mode === 'login' ? 'Sign In' : 'Create Account'}
             </h3>
-            <p className="text-xs text-slate-500 mt-1.5 max-w-xs mx-auto">
+            <p className="text-xs text-gray-500 mt-1.5 max-w-xs mx-auto">
               {mode === 'login'
                 ? 'Enter your credentials to access your personalized hotel console.'
                 : 'Register as an Efoy Privilege member for direct suite reservations & dining.'}
@@ -276,7 +276,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
           </div>
 
           {/* Clean Segmented Tab Control */}
-          <div className="grid grid-cols-2 p-1 bg-slate-100/90 rounded-xl mb-6 text-xs">
+          <div className="grid grid-cols-2 p-1 bg-gray-100 rounded-xl mb-6 text-xs">
             <button
               type="button"
               onClick={() => {
@@ -287,8 +287,8 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
               }}
               className={`py-2 text-center rounded-lg font-semibold transition-all cursor-pointer ${
                 mode === 'login'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-dark-900 shadow-xs'
+                  : 'text-gray-600 hover:text-dark-900'
               }`}
             >
               Sign In
@@ -303,8 +303,8 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
               }}
               className={`py-2 text-center rounded-lg font-semibold transition-all cursor-pointer ${
                 mode === 'signup'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-dark-900 shadow-xs'
+                  : 'text-gray-600 hover:text-dark-900'
               }`}
             >
               Create Account
@@ -313,15 +313,15 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
 
           {/* Feedback Messages */}
           {errorMessage && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 mb-4 flex items-start gap-2 animate-fade-in">
-              <AlertCircle size={15} className="shrink-0 mt-0.5 text-red-600" />
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 mb-4 flex items-start gap-2 animate-fade-in">
+              <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-600" />
               <span className="leading-relaxed">{errorMessage}</span>
             </div>
           )}
 
           {infoMessage && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 mb-4 flex items-start gap-2 animate-fade-in">
-              <ShieldCheck size={15} className="shrink-0 mt-0.5 text-amber-600" />
+            <div className="p-3 bg-gold-50 border border-gold-200 rounded-xl text-xs text-gold-800 mb-4 flex items-start gap-2 animate-fade-in">
+              <ShieldCheck size={15} className="shrink-0 mt-0.5 text-gold-600" />
               <span className="leading-relaxed">{infoMessage}</span>
             </div>
           )}
@@ -329,13 +329,13 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
           {/* Authenticated Loading Splash */}
           {submitted ? (
             <div className="py-10 text-center flex flex-col items-center animate-scale-up">
-              <div className="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center mb-3 ring-8 ring-amber-50/50">
-                <CheckCircle2 size={32} className="text-amber-600" />
+              <div className="w-14 h-14 bg-gold-50 rounded-full flex items-center justify-center mb-3 ring-8 ring-gold-50/50">
+                <CheckCircle2 size={32} className="text-gold-600" />
               </div>
-              <h4 className="font-serif text-lg font-bold text-slate-900 mb-1">
+              <h4 className="font-serif text-lg font-bold text-dark-900 mb-1">
                 Access Granted
               </h4>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-gray-500">
                 Connecting to {activeRoleInfo?.title || 'Operational Console'}...
               </p>
             </div>
@@ -344,18 +344,18 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
               {/* Full Name (Sign Up only) */}
               {mode === 'signup' && (
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
                     Full Name
                   </label>
                   <div className="relative">
-                    <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="text"
                       required
                       placeholder="e.g. Lord Alexander Wright"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all"
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-[#fafafa] border border-gray-200 rounded-xl text-xs text-dark-900 placeholder:text-gray-400 focus:outline-none focus:border-gold-500 focus:bg-white focus:ring-2 focus:ring-gold-500/20 transition-all"
                     />
                   </div>
                 </div>
@@ -363,18 +363,18 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
 
               {/* Email Address */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
                   Email Address
                 </label>
                 <div className="relative">
-                  <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type="email"
                     required
                     placeholder="name@efoyhotel.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#fafafa] border border-gray-200 rounded-xl text-xs text-dark-900 placeholder:text-gray-400 focus:outline-none focus:border-gold-500 focus:bg-white focus:ring-2 focus:ring-gold-500/20 transition-all"
                   />
                 </div>
               </div>
@@ -382,17 +382,17 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
               {/* Phone (Sign Up only) */}
               {mode === 'signup' && (
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Phone Number <span className="text-slate-400 font-normal">(Optional)</span>
+                  <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Phone Number <span className="text-gray-400 font-normal">(Optional)</span>
                   </label>
                   <div className="relative">
-                    <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="tel"
                       placeholder="+1 (555) 234-5678"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all"
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-[#fafafa] border border-gray-200 rounded-xl text-xs text-dark-900 placeholder:text-gray-400 focus:outline-none focus:border-gold-500 focus:bg-white focus:ring-2 focus:ring-gold-500/20 transition-all"
                     />
                   </div>
                 </div>
@@ -401,33 +401,33 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
               {/* Password */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider">
+                  <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider">
                     Password
                   </label>
                   {mode === 'login' && (
                     <button
                       type="button"
                       onClick={handleForgotPassword}
-                      className="text-[11px] text-amber-600 hover:text-amber-700 font-medium transition-colors cursor-pointer"
+                      className="text-[11px] text-gold-600 hover:text-gold-700 font-medium transition-colors cursor-pointer"
                     >
                       Forgot?
                     </button>
                   )}
                 </div>
                 <div className="relative">
-                  <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
                     placeholder="••••••••"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all"
+                    className="w-full pl-10 pr-10 py-2.5 bg-[#fafafa] border border-gray-200 rounded-xl text-xs text-dark-900 placeholder:text-gray-400 focus:outline-none focus:border-gold-500 focus:bg-white focus:ring-2 focus:ring-gold-500/20 transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-dark-900 transition-colors cursor-pointer"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -442,9 +442,9 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
                     type="checkbox"
                     checked={formData.rememberMe}
                     onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500 focus:ring-offset-0 cursor-pointer"
+                    className="w-4 h-4 rounded border-gray-300 text-gold-600 focus:ring-gold-500 focus:ring-offset-0 cursor-pointer"
                   />
-                  <span className="text-xs text-slate-600">
+                  <span className="text-xs text-gray-600">
                     {mode === 'login' ? 'Remember this device' : 'I agree to the Terms of Stay'}
                   </span>
                 </label>
@@ -454,7 +454,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md cursor-pointer disabled:opacity-50 mt-4"
+                className="w-full py-3 px-4 bg-gold-500 hover:bg-gold-600 active:bg-gold-700 text-white rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-xs hover:shadow-md cursor-pointer disabled:opacity-50 mt-4"
               >
                 {loading ? (
                   <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -469,8 +469,8 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
           )}
 
           {/* Footer Security Badge */}
-          <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
-            <ShieldCheck size={14} className="text-amber-600/70" />
+          <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-center gap-1.5 text-[11px] text-gray-400">
+            <ShieldCheck size={14} className="text-gold-600" />
             <span>Encrypted 256-Bit TLS • 5-Star Hospitality Portal</span>
           </div>
         </div>
