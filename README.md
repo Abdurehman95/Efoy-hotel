@@ -286,6 +286,12 @@ npm run build
 
 ---
 
+## 📖 System Guidelines & User Interaction Workflow
+
+For the complete end-to-end operational guide and state machine diagrams across all 5 hotel departments, refer to [USER_WORKFLOW.md](USER_WORKFLOW.md).
+
+---
+
 ## 🔒 Security & Authentication
 
 - **Password Hashing**: Passwords are securely hashed using `bcryptjs` with salt rounds before database persistence.
