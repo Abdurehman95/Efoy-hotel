@@ -69,7 +69,7 @@ export const authApi = {
   getMe: () => apiFetch('/auth/me'),
 };
 
-// Rooms API
+// Rooms & Categories API
 export const roomsApi = {
   getAll: () => apiFetch('/rooms'),
   getAvailable: (checkIn, checkOut, category = '', guests = '') => {
@@ -91,13 +91,34 @@ export const roomsApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  updateCleanliness: (roomNumber, cleanliness, dirtyReason) =>
+  updateCleanliness: (roomNumber, housekeepingStatus, dirtyReason) =>
     apiFetch(`/rooms/${roomNumber}/cleanliness`, {
       method: 'PATCH',
-      body: JSON.stringify({ cleanliness, dirtyReason }),
+      body: JSON.stringify({ housekeepingStatus, cleanliness: housekeepingStatus, dirtyReason }),
+    }),
+  updateMaintenance: (roomNumber, maintenanceStatus, reason) =>
+    apiFetch(`/rooms/${roomNumber}/maintenance`, {
+      method: 'PATCH',
+      body: JSON.stringify({ maintenanceStatus, reason }),
     }),
   delete: (roomNumber) =>
     apiFetch(`/rooms/${roomNumber}`, {
+      method: 'DELETE',
+    }),
+  // Room Categories
+  getCategories: () => apiFetch('/rooms/categories'),
+  createCategory: (cat) =>
+    apiFetch('/rooms/categories', {
+      method: 'POST',
+      body: JSON.stringify(cat),
+    }),
+  updateCategory: (id, cat) =>
+    apiFetch(`/rooms/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(cat),
+    }),
+  deleteCategory: (id) =>
+    apiFetch(`/rooms/categories/${id}`, {
       method: 'DELETE',
     }),
 };
@@ -114,10 +135,28 @@ export const bookingsApi = {
       method: 'POST',
       body: JSON.stringify(booking),
     }),
+  update: (id, data) =>
+    apiFetch(`/bookings/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  checkIn: (id, payload = {}) =>
+    apiFetch(`/bookings/${id}/check-in`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   assign: (id, roomNumber, forceOverride = false) =>
     apiFetch(`/bookings/${id}/assign`, {
       method: 'PATCH',
       body: JSON.stringify({ roomNumber, forceOverride }),
+    }),
+  cancel: (id) =>
+    apiFetch(`/bookings/${id}/cancel`, {
+      method: 'PATCH',
+    }),
+  markNoShow: (id) =>
+    apiFetch(`/bookings/${id}/no-show`, {
+      method: 'PATCH',
     }),
   getFolio: (roomNumber) => apiFetch(`/bookings/folio/${roomNumber}`),
   checkout: (roomNumber, paymentMethod) =>
@@ -197,11 +236,83 @@ export const staffApi = {
 
 // Housekeeping API
 export const hkApi = {
+  getTasks: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiFetch(`/housekeeping/tasks${query ? `?${query}` : ''}`);
+  },
+  createTask: (data) =>
+    apiFetch('/housekeeping/tasks', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateTaskStatus: (id, status, assignedTo, notes) =>
+    apiFetch(`/housekeeping/tasks/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, assignedTo, notes }),
+    }),
   getHistory: () => apiFetch('/housekeeping/history'),
   certifyClean: (payload) =>
     apiFetch('/housekeeping/clean', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+};
+
+// Concierge & Service Requests API
+export const servicesApi = {
+  getAll: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiFetch(`/service-requests${query ? `?${query}` : ''}`);
+  },
+  create: (data) =>
+    apiFetch('/service-requests', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateStatus: (id, status, assignedTo) =>
+    apiFetch(`/service-requests/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, assignedTo }),
+    }),
+};
+
+// Maintenance API
+export const maintenanceApi = {
+  getAll: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiFetch(`/maintenance${query ? `?${query}` : ''}`);
+  },
+  create: (data) =>
+    apiFetch('/maintenance', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id, data) =>
+    apiFetch(`/maintenance/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+};
+
+// Inventory API
+export const inventoryApi = {
+  getAll: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiFetch(`/inventory${query ? `?${query}` : ''}`);
+  },
+  create: (data) =>
+    apiFetch('/inventory', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id, data) =>
+    apiFetch(`/inventory/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id) =>
+    apiFetch(`/inventory/${id}`, {
+      method: 'DELETE',
     }),
 };
 
@@ -267,6 +378,9 @@ export default {
   orders: ordersApi,
   staff: staffApi,
   hk: hkApi,
+  services: servicesApi,
+  maintenance: maintenanceApi,
+  inventory: inventoryApi,
   analytics: analyticsApi,
   logs: logsApi,
   settings: settingsApi,
