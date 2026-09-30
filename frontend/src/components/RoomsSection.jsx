@@ -14,7 +14,7 @@ import {
 import { useHotel } from '../context/HotelContext';
 
 const RoomsSection = () => {
-  const { createGuestOnlineBooking } = useHotel();
+  const { rooms: dbRooms, roomCategories, createGuestOnlineBooking } = useHotel();
   const [activeFilter, setActiveFilter] = useState('All Suites');
 
   // Booking Modal States
@@ -31,106 +31,58 @@ const RoomsSection = () => {
   const [bookingError, setBookingError] = useState('');
   const [confirmedBooking, setConfirmedBooking] = useState(null);
 
-  const rooms = [
-    {
-      id: 1,
-      roomNumber: '101',
-      name: 'Deluxe King Sanctuary',
-      category: 'Ocean View',
-      size: '54 m² / 581 sq ft',
-      description: 'Warm wooden artisan finishes, 800-thread Indian Frette linens, bedside ambient glow, and expansive acoustic soundproof windows.',
-      guests: 2,
-      price: 180,
-      image: '/images/room1.jpg',
-      badge: 'MOST REQUESTED',
-    },
-    {
-      id: 2,
-      roomNumber: '201',
-      name: 'Resort Oceanfront Pool Villa',
-      category: 'Executive',
-      size: '120 m² / 1,290 sq ft',
-      description: 'Private waterside terrace facing tranquil lagoon pools and swaying palms, with dedicated butler unpacking and evening cocktail service.',
-      guests: 3,
-      price: 280,
-      image: '/images/room2.jpg',
-      badge: 'RESORT EXCLUSIVE',
-    },
-    {
-      id: 3,
-      roomNumber: '301',
-      name: 'Horizon Glasshouse Suite',
-      category: 'Penthouse',
-      size: '92 m² / 990 sq ft',
-      description: 'Architectural masterpiece featuring full-height glass pavilion en-suite, wood-burning hearth, and bespoke organic designer loungers.',
-      guests: 2,
-      price: 340,
-      image: '/images/room3.jpg',
-      badge: 'ARCHITECTURAL ICON',
-    },
-    {
-      id: 4,
-      roomNumber: '501',
-      name: 'Presidential Royal Penthouse',
-      category: 'Penthouse',
-      size: '160 m² / 1,720 sq ft',
-      description: 'Our premier penthouse featuring tufted velvet salon, gilded dressing mirrors, opulent emerald drapery, and Rolls-Royce chauffeur service.',
-      guests: 4,
-      price: 850,
-      image: '/images/room4.jpg',
-      badge: 'SIGNATURE SUITE',
-    },
-    {
-      id: 5,
-      roomNumber: '102',
-      name: 'Golden Hour Skyline Loft',
-      category: 'Ocean View',
-      size: '75 m² / 807 sq ft',
-      description: 'High-floor panoramic corner loft framing golden sunsets through atelier-style steel windows with deep soaking hydrotherapy spa tub.',
-      guests: 2,
-      price: 220,
-      image: '/images/room5.jpg',
-      badge: 'SUNSET VIEW',
-    },
-    {
-      id: 6,
-      roomNumber: '302',
-      name: 'Executive Metropolitan Suite',
-      category: 'Executive',
-      size: '68 m² / 732 sq ft',
-      description: 'Sleek metropolitan interior with bespoke wool sofa, marble coffee tables, natural oak flooring, and ergonomic executive workstation.',
-      guests: 2,
-      price: 350,
-      image: '/images/room6.jpg',
-      badge: 'EXECUTIVE PRIVILEGES',
-    },
-    {
-      id: 7,
-      roomNumber: '401',
-      name: 'Minimalist Zen King Sanctuary',
-      category: 'Ocean View',
-      size: '50 m² / 538 sq ft',
-      description: 'Understated elegance crafted in muted charcoal tones, concealed indirect cove lighting, acoustic wool carpets, and curated contemporary art.',
-      guests: 2,
-      price: 520,
-      image: '/images/room7.jpg',
-      badge: 'PURE CALM',
-    },
-    {
-      id: 8,
-      roomNumber: '402',
-      name: 'Tropical Garden Pavilion Suite',
-      category: 'Executive',
-      size: '95 m² / 1,022 sq ft',
-      description: 'Enclosed private botanical garden patio with teak daybed, outdoor rainfall shower, handcrafted teak headboard, and artisan waffle robes.',
-      guests: 4,
-      price: 560,
-      image: '/images/room8.jpg',
-      badge: 'PRIVATE GARDEN',
-    },
-  ];
+  // Luxury visual assets for real hotel rooms
+  const SUITE_METADATA = {
+    '101': { image: '/images/room1.jpg', badge: 'MOST REQUESTED', size: '54 m² / 581 sq ft', name: 'Deluxe King Sanctuary' },
+    '102': { image: '/images/room5.jpg', badge: 'SUNSET VIEW', size: '75 m² / 807 sq ft', name: 'Golden Hour Skyline Loft' },
+    '201': { image: '/images/room2.jpg', badge: 'RESORT EXCLUSIVE', size: '120 m² / 1,290 sq ft', name: 'Resort Oceanfront Pool Villa' },
+    '202': { image: '/images/room6.jpg', badge: 'DOUBLE DELUXE', size: '70 m² / 753 sq ft', name: 'Deluxe Garden Suite' },
+    '301': { image: '/images/room3.jpg', badge: 'ARCHITECTURAL ICON', size: '92 m² / 990 sq ft', name: 'Horizon Glasshouse Suite' },
+    '302': { image: '/images/room6.jpg', badge: 'EXECUTIVE PRIVILEGES', size: '68 m² / 732 sq ft', name: 'Executive Metropolitan Suite' },
+    '401': { image: '/images/room7.jpg', badge: 'PURE CALM', size: '50 m² / 538 sq ft', name: 'Minimalist Zen King Sanctuary' },
+    '402': { image: '/images/room8.jpg', badge: 'PRIVATE GARDEN', size: '95 m² / 1,022 sq ft', name: 'Tropical Garden Pavilion Suite' },
+    '501': { image: '/images/room4.jpg', badge: 'SIGNATURE SUITE', size: '160 m² / 1,720 sq ft', name: 'Presidential Royal Penthouse' },
+    '502': { image: '/images/room4.jpg', badge: 'PRESIDENTIAL', size: '180 m² / 1,937 sq ft', name: 'Presidential Panorama Penthouse' },
+  };
+  
 
-  const categories = ['All Suites', 'Ocean View', 'Executive', 'Penthouse'];
+  // Map live PostgreSQL database rooms
+  const rooms = (dbRooms && dbRooms.length > 0)
+    ? dbRooms.map((r, idx) => {
+        const meta = SUITE_METADATA[r.roomNumber] || {};
+        const cat = roomCategories?.find((c) => c.name?.toLowerCase() === r.type?.toLowerCase());
+        const isOutOfService = r.maintenanceStatus === 'OUT_OF_SERVICE';
+        const isOccupied = (r.occupancyStatus || r.occupancy) === 'OCCUPIED' || r.occupancy === 'Occupied';
+        const isClean = (r.housekeepingStatus || r.cleanliness) === 'CLEAN' || r.cleanliness === 'Clean';
+
+        let badge = meta.badge || 'LUXURY SUITE';
+        if (isOutOfService) badge = 'MAINTENANCE';
+        else if (isOccupied) badge = 'IN-HOUSE GUEST';
+        else if (isClean) badge = 'CLEAN & READY';
+
+        return {
+          id: r.roomNumber || idx + 1,
+          roomNumber: r.roomNumber,
+          name: meta.name || `${r.type} Suite #${r.roomNumber}`,
+          category: r.type || 'Deluxe Suite',
+          size: meta.size || '65 m² / 700 sq ft',
+          description: r.features
+            ? `${r.features}. Forbes five-star certified luxury suite with 24/7 dedicated concierge assistance.`
+            : (cat?.description || 'Forbes 5-star certified luxury suite with panoramic terrace.'),
+          guests: r.capacity?.includes('4') ? 4 : r.capacity?.includes('3') ? 3 : r.capacity?.includes('1') ? 1 : 2,
+          price: Number(r.rate) || 200,
+          image: meta.image || cat?.imageUrl || `/images/room${(idx % 8) + 1}.jpg`,
+          badge,
+          occupancyStatus: r.occupancyStatus || (isOccupied ? 'OCCUPIED' : 'VACANT'),
+          housekeepingStatus: r.housekeepingStatus || (isClean ? 'CLEAN' : 'DIRTY'),
+          maintenanceStatus: r.maintenanceStatus || 'AVAILABLE',
+          isOutOfService,
+          isOccupied,
+        };
+      })
+    : [];
+
+  const categories = ['All Suites', ...new Set(rooms.map((r) => r.category).filter(Boolean))];
   const filteredRooms =
     activeFilter === 'All Suites'
       ? rooms
