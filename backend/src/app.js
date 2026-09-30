@@ -14,6 +14,9 @@ import analyticsRoutes from './routes/analyticsRoutes.js';
 import logRoutes from './routes/logRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import serviceRequestRoutes from './routes/serviceRequestRoutes.js';
+import maintenanceRoutes from './routes/maintenanceRoutes.js';
+import inventoryRoutes from './routes/inventoryRoutes.js';
 
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
@@ -55,10 +58,14 @@ app.use('/api/menu', menuRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/housekeeping', hkRoutes);
+app.use('/api/service-requests', serviceRequestRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/inventory', inventoryRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/users', userRoutes);
+
 
 // Fallback & Error Handling
 app.use(notFound);
