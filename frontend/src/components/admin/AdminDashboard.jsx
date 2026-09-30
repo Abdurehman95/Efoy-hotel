@@ -25,6 +25,10 @@ import {
   EyeOff,
   User,
   ShieldAlert,
+  Layers,
+  Package,
+  Sparkles,
+  AlertTriangle,
 } from 'lucide-react';
 import { Chart, registerables } from 'chart.js';
 import { useHotel } from '../../context/HotelContext';
@@ -35,11 +39,13 @@ Chart.register(...registerables);
 const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
   const {
     rooms,
+    roomCategories,
     bookings,
     menuItems,
     orders,
     staffList,
     activityLogs,
+    inventoryItems,
     addMenuItem,
     editMenuItem,
     deleteMenuItem,
@@ -50,6 +56,12 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     updateRoom,
     addRoom,
     deleteRoom,
+    addRoomCategory,
+    editRoomCategory,
+    deleteRoomCategory,
+    createInventoryItem,
+    updateInventoryItem,
+    deleteInventoryItem,
     resetDemoData,
     usersList,
     addUser,
@@ -68,6 +80,12 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     if (deleteConfirmTarget.type === 'room') {
       deleteRoom(deleteConfirmTarget.id);
       showToast(`Room ${deleteConfirmTarget.id} removed from inventory`);
+    } else if (deleteConfirmTarget.type === 'category') {
+      deleteRoomCategory(deleteConfirmTarget.id);
+      showToast(`Category removed from room master`);
+    } else if (deleteConfirmTarget.type === 'inventory') {
+      deleteInventoryItem(deleteConfirmTarget.id);
+      showToast(`Inventory item removed`);
     } else if (deleteConfirmTarget.type === 'dish') {
       deleteMenuItem(deleteConfirmTarget.id);
       showToast(`"${deleteConfirmTarget.name || 'Dish'}" removed from menu`);
@@ -115,6 +133,24 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     price: 25.0,
     prepTime: '15-20 mins',
     description: '',
+  });
+
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    baseRate: 200,
+    capacity: '2 Persons',
+    features: 'King Bed • Balcony',
+    description: '',
+    imageUrl: '/images/room1.jpg',
+  });
+
+  const [inventoryForm, setInventoryForm] = useState({
+    name: '',
+    category: 'Produce',
+    quantity: 10,
+    unit: 'kg',
+    minStock: 5,
+    linkedDishId: '',
   });
 
   const [userRoleFilter, setUserRoleFilter] = useState('All');
@@ -204,6 +240,26 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     );
   });
 
+  const filteredRoomCategories = (roomCategories || []).filter((cat) => {
+    if (!q) return true;
+    return (
+      cat.name?.toLowerCase().includes(q) ||
+      cat.description?.toLowerCase().includes(q) ||
+      cat.capacity?.toLowerCase().includes(q) ||
+      cat.features?.toLowerCase().includes(q)
+    );
+  });
+
+  const filteredInventoryItems = (inventoryItems || []).filter((item) => {
+    if (!q) return true;
+    return (
+      item.name?.toLowerCase().includes(q) ||
+      item.category?.toLowerCase().includes(q) ||
+      item.status?.toLowerCase().includes(q) ||
+      item.unit?.toLowerCase().includes(q)
+    );
+  });
+
   const filteredActivityLogs = activityLogs.filter((log) => {
     if (!q) return true;
     return (
@@ -220,7 +276,9 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     { name: 'Analytics', icon: BarChart3 },
     { name: 'Bookings', icon: Calendar },
     { name: 'Room Management', icon: DoorClosed },
+    { name: 'Room Categories', icon: Layers },
     { name: 'Menu Management', icon: UtensilsCrossed },
+    { name: 'Culinary Inventory', icon: Package },
     { name: 'Staff Management', icon: Users },
     { name: 'User Accounts', icon: ShieldCheck },
     { name: 'Activity Logs', icon: Clock },
@@ -265,19 +323,19 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
             {
               label: 'Room Tariffs ($)',
               data: [32400, 38500, 44200, 48920, 56200, 64000, 58900],
-              borderColor: '#f97316',
-              backgroundColor: 'rgba(249, 115, 22, 0.1)',
+              borderColor: '#cba258',
+              backgroundColor: 'rgba(203, 162, 88, 0.12)',
               tension: 0.35,
               fill: true,
               borderWidth: 2.5,
               pointRadius: 4,
-              pointBackgroundColor: '#ea580c',
+              pointBackgroundColor: '#b8904a',
             },
             {
               label: 'In-Room Dining ($)',
               data: [8200, 9400, 11200, 12800, 15400, 17900, 14800],
-              borderColor: '#0284c7',
-              backgroundColor: 'rgba(2, 132, 199, 0.08)',
+              borderColor: '#0a0a0a',
+              backgroundColor: 'rgba(10, 10, 10, 0.05)',
               tension: 0.35,
               fill: true,
               borderWidth: 2,
@@ -318,7 +376,8 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
             {
               label: 'Occupancy %',
               data: [72, 78, 83.5, 88, 94, 96, 85],
-              backgroundColor: '#0f172a',
+              backgroundColor: '#0a0a0a',
+              hoverBackgroundColor: '#cba258',
               borderRadius: 6,
             },
           ],
@@ -355,7 +414,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
           datasets: [
             {
               data: [singleCount, doubleCount, suiteCount, penthouseCount],
-              backgroundColor: ['#3b82f6', '#f59e0b', '#f97316', '#0f172a'],
+              backgroundColor: ['#cba258', '#b8904a', '#d4af37', '#0a0a0a'],
               borderWidth: 2,
               borderColor: '#ffffff',
             },
@@ -493,16 +552,63 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     }
   };
 
+  // Handle Room Category Form
+  const handleSaveCategory = (e) => {
+    e.preventDefault();
+    const rateNum = parseFloat(categoryForm.baseRate) || 0;
+    if (modalType === 'editCategory' && selectedItemForEdit) {
+      editRoomCategory(selectedItemForEdit.id, {
+        ...selectedItemForEdit,
+        ...categoryForm,
+        baseRate: rateNum,
+      });
+      showToast(`Updated suite category: ${categoryForm.name}`);
+    } else {
+      addRoomCategory({
+        ...categoryForm,
+        baseRate: rateNum,
+      });
+      showToast(`Added suite category: ${categoryForm.name}`);
+    }
+    setModalType(null);
+    setSelectedItemForEdit(null);
+  };
+
+  // Handle Culinary Inventory Form
+  const handleSaveInventory = (e) => {
+    e.preventDefault();
+    const qtyNum = parseFloat(inventoryForm.quantity) || 0;
+    const minNum = parseFloat(inventoryForm.minStock) || 5;
+    if (modalType === 'editInventory' && selectedItemForEdit) {
+      updateInventoryItem(selectedItemForEdit.id, {
+        ...selectedItemForEdit,
+        ...inventoryForm,
+        quantity: qtyNum,
+        minStock: minNum,
+      });
+      showToast(`Updated inventory item: ${inventoryForm.name}`);
+    } else {
+      createInventoryItem({
+        ...inventoryForm,
+        quantity: qtyNum,
+        minStock: minNum,
+      });
+      showToast(`Added ${inventoryForm.name} to culinary inventory`);
+    }
+    setModalType(null);
+    setSelectedItemForEdit(null);
+  };
+
   // Occupancy calc
   const occupiedCount = rooms.filter((r) => r.occupancy === 'Occupied').length;
   const occupancyPercentage = rooms.length > 0 ? Math.round((occupiedCount / rooms.length) * 100) : 0;
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+    <div className="flex h-screen bg-[#fafafa] overflow-hidden font-sans">
       {/* Toast */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-[150] bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow-xl border border-amber-500/40 text-xs flex items-center gap-2 animate-slide-down">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+        <div className="fixed top-5 right-5 z-[150] bg-dark-900 text-white px-4 py-2.5 rounded-lg shadow-xl border border-gold-500/40 text-xs flex items-center gap-2 animate-slide-down">
+          <span className="w-2 h-2 rounded-full bg-gold-400 animate-pulse"></span>
           <span>{toastMessage}</span>
         </div>
       )}
@@ -510,14 +616,14 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
       {/* MOBILE SIDEBAR DRAWER (<lg) */}
       {isMobileSidebarOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex animate-fade-in"
+          className="lg:hidden fixed inset-0 z-50 bg-dark-900/75 backdrop-blur-xs flex animate-fade-in"
           onClick={() => setIsMobileSidebarOpen(false)}
         >
           <div
-            className="w-72 max-w-[85vw] h-full bg-slate-900 shadow-2xl flex flex-col animate-slide-right border-r border-slate-800"
+            className="w-72 max-w-[85vw] h-full bg-dark-900 shadow-2xl flex flex-col animate-slide-right border-r border-dark-800"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+            <div className="p-4 border-b border-dark-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="bg-white rounded-xl px-2.5 py-1.5 shadow-md flex items-center justify-center shrink-0">
                   <img
@@ -530,14 +636,14 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   <h1 className="font-serif text-base font-bold tracking-wider text-white uppercase">
                     Efoy Hotel
                   </h1>
-                  <p className="text-[9px] tracking-[0.25em] text-amber-400 uppercase font-medium">
+                  <p className="text-[9px] tracking-[0.25em] text-gold-500 uppercase font-medium">
                     Admin Portal
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsMobileSidebarOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-dark-800 transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -549,18 +655,18 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   setIsMobileSidebarOpen(false);
                   onBackToSite();
                 }}
-                className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-amber-400 bg-amber-400/10 hover:bg-amber-400/15 rounded-md transition-all border border-amber-400/20 cursor-pointer group"
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-gold-400 bg-gold-500/10 hover:bg-gold-500/15 rounded-md transition-all border border-gold-500/25 cursor-pointer group"
               >
                 <span className="flex items-center gap-2">
                   <Home size={14} />
                   <span>Public Website</span>
                 </span>
-                <span className="text-[10px] text-amber-300/80">Visit →</span>
+                <span className="text-[10px] text-gold-300/80">Visit →</span>
               </button>
             </div>
 
             <div className="px-3 py-4 flex-1 space-y-1 overflow-y-auto">
-              <div className="px-3 pb-2 text-[10px] font-semibold text-slate-400 tracking-[0.15em] uppercase">
+              <div className="px-3 pb-2 text-[10px] font-semibold text-gray-400 tracking-[0.15em] uppercase">
                 Operations & Admin
               </div>
               {navMenuItems.map((item) => {
@@ -575,18 +681,18 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer text-left ${
                       isActive
-                        ? 'bg-[#f97316] text-white font-semibold shadow-sm'
-                        : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                        ? 'bg-gold-500 hover:bg-gold-600 text-white font-semibold shadow-sm'
+                        : 'text-gray-300 hover:text-white hover:bg-dark-800/80'
                     }`}
                   >
-                    <Icon size={16} className={isActive ? 'text-white' : 'text-slate-400'} />
+                    <Icon size={16} className={isActive ? 'text-white' : 'text-gray-400'} />
                     <span>{item.name}</span>
                   </button>
                 );
               })}
             </div>
 
-            <div className="p-4 border-t border-slate-800 flex items-center justify-between text-xs">
+            <div className="p-4 border-t border-dark-800 flex items-center justify-between text-xs">
               <div className="text-white font-semibold text-xs truncate max-w-[140px]">
                 {user?.name || 'Alexander Sterling'}
               </div>
@@ -603,8 +709,8 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
       )}
 
       {/* DESKTOP SIDEBAR (lg:flex) */}
-      <aside className="hidden lg:flex lg:w-64 bg-slate-900 border-r border-slate-800 flex-col shrink-0">
-        <div className="p-5 border-b border-slate-800">
+      <aside className="hidden lg:flex lg:w-64 bg-dark-900 border-r border-dark-800 flex-col shrink-0">
+        <div className="p-5 border-b border-dark-800">
           <div className="flex items-center gap-3">
             <div className="bg-white rounded-xl px-2.5 py-1.5 shadow-md flex items-center justify-center shrink-0">
               <img
@@ -617,7 +723,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
               <h1 className="font-serif text-base font-bold tracking-wider text-white uppercase">
                 Efoy Hotel
               </h1>
-              <p className="text-[9px] tracking-[0.25em] text-amber-400 uppercase font-medium">
+              <p className="text-[9px] tracking-[0.25em] text-gold-500 uppercase font-medium">
                 Admin Portal
               </p>
             </div>
@@ -628,13 +734,13 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
         <div className="px-4 pt-3 pb-1">
           <button
             onClick={onBackToSite}
-            className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-amber-400 bg-amber-400/10 hover:bg-amber-400/15 rounded-md transition-all border border-amber-400/20 cursor-pointer group"
+            className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-gold-400 bg-gold-500/10 hover:bg-gold-500/15 rounded-md transition-all border border-gold-500/25 cursor-pointer group"
           >
             <span className="flex items-center gap-2">
               <Home size={14} />
               <span>Public Website</span>
             </span>
-            <span className="text-[10px] text-amber-300/80 group-hover:translate-x-0.5 transition-transform">
+            <span className="text-[10px] text-gold-300/80 group-hover:translate-x-0.5 transition-transform">
               Visit →
             </span>
           </button>
@@ -642,7 +748,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
 
         {/* Navigation items */}
         <div className="px-3 py-4 flex-1 space-y-1 overflow-y-auto">
-          <div className="px-3 pb-2 text-[10px] font-semibold text-slate-400 tracking-[0.15em] uppercase">
+          <div className="px-3 pb-2 text-[10px] font-semibold text-gray-400 tracking-[0.15em] uppercase">
             Operations & Admin
           </div>
           {navMenuItems.map((item) => {
@@ -654,11 +760,11 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 onClick={() => setActiveTab(item.name)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer text-left ${
                   isActive
-                    ? 'bg-[#f97316] text-white font-semibold shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                    ? 'bg-gold-500 hover:bg-gold-600 text-white font-semibold shadow-sm'
+                    : 'text-gray-300 hover:text-white hover:bg-dark-800/80'
                 }`}
               >
-                <Icon size={16} className={isActive ? 'text-white' : 'text-slate-400'} />
+                <Icon size={16} className={isActive ? 'text-white' : 'text-gray-400'} />
                 <span>{item.name}</span>
               </button>
             );
@@ -666,27 +772,27 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
         </div>
 
         {/* Live Occupancy Widget */}
-        <div className="p-4 mx-3 mb-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+        <div className="p-4 mx-3 mb-4 rounded-xl bg-dark-800/80 border border-dark-800">
           <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-300">
+            <span className="font-semibold uppercase tracking-wider text-[10px] text-gray-300">
               Live Occupancy
             </span>
-            <span className="text-amber-400 font-bold text-xs">{occupancyPercentage}%</span>
+            <span className="text-gold-400 font-bold text-xs">{occupancyPercentage}%</span>
           </div>
           <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden mb-2">
             <div
-              className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full"
+              className="h-full bg-gradient-to-r from-gold-500 to-amber-500 rounded-full"
               style={{ width: `${occupancyPercentage}%` }}
             ></div>
           </div>
-          <div className="flex items-center justify-between text-[11px] text-slate-400">
+          <div className="flex items-center justify-between text-[11px] text-gray-400">
             <span>{occupiedCount}/{rooms.length} Filled</span>
             <span className="text-emerald-400 font-medium">{rooms.length - occupiedCount} Free</span>
           </div>
         </div>
 
         {/* Footer info */}
-        <div className="px-5 py-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+        <div className="px-5 py-3 border-t border-dark-800 flex items-center justify-between text-[11px] text-gray-400">
           <button
             onClick={() => showToast('Help Center Documentation v2.4.0')}
             className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer"
@@ -694,38 +800,38 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
             <HelpCircle size={13} />
             <span>Help Center</span>
           </button>
-          <span className="font-mono text-[10px] text-slate-400">v2.4.0</span>
+          <span className="font-mono text-[10px] text-gray-500">v2.4.0</span>
         </div>
       </aside>
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* TOP NAVIGATION BAR */}
-        <header className="sticky top-0 z-30 bg-white border-b border-slate-200/80 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
+        <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200/80 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-md">
             {/* Hamburger Toggle */}
             <button
               onClick={() => setIsMobileSidebarOpen(true)}
-              className="lg:hidden p-2 -ml-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0"
+              className="lg:hidden p-2 -ml-1 text-gray-600 hover:text-dark-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer shrink-0"
               aria-label="Open navigation drawer"
             >
               <Menu size={20} />
             </button>
 
             <div className="relative w-full">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search portal (guests, rooms, menu, staff)..."
-                className="w-full pl-8 sm:pl-9 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:bg-white transition-colors"
+                className="w-full pl-8 sm:pl-9 pr-8 py-1.5 bg-[#fafafa] border border-gray-200 rounded-lg text-xs text-dark-900 placeholder-gray-400 focus:outline-none focus:border-gold-500 focus:bg-white focus:ring-2 focus:ring-gold-500/15 transition-colors"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 cursor-pointer"
                   title="Clear search"
                 >
                   <X size={13} />
@@ -735,26 +841,26 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-              <Clock size={14} className="text-slate-400" />
+            <div className="hidden md:flex items-center gap-1.5 text-xs text-gray-500 font-medium">
+              <Clock size={14} className="text-gold-600" />
               <span>Wednesday, Oct 24 • 10:45AM</span>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3 pl-2 border-l border-slate-200">
-              <div className="w-8 h-8 rounded-full bg-slate-900 text-amber-400 font-serif font-semibold text-xs flex items-center justify-center border border-amber-400/30 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 pl-2 border-l border-gray-200">
+              <div className="w-8 h-8 rounded-full bg-dark-900 text-gold-500 font-serif font-semibold text-xs flex items-center justify-center border border-gold-500/30 shrink-0">
                 AS
               </div>
               <div className="hidden sm:block text-left leading-tight">
-                <div className="text-xs font-semibold text-slate-900 truncate max-w-[120px]">
+                <div className="text-xs font-semibold text-dark-900 truncate max-w-[120px]">
                   {user?.name || 'Alexander Sterling'}
                 </div>
-                <div className="text-[10px] text-slate-500">General Manager</div>
+                <div className="text-[10px] text-gray-500">General Manager</div>
               </div>
 
               <button
                 onClick={onLogout}
                 title="Log Out"
-                className="p-1.5 sm:p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                className="p-1.5 sm:p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
               >
                 <LogOut size={16} />
               </button>
@@ -768,7 +874,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                  <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-gold-600 bg-amber-50 border border-gold-200/60 px-2 py-0.5 rounded">
                     Property Operations
                   </span>
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
@@ -776,10 +882,10 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     System Optimal
                   </span>
                 </div>
-                <h1 className="font-serif text-2xl sm:text-3xl font-bold text-slate-900">
+                <h1 className="font-serif text-2xl sm:text-3xl font-bold text-dark-900">
                   Property Overview & Operations
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">
                   Real-time hotel performance, key inventory occupancy, and departmental status.
                 </p>
               </div>
@@ -797,7 +903,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     });
                     setModalType('addStaff');
                   }}
-                  className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  className="bg-dark-900 hover:bg-dark-800 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                 >
                   <Plus size={14} />
                   <span>+ Staff</span>
@@ -814,14 +920,14 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     });
                     setModalType('addRoom');
                   }}
-                  className="bg-[#c2410c] hover:bg-[#9a3412] text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  className="bg-gold-500 hover:bg-gold-600 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                 >
                   <Plus size={14} />
                   <span>+ Room</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('Analytics')}
-                  className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                 >
                   <BarChart3 size={14} />
                   <span>View Chart.js Analytics</span>
@@ -829,74 +935,97 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
               </div>
             </div>
 
-            {/* Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs">
+            {/* Stat Cards - Connected Operations Overview */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-xs hover:shadow-md transition-all">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    Total Revenue (Today)
+                  <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                    Total Revenue
                   </span>
                   <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                     +14.2%
                   </span>
                 </div>
-                <div className="font-serif text-3xl font-bold text-slate-900 mb-1">
+                <div className="font-serif text-3xl font-bold text-dark-900 mb-1">
                   $48,920
                 </div>
-                <div className="text-[11px] text-slate-500">
-                  Accommodation: $38,500 • Culinary: {orders.length} orders ({orders.filter((o) => o.status === 'Pending' || o.status === 'Cooking').length} active)
+                <div className="text-[11px] text-gray-500">
+                  Tariffs: $38.5k • Culinary: {orders.length} orders ({orders.filter((o) => (o.status || '').toLowerCase() === 'pending' || (o.status || '').toLowerCase() === 'cooking').length} active)
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs">
+              <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-xs hover:shadow-md transition-all">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                     Live Occupancy
                   </span>
                   <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                     Optimal
                   </span>
                 </div>
-                <div className="font-serif text-3xl font-bold text-slate-900 mb-1">
+                <div className="font-serif text-3xl font-bold text-dark-900 mb-1">
                   {occupancyPercentage}%
                 </div>
-                <div className="text-[11px] text-slate-500">
-                  {occupiedCount} of {rooms.length} Suites Occupied
+                <div className="text-[11px] text-gray-500">
+                  {occupiedCount} Occupied • {rooms.length - occupiedCount} Vacant Suites
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs">
+              <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-xs hover:shadow-md transition-all">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    Active Staff On Duty
+                  <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                    Room States (3-Way)
                   </span>
-                  <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                    All Stations
+                  <button onClick={() => setActiveTab('Room Management')} className="text-[10px] text-gold-600 hover:underline font-semibold">
+                    Manage →
+                  </button>
+                </div>
+                <div className="font-serif text-2xl font-bold text-dark-900 mb-1 flex items-baseline gap-2">
+                  <span className="text-emerald-600">{rooms.filter(r => (r.housekeepingStatus || r.cleanliness?.toUpperCase()) === 'CLEAN').length} Clean</span>
+                  <span className="text-xs text-gray-400 font-sans">•</span>
+                  <span className="text-rose-600">{rooms.filter(r => (r.housekeepingStatus || r.cleanliness?.toUpperCase()) === 'DIRTY').length} Dirty</span>
+                </div>
+                <div className="text-[11px] text-gray-500">
+                  {rooms.filter(r => (r.maintenanceStatus || '').toUpperCase() === 'OUT_OF_SERVICE').length} Out of Service / Maintenance
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-xs hover:shadow-md transition-all">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                    Culinary Inventory
                   </span>
+                  <button onClick={() => setActiveTab('Culinary Inventory')} className="text-[10px] text-gold-600 hover:underline font-semibold">
+                    Catalog →
+                  </button>
                 </div>
-                <div className="font-serif text-3xl font-bold text-slate-900 mb-1">
-                  {staffList.filter((s) => s.status === 'Active Duty').length}
+                <div className="font-serif text-2xl font-bold text-dark-900 mb-1">
+                  {(inventoryItems || []).length} Items
                 </div>
-                <div className="text-[11px] text-slate-500">
-                  Front Desk, Culinary Kitchen & Housekeeping
+                <div className="text-[11px] text-gray-500">
+                  {(inventoryItems || []).filter(i => i.quantity <= i.minStock).length > 0 ? (
+                    <span className="text-rose-600 font-semibold">⚠️ {(inventoryItems || []).filter(i => i.quantity <= i.minStock).length} Low Stock Alert</span>
+                  ) : (
+                    <span className="text-emerald-600 font-medium">✓ All ingredients optimal</span>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Quick Chart.js preview in Dashboard */}
-            <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-2xs">
+            <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-xs">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="font-serif text-lg font-bold text-slate-900">
+                  <h2 className="font-serif text-lg font-bold text-dark-900">
                     Revenue & Financial Trajectory (Chart.js)
                   </h2>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-gray-500">
                     Weekly performance comparing room charges vs in-room dining volume
                   </p>
                 </div>
                 <button
                   onClick={() => setActiveTab('Analytics')}
-                  className="text-xs font-semibold text-[#c2410c] hover:underline"
+                  className="text-xs font-semibold text-gold-600 hover:text-gold-700 hover:underline cursor-pointer"
                 >
                   Full Analytics →
                 </button>
@@ -913,24 +1042,24 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
           <div className="p-4 sm:px-6 lg:px-8 py-6 space-y-6">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-gold-600 bg-amber-50 border border-gold-200/60 px-2 py-0.5 rounded">
                   Executive Intelligence
                 </span>
-                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-bold text-gold-700 bg-amber-50 border border-gold-200/60 px-2 py-0.5 rounded-full">
                   Chart.js Powered
                 </span>
               </div>
-              <h1 className="font-serif text-2xl sm:text-3xl font-bold text-slate-900">
+              <h1 className="font-serif text-2xl sm:text-3xl font-bold text-dark-900">
                 Analytics & Performance Trends
               </h1>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 Revenue streams, daily occupancy rates, and room type revenue popularity trends.
               </p>
             </div>
 
             {/* Top Chart: Revenue Stream */}
-            <div className="bg-white rounded-xl border border-slate-200/80 p-6 shadow-2xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2 mb-4">
+            <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-2 mb-4">
                 <div>
                   <h2 className="font-serif text-lg font-bold text-slate-900">
                     Revenue Performance Curve
@@ -1002,8 +1131,8 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     onClick={() => setBookingStatusFilter(status)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                       bookingStatusFilter === status
-                        ? 'bg-slate-900 text-white font-semibold shadow-xs'
-                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                        ? 'bg-dark-900 text-white font-medium shadow-sm'
+                        : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 font-light'
                     }`}
                   >
                     {status}
@@ -1012,9 +1141,9 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-200/80 shadow-2xs overflow-hidden">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px]">
+                <thead className="bg-[#fbfbfb] border-b border-gray-200 text-gray-500 uppercase text-[10px] tracking-wider font-semibold">
                   <tr>
                     <th className="py-3 px-4">Booking ID</th>
                     <th className="py-3 px-4">Guest</th>
@@ -1024,15 +1153,15 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     <th className="py-3 px-4">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-gray-100">
                   {filteredBookings.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
+                      <td colSpan={6} className="py-8 text-center text-gray-500 text-xs">
                         No reservations found matching your criteria.
                         {searchQuery && (
                           <button
                             onClick={() => setSearchQuery('')}
-                            className="ml-2 text-amber-600 underline font-medium cursor-pointer"
+                            className="ml-2 text-gold-600 underline font-medium cursor-pointer"
                           >
                             Clear search
                           </button>
@@ -1041,20 +1170,20 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     </tr>
                   ) : (
                     filteredBookings.map((b) => (
-                      <tr key={b.id} className="hover:bg-slate-50/60">
-                        <td className="py-3 px-4 font-mono font-bold text-slate-900">{b.id}</td>
+                      <tr key={b.id} className="hover:bg-amber-50/20">
+                        <td className="py-3 px-4 font-mono font-bold text-dark-900">{b.id}</td>
                         <td className="py-3 px-4">
-                          <div className="font-semibold text-slate-900">{b.guestName}</div>
-                          <div className="text-[11px] text-slate-500">{b.email}</div>
+                          <div className="font-semibold text-dark-900">{b.guestName}</div>
+                          <div className="text-[11px] text-gray-500">{b.email}</div>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="font-bold text-slate-900">Room {b.roomNumber}</div>
-                          <div className="text-[11px] text-slate-500">{b.roomType}</div>
+                          <div className="font-bold text-dark-900">Room {b.roomNumber}</div>
+                          <div className="text-[11px] text-gray-500">{b.roomType}</div>
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 text-gray-700">
                           {b.checkIn} → {b.checkOut} ({b.nights}n)
                         </td>
-                        <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                        <td className="py-3 px-4 font-mono font-bold text-dark-900">
                           ${b.roomRate}/nt
                         </td>
                         <td className="py-3 px-4">
@@ -1066,7 +1195,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                                 ? 'bg-amber-50 text-amber-700 border-amber-200'
                                 : b.status === 'Departing Today'
                                 ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                                : 'bg-gray-100 text-gray-600 border-gray-200'
                             }`}
                           >
                             {b.status}
@@ -1086,10 +1215,10 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
           <div className="p-4 sm:px-6 lg:px-8 py-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="font-serif text-2xl font-bold text-slate-900">
+                <h1 className="font-serif text-2xl font-bold text-dark-900">
                   Room Inventory & Pricing Configuration
                 </h1>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   Manage nightly tariffs, capacities, and room types (Single/Double/Suite).
                 </p>
               </div>
@@ -1105,35 +1234,36 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   });
                   setModalType('addRoom');
                 }}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               >
                 <Plus size={14} />
                 <span>Add Room Unit</span>
               </button>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-200/80 shadow-2xs overflow-hidden">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px]">
+                <thead className="bg-[#fbfbfb] border-b border-gray-200 text-gray-500 uppercase text-[10px] tracking-wider font-semibold">
                   <tr>
                     <th className="py-3 px-4">Room #</th>
-                    <th className="py-3 px-4">Type (Single / Double / Suite)</th>
+                    <th className="py-3 px-4">Category & Floor</th>
                     <th className="py-3 px-4">Capacity</th>
                     <th className="py-3 px-4">Nightly Rate</th>
-                    <th className="py-3 px-4">Cleanliness</th>
-                    <th className="py-3 px-4">Occupancy</th>
+                    <th className="py-3 px-4">Occupancy Status</th>
+                    <th className="py-3 px-4">Housekeeping Status</th>
+                    <th className="py-3 px-4">Maintenance Status</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-gray-100">
                   {filteredRooms.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-500 text-xs">
+                      <td colSpan={8} className="py-8 text-center text-gray-500 text-xs">
                         No rooms match your search query.
                         {searchQuery && (
                           <button
                             onClick={() => setSearchQuery('')}
-                            className="ml-2 text-amber-600 underline font-medium cursor-pointer"
+                            className="ml-2 text-gold-600 underline font-medium cursor-pointer"
                           >
                             Clear search
                           </button>
@@ -1142,27 +1272,53 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     </tr>
                   ) : (
                     filteredRooms.map((r) => (
-                      <tr key={r.roomNumber} className="hover:bg-slate-50/60">
-                        <td className="py-3 px-4 font-serif font-bold text-slate-900">
+                      <tr key={r.roomNumber} className="hover:bg-amber-50/20">
+                        <td className="py-3 px-4 font-serif font-bold text-dark-900">
                           Room {r.roomNumber}
                         </td>
-                        <td className="py-3 px-4 font-semibold text-slate-800">{r.type}</td>
-                        <td className="py-3 px-4 text-slate-600">{r.capacity}</td>
-                        <td className="py-3 px-4 font-mono font-bold text-amber-700">
+                        <td className="py-3 px-4">
+                          <div className="font-semibold text-gray-800">{r.type}</div>
+                          <div className="text-[10px] text-gray-400">{r.floor}</div>
+                        </td>
+                        <td className="py-3 px-4 text-gray-600">{r.capacity}</td>
+                        <td className="py-3 px-4 font-mono font-bold text-gold-600">
                           ${r.rate} / night
                         </td>
                         <td className="py-3 px-4">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              r.cleanliness === 'Clean' || r.cleanliness === 'Inspected'
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : 'bg-red-50 text-red-700'
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              (r.occupancyStatus || r.occupancy?.toUpperCase()) === 'OCCUPIED'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-emerald-100 text-emerald-800'
                             }`}
                           >
-                            {r.cleanliness}
+                            {r.occupancyStatus || r.occupancy?.toUpperCase() || 'VACANT'}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-slate-700">{r.occupancy}</td>
+                        <td className="py-3 px-4">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              (r.housekeepingStatus || r.cleanliness?.toUpperCase()) === 'CLEAN' || (r.housekeepingStatus || r.cleanliness?.toUpperCase()) === 'INSPECTED'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : (r.housekeepingStatus || r.cleanliness?.toUpperCase()) === 'DIRTY'
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : 'bg-blue-50 text-blue-700 border-blue-200'
+                            }`}
+                          >
+                            {r.housekeepingStatus || r.cleanliness?.toUpperCase() || 'CLEAN'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              (r.maintenanceStatus || 'AVAILABLE').toUpperCase() === 'AVAILABLE'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-red-800 text-white'
+                            }`}
+                          >
+                            {r.maintenanceStatus || 'AVAILABLE'}
+                          </span>
+                        </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button
@@ -1178,7 +1334,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                                 });
                                 setModalType('editRoom');
                               }}
-                              className="p-1.5 hover:bg-slate-100 text-slate-600 hover:text-slate-900 rounded cursor-pointer"
+                              className="p-1.5 hover:bg-gray-100 text-gray-600 hover:text-dark-900 rounded cursor-pointer transition-colors"
                               title="Edit Pricing & Capacity"
                             >
                               <Edit2 size={13} />
@@ -1193,7 +1349,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                                   message: `Are you sure you want to delete Room ${r.roomNumber} (${r.type})? This will permanently remove the suite from active inventory.`,
                                 });
                               }}
-                              className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded cursor-pointer transition-colors"
+                              className="p-1.5 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded cursor-pointer transition-colors"
                               title="Delete Room"
                             >
                               <Trash2 size={13} />
@@ -1209,15 +1365,147 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
           </div>
         )}
 
+        {/* TAB: ROOM CATEGORIES */}
+        {activeTab === 'Room Categories' && (
+          <div className="p-4 sm:px-6 lg:px-8 py-6 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 className="font-serif text-2xl font-bold text-dark-900">
+                  Room Categories & Suite Tiers
+                </h1>
+                <p className="text-xs text-gray-500 mt-1">
+                  Configure luxury tier classifications, standard base tariffs, guest capacity, and signature amenities.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setCategoryForm({
+                    name: '',
+                    baseRate: 250,
+                    capacity: '2 Persons',
+                    features: 'King Bed • Marble Bath • City View',
+                    description: '',
+                    imageUrl: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&q=80',
+                  });
+                  setModalType('addCategory');
+                }}
+                className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+              >
+                <Plus size={14} />
+                <span>+ Add Room Category</span>
+              </button>
+            </div>
+
+            {filteredRoomCategories.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-500 text-xs shadow-xs">
+                No room categories match your search criteria.
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="ml-2 text-gold-600 underline font-medium cursor-pointer"
+                  >
+                    Clear search
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredRoomCategories.map((cat) => {
+                  const assignedRoomsCount = rooms.filter(
+                    (r) => r.type?.toLowerCase() === cat.name?.toLowerCase()
+                  ).length;
+                  return (
+                    <div
+                      key={cat.id}
+                      className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                    >
+                      <div className="relative h-40 bg-dark-900 overflow-hidden">
+                        <img
+                          src={cat.imageUrl || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&q=80'}
+                          alt={cat.name}
+                          className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute top-3 right-3 bg-dark-900/80 backdrop-blur-xs text-gold-400 font-serif font-bold text-xs px-2.5 py-1 rounded-full border border-gold-500/30">
+                          ${cat.baseRate} / night
+                        </div>
+                        <div className="absolute bottom-2 left-3 bg-dark-900/75 backdrop-blur-xs text-white text-[10px] px-2 py-0.5 rounded font-medium">
+                          {assignedRoomsCount} {assignedRoomsCount === 1 ? 'Suite Assigned' : 'Suites Assigned'}
+                        </div>
+                      </div>
+
+                      <div className="p-5 flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <h3 className="font-serif font-bold text-base text-dark-900">{cat.name}</h3>
+                            <span className="text-[10px] bg-gold-50 text-gold-800 border border-gold-200/60 px-2 py-0.5 rounded font-medium shrink-0">
+                              {cat.capacity || '2 Persons'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 line-clamp-2 mb-3">
+                            {cat.description || 'Forbes five-star certified luxury suite accommodations.'}
+                          </p>
+                          <div className="text-[11px] text-gray-700 bg-gray-50 p-2.5 rounded-lg border border-gray-100 mb-4">
+                            <span className="font-semibold text-dark-900">Amenities: </span>
+                            {cat.features || 'Standard Forbes 5-Star Amenities'}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                          <span className="text-[10px] text-gray-400 font-mono">ID: #{cat.id}</span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => {
+                                setSelectedItemForEdit(cat);
+                                setCategoryForm({
+                                  name: cat.name || '',
+                                  baseRate: cat.baseRate || 250,
+                                  capacity: cat.capacity || '2 Persons',
+                                  features: cat.features || '',
+                                  description: cat.description || '',
+                                  imageUrl: cat.imageUrl || '',
+                                });
+                                setModalType('editCategory');
+                              }}
+                              className="p-1.5 hover:bg-gray-100 text-gray-600 hover:text-dark-900 rounded cursor-pointer transition-colors"
+                              title="Edit Category"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setDeleteConfirmTarget({
+                                  type: 'category',
+                                  id: cat.id,
+                                  name: cat.name,
+                                  title: 'Delete Room Category',
+                                  message: `Are you sure you want to delete the "${cat.name}" category? Existing rooms will retain their configuration.`,
+                                });
+                              }}
+                              className="p-1.5 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded cursor-pointer transition-colors"
+                              title="Delete Category"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* TAB 5: MENU MANAGEMENT */}
         {activeTab === 'Menu Management' && (
           <div className="p-4 sm:px-6 lg:px-8 py-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="font-serif text-2xl font-bold text-slate-900">
+                <h1 className="font-serif text-2xl font-bold text-dark-900">
                   Culinary Room Service Catalog
                 </h1>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   Add, modify, or remove in-room dining dishes, pricing, and stock status.
                 </p>
               </div>
@@ -1232,7 +1520,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   });
                   setModalType('addFood');
                 }}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               >
                 <Plus size={14} />
                 <span>+ Add Culinary Item</span>
@@ -1240,12 +1528,12 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
             </div>
 
             {filteredMenuItems.length === 0 ? (
-              <div className="bg-white rounded-xl border border-slate-200/80 p-8 text-center text-slate-500 text-xs col-span-full">
+              <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-gray-500 text-xs col-span-full shadow-xs">
                 No culinary dishes match your search query.
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="ml-2 text-amber-600 underline font-medium cursor-pointer"
+                    className="ml-2 text-gold-600 underline font-medium cursor-pointer"
                   >
                     Clear search
                   </button>
@@ -1256,36 +1544,36 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 {filteredMenuItems.map((dish) => (
                   <div
                     key={dish.id}
-                    className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-2xs flex flex-col justify-between"
+                    className="bg-white rounded-xl border border-gray-100 p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-bold uppercase text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                        <span className="text-[10px] font-bold uppercase text-gold-700 bg-amber-50 px-2 py-0.5 rounded border border-gold-200/60">
                           {dish.category}
                         </span>
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                             dish.inStock
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-red-50 text-red-700 border-red-200'
+                              : 'bg-rose-50 text-rose-700 border-rose-200'
                           }`}
                         >
                           {dish.inStock ? 'Available' : 'Out of Stock'}
                         </span>
                       </div>
 
-                      <h3 className="font-bold text-base text-slate-900 mb-1">{dish.name}</h3>
-                      <p className="text-xs text-slate-500 mb-3 leading-relaxed">{dish.description}</p>
+                      <h3 className="font-serif font-bold text-base text-dark-900 mb-1">{dish.name}</h3>
+                      <p className="text-xs text-gray-500 mb-3 leading-relaxed">{dish.description}</p>
                       <div className="flex justify-between text-xs font-mono font-bold mb-4">
-                        <span className="text-slate-500 font-normal">⏱ {dish.prepTime || '15 mins'}</span>
-                        <span className="text-amber-700 text-sm">${Number(dish.price || 0).toFixed(2)}</span>
+                        <span className="text-gray-500 font-normal">⏱ {dish.prepTime || '15 mins'}</span>
+                        <span className="text-gold-700 text-sm">${Number(dish.price || 0).toFixed(2)}</span>
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
                       <button
                         onClick={() => toggleDishStock(dish.id)}
-                        className="text-xs font-semibold text-slate-600 hover:text-slate-900 underline cursor-pointer"
+                        className="text-xs font-semibold text-gray-600 hover:text-dark-900 underline cursor-pointer"
                       >
                         {dish.inStock ? 'Mark Out of Stock' : 'Mark Available'}
                       </button>
@@ -1303,7 +1591,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                             });
                             setModalType('editFood');
                           }}
-                          className="p-1.5 hover:bg-slate-100 text-slate-600 rounded cursor-pointer"
+                          className="p-1.5 hover:bg-gray-100 text-gray-600 rounded cursor-pointer transition-colors"
                         >
                           <Edit2 size={13} />
                         </button>
@@ -1317,7 +1605,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                               message: `Are you sure you want to delete "${dish.name}" from the in-room dining catalog?`,
                             });
                           }}
-                          className="p-1.5 hover:bg-red-50 text-red-600 rounded cursor-pointer transition-colors"
+                          className="p-1.5 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded cursor-pointer transition-colors"
                           title="Delete Dish"
                         >
                           <Trash2 size={13} />
@@ -1331,15 +1619,216 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
           </div>
         )}
 
+        {/* TAB: CULINARY INVENTORY */}
+        {activeTab === 'Culinary Inventory' && (
+          <div className="p-4 sm:px-6 lg:px-8 py-6 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 className="font-serif text-2xl font-bold text-dark-900">
+                  Culinary Pantry & Stock Inventory
+                </h1>
+                <p className="text-xs text-gray-500 mt-1">
+                  Track kitchen stock levels, threshold alerts, and synchronize 86 out-of-stock items across dining.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setInventoryForm({
+                    name: '',
+                    category: 'Produce',
+                    quantity: 10,
+                    unit: 'kg',
+                    minStock: 5,
+                    linkedDishId: '',
+                  });
+                  setModalType('addInventory');
+                }}
+                className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+              >
+                <Plus size={14} />
+                <span>+ Add Stock Item</span>
+              </button>
+            </div>
+
+            {/* Inventory KPI Badges */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-2xs">
+                <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">Total Stock SKUs</div>
+                <div className="text-xl font-bold text-dark-900 mt-1">{inventoryItems.length}</div>
+              </div>
+              <div className="bg-white p-4 rounded-xl border border-emerald-100 shadow-2xs">
+                <div className="text-[11px] uppercase tracking-wider text-emerald-600 font-semibold">In Stock & Optimal</div>
+                <div className="text-xl font-bold text-emerald-700 mt-1">
+                  {inventoryItems.filter((i) => i.status === 'IN_STOCK' || (i.quantity > (i.minStock || 5))).length}
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-xl border border-amber-100 shadow-2xs">
+                <div className="text-[11px] uppercase tracking-wider text-amber-600 font-semibold">Low Stock Warnings</div>
+                <div className="text-xl font-bold text-amber-600 mt-1">
+                  {inventoryItems.filter((i) => i.status === 'LOW_STOCK' || (i.quantity > 0 && i.quantity <= (i.minStock || 5))).length}
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-xl border border-rose-100 shadow-2xs">
+                <div className="text-[11px] uppercase tracking-wider text-rose-600 font-semibold">Depleted (86 Trigger)</div>
+                <div className="text-xl font-bold text-rose-600 mt-1">
+                  {inventoryItems.filter((i) => i.status === 'OUT_OF_STOCK' || i.quantity <= 0).length}
+                </div>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="bg-white rounded-xl border border-gray-200/80 shadow-2xs overflow-hidden">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#fbfbfb] border-b border-gray-200 text-gray-500 uppercase text-[10px] tracking-wider font-semibold">
+                  <tr>
+                    <th className="py-3 px-4">Item / Ingredient</th>
+                    <th className="py-3 px-4">Category</th>
+                    <th className="py-3 px-4">Current Stock</th>
+                    <th className="py-3 px-4">Min. Threshold</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Linked Dish</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredInventoryItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-gray-400 text-xs">
+                        No inventory items found matching your filter criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredInventoryItems.map((item) => {
+                      const isLow = item.quantity <= (item.minStock || 5) && item.quantity > 0;
+                      const isOut = item.quantity <= 0;
+                      const linkedDish = menuItems.find((d) => d.id === item.linkedDishId);
+
+                      return (
+                        <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-dark-900">{item.name}</div>
+                            <div className="text-[10px] text-gray-400 font-mono">SKU: #{item.id}</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                              {item.category || 'General'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <span className={`font-semibold ${isOut ? 'text-rose-600' : isLow ? 'text-amber-600' : 'text-dark-900'}`}>
+                                {item.quantity} {item.unit || 'units'}
+                              </span>
+                              <div className="flex items-center gap-0.5">
+                                <button
+                                  onClick={() =>
+                                    updateInventoryItem(item.id, {
+                                      quantity: Math.max(0, Number(item.quantity) - 1),
+                                    })
+                                  }
+                                  className="w-5 h-5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs cursor-pointer"
+                                  title="Decrease by 1"
+                                >
+                                  -
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    updateInventoryItem(item.id, {
+                                      quantity: Number(item.quantity) + 5,
+                                    })
+                                  }
+                                  className="w-5 h-5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs cursor-pointer"
+                                  title="Restock +5"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-gray-600">
+                            {item.minStock || 5} {item.unit || 'units'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1 ${
+                                isOut
+                                  ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                                  : isLow
+                                  ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                                  : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                              }`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  isOut ? 'bg-rose-500' : isLow ? 'bg-amber-500' : 'bg-emerald-500'
+                                }`}
+                              />
+                              {isOut ? '86 / DEPLETED' : isLow ? 'LOW STOCK' : 'IN STOCK'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-gray-500">
+                            {linkedDish ? (
+                              <span className="text-[11px] text-dark-900 font-medium">{linkedDish.name}</span>
+                            ) : (
+                              <span className="text-[11px] text-gray-400 italic">None</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => {
+                                  setSelectedItemForEdit(item);
+                                  setInventoryForm({
+                                    name: item.name || '',
+                                    category: item.category || 'Produce',
+                                    quantity: item.quantity || 0,
+                                    unit: item.unit || 'kg',
+                                    minStock: item.minStock || 5,
+                                    linkedDishId: item.linkedDishId || '',
+                                  });
+                                  setModalType('editInventory');
+                                }}
+                                className="p-1.5 hover:bg-gray-100 text-gray-600 hover:text-dark-900 rounded cursor-pointer transition-colors"
+                                title="Edit Stock Item"
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setDeleteConfirmTarget({
+                                    type: 'inventory',
+                                    id: item.id,
+                                    name: item.name,
+                                    title: 'Delete Inventory Item',
+                                    message: `Are you sure you want to remove "${item.name}" from culinary inventory?`,
+                                  });
+                                }}
+                                className="p-1.5 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded cursor-pointer transition-colors"
+                                title="Delete Item"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* TAB 6: STAFF MANAGEMENT (RECEPTIONISTS, CHEFS, CLEANERS) */}
         {activeTab === 'Staff Management' && (
           <div className="p-4 sm:px-6 lg:px-8 py-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="font-serif text-2xl font-bold text-slate-900">
+                <h1 className="font-serif text-2xl font-bold text-dark-900">
                   Staff Personnel Directory
                 </h1>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   Add, edit, or remove Receptionists, Chefs, Cleaners, and Management staff.
                 </p>
               </div>
@@ -1355,16 +1844,16 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   });
                   setModalType('addStaff');
                 }}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               >
                 <Plus size={14} />
                 <span>+ Add Staff Member</span>
               </button>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-200/80 shadow-2xs overflow-hidden">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px]">
+                <thead className="bg-[#fbfbfb] border-b border-gray-200 text-gray-500 uppercase text-[10px] tracking-wider font-semibold">
                   <tr>
                     <th className="py-3 px-4">Staff Name & Contact</th>
                     <th className="py-3 px-4">Department</th>
@@ -1374,15 +1863,15 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-gray-100">
                   {filteredStaff.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
+                      <td colSpan={6} className="py-8 text-center text-gray-500 text-xs">
                         No staff members match your search query.
                         {searchQuery && (
                           <button
                             onClick={() => setSearchQuery('')}
-                            className="ml-2 text-amber-600 underline font-medium cursor-pointer"
+                            className="ml-2 text-gold-600 underline font-medium cursor-pointer"
                           >
                             Clear search
                           </button>
@@ -1391,24 +1880,24 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     </tr>
                   ) : (
                     filteredStaff.map((staff) => (
-                      <tr key={staff.id} className="hover:bg-slate-50/60">
+                      <tr key={staff.id} className="hover:bg-amber-50/20">
                         <td className="py-3 px-4">
-                          <div className="font-bold text-slate-900">{staff.name}</div>
-                          <div className="text-[11px] text-slate-500">{staff.email}</div>
+                          <div className="font-bold text-dark-900">{staff.name}</div>
+                          <div className="text-[11px] text-gray-500">{staff.email}</div>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700">
+                          <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-gold-700 border border-gold-200/60">
                             {staff.department}
                           </span>
                         </td>
-                        <td className="py-3 px-4 font-medium text-slate-800">{staff.role}</td>
-                        <td className="py-3 px-4 text-slate-600">{staff.shift}</td>
+                        <td className="py-3 px-4 font-medium text-gray-800">{staff.role}</td>
+                        <td className="py-3 px-4 text-gray-600">{staff.shift}</td>
                         <td className="py-3 px-4">
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               staff.status === 'Active Duty'
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-slate-100 text-slate-600'
+                                : 'bg-gray-100 text-gray-600 border border-gray-200'
                             }`}
                           >
                             {staff.status}
@@ -1429,7 +1918,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                                 });
                                 setModalType('editStaff');
                               }}
-                              className="p-1.5 hover:bg-slate-100 text-slate-600 rounded cursor-pointer"
+                              className="p-1.5 hover:bg-gray-100 text-gray-600 rounded cursor-pointer transition-colors"
                               title="Edit Staff"
                             >
                               <Edit2 size={13} />
@@ -1444,7 +1933,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                                   message: `Are you sure you want to remove ${staff.name} (${staff.role}) from the staff directory?`,
                                 });
                               }}
-                              className="p-1.5 hover:bg-red-50 text-red-600 rounded cursor-pointer transition-colors"
+                              className="p-1.5 hover:bg-rose-50 text-rose-600 rounded cursor-pointer transition-colors"
                               title="Delete Staff"
                             >
                               <Trash2 size={13} />
@@ -1466,17 +1955,17 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                  <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-gold-600 bg-gold-50 px-2 py-0.5 rounded border border-gold-200">
                     PostgreSQL Authentication
                   </span>
-                  <span className="text-[10px] font-mono text-slate-500">
+                  <span className="text-[10px] font-mono text-gray-400">
                     Table: users ({usersList?.length || 0} accounts)
                   </span>
                 </div>
-                <h1 className="font-serif text-2xl font-bold text-slate-900">
+                <h1 className="font-serif text-2xl font-bold text-dark-900">
                   User Accounts & Authentication Management
                 </h1>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-gray-500 mt-1 font-light">
                   Manage registered guest accounts, staff credentials, and administrative roles directly in the relational database.
                 </p>
               </div>
@@ -1492,7 +1981,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   setShowUserPassword(false);
                   setModalType('addUser');
                 }}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               >
                 <Plus size={14} />
                 <span>+ Create New User</span>
@@ -1501,44 +1990,44 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
 
             {/* Metrics Overview Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-xs hover:shadow-md transition-all">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
                   Total Accounts
                 </span>
-                <div className="text-2xl font-serif font-bold text-slate-900">
+                <div className="text-2xl font-serif font-bold text-dark-900">
                   {usersList?.length || 0}
                 </div>
-                <div className="text-[11px] text-slate-500 mt-1">Database credentials</div>
+                <div className="text-[11px] text-gray-500 mt-1 font-light">Database credentials</div>
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-xs hover:shadow-md transition-all">
                 <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block mb-1">
                   Guest Accounts
                 </span>
-                <div className="text-2xl font-serif font-bold text-slate-900">
+                <div className="text-2xl font-serif font-bold text-dark-900">
                   {usersList?.filter((u) => u.role === 'guest').length || 0}
                 </div>
                 <div className="text-[11px] text-emerald-600 mt-1 font-medium">Privilege Members</div>
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-xs hover:shadow-md transition-all">
                 <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block mb-1">
                   Operational Staff
                 </span>
-                <div className="text-2xl font-serif font-bold text-slate-900">
+                <div className="text-2xl font-serif font-bold text-dark-900">
                   {usersList?.filter((u) => ['receptionist', 'kitchen', 'housekeeping'].includes(u.role)).length || 0}
                 </div>
-                <div className="text-[11px] text-slate-500 mt-1">Front desk & services</div>
+                <div className="text-[11px] text-gray-500 mt-1 font-light">Front desk & services</div>
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block mb-1">
+              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-xs hover:shadow-md transition-all">
+                <span className="text-[10px] font-bold text-gold-600 uppercase tracking-wider block mb-1">
                   Administrators
                 </span>
-                <div className="text-2xl font-serif font-bold text-slate-900">
+                <div className="text-2xl font-serif font-bold text-dark-900">
                   {usersList?.filter((u) => u.role === 'admin').length || 0}
                 </div>
-                <div className="text-[11px] text-amber-600 mt-1 font-medium">Full management access</div>
+                <div className="text-[11px] text-gold-600 mt-1 font-medium">Full management access</div>
               </div>
             </div>
 
@@ -1557,14 +2046,14 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   onClick={() => setUserRoleFilter(pill.value)}
                   className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                     userRoleFilter === pill.value
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300'
+                      ? 'bg-dark-900 text-white font-medium shadow-sm'
+                      : 'bg-white border border-gray-200 text-gray-600 hover:text-dark-900 hover:border-gray-300 font-light'
                   }`}
                 >
                   <span>{pill.label}</span>
                   <span
                     className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                      userRoleFilter === pill.value ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                      userRoleFilter === pill.value ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
                     }`}
                   >
                     {pill.count}
@@ -1574,10 +2063,10 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
             </div>
 
             {/* Users Relational Table */}
-            <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-100 shadow-xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-wider">
+                  <thead className="bg-[#fbfbfb] border-b border-gray-200 text-gray-500 uppercase text-[10px] tracking-wider font-semibold">
                     <tr>
                       <th className="py-3 px-4">User & Email</th>
                       <th className="py-3 px-4">Assigned Role</th>
@@ -1587,15 +2076,15 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-gray-100">
                     {filteredUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
+                        <td colSpan={6} className="py-8 text-center text-gray-500 text-xs">
                           No user accounts match your filter criteria.
                           {searchQuery && (
                             <button
                               onClick={() => setSearchQuery('')}
-                              className="ml-2 text-amber-600 underline font-medium cursor-pointer"
+                              className="ml-2 text-gold-600 underline font-medium cursor-pointer"
                             >
                               Clear search
                             </button>
@@ -1606,7 +2095,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                       filteredUsers.map((u) => {
                         const isSelf = user?.email?.toLowerCase() === u.email?.toLowerCase();
                         const roleColors = {
-                          admin: 'bg-amber-50 text-amber-800 border-amber-200',
+                          admin: 'bg-gold-50 text-gold-700 border-gold-200',
                           receptionist: 'bg-blue-50 text-blue-800 border-blue-200',
                           kitchen: 'bg-orange-50 text-orange-800 border-orange-200',
                           housekeeping: 'bg-purple-50 text-purple-800 border-purple-200',
@@ -1621,41 +2110,41 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                         };
 
                         return (
-                          <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
+                          <tr key={u.id} className="hover:bg-amber-50/20 transition-colors">
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-semibold text-xs flex items-center justify-center shrink-0 uppercase">
+                                <div className="w-8 h-8 rounded-full bg-dark-900 text-gold-500 border border-gold-500/20 font-semibold text-xs flex items-center justify-center shrink-0 uppercase">
                                   {u.name ? u.name.slice(0, 2) : 'US'}
                                 </div>
                                 <div>
-                                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                  <div className="font-bold text-dark-900 flex items-center gap-1.5">
                                     <span>{u.name}</span>
                                     {isSelf && (
-                                      <span className="text-[10px] bg-amber-100 text-amber-800 font-semibold px-1.5 py-0.2 rounded">
+                                      <span className="text-[10px] bg-gold-50 text-gold-700 border border-gold-200 font-semibold px-1.5 py-0.2 rounded">
                                         You (Current)
                                       </span>
                                     )}
                                   </div>
-                                  <div className="text-[11px] text-slate-500 font-mono">{u.email}</div>
+                                  <div className="text-[11px] text-gray-400 font-mono">{u.email}</div>
                                 </div>
                               </div>
                             </td>
                             <td className="py-3 px-4">
                               <span
                                 className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-                                  roleColors[u.role] || 'bg-slate-100 text-slate-700 border-slate-200'
+                                  roleColors[u.role] || 'bg-gray-100 text-gray-700 border-gray-200'
                                 }`}
                               >
                                 {roleBadges[u.role] || u.role}
                               </span>
                             </td>
-                            <td className="py-3 px-4 text-slate-600 font-mono text-[11px]">
+                            <td className="py-3 px-4 text-gray-600 font-mono text-[11px]">
                               {u.phone || '—'}
                             </td>
-                            <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">
+                            <td className="py-3 px-4 text-gray-400 font-mono text-[11px]">
                               #{u.id}
                             </td>
-                            <td className="py-3 px-4 text-slate-500 text-[11px]">
+                            <td className="py-3 px-4 text-gray-500 text-[11px] font-light">
                               {u.createdAt ? new Date(u.createdAt).toLocaleDateString(undefined, {
                                 year: 'numeric',
                                 month: 'short',
@@ -1677,7 +2166,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                                     setShowUserPassword(false);
                                     setModalType('editUser');
                                   }}
-                                  className="p-1.5 hover:bg-slate-100 text-slate-600 rounded cursor-pointer transition-colors"
+                                  className="p-1.5 hover:bg-gray-100 text-gray-600 rounded cursor-pointer transition-colors"
                                   title="Edit User Role & Details"
                                 >
                                   <Edit2 size={13} />
@@ -1696,7 +2185,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                                   }}
                                   className={`p-1.5 rounded transition-colors ${
                                     isSelf
-                                      ? 'text-slate-300 cursor-not-allowed'
+                                      ? 'text-gray-300 cursor-not-allowed'
                                       : 'hover:bg-red-50 text-red-600 cursor-pointer'
                                   }`}
                                   title={isSelf ? 'Cannot delete current account' : 'Delete User Account'}
@@ -1720,22 +2209,22 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
         {activeTab === 'Activity Logs' && (
           <div className="p-4 sm:px-6 lg:px-8 py-6 space-y-6">
             <div>
-              <h1 className="font-serif text-2xl font-bold text-slate-900">
+              <h1 className="font-serif text-2xl font-bold text-dark-900">
                 Live Activity Logs & Audit Trail
               </h1>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-gray-500 mt-1 font-light">
                 Real-time synchronized events across Front Desk bookings, Housekeeping turnovers, and Kitchen orders.
               </p>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden divide-y divide-slate-100">
+            <div className="bg-white rounded-xl border border-gray-100 shadow-xs overflow-hidden divide-y divide-gray-100">
               {filteredActivityLogs.length === 0 ? (
-                <div className="p-8 text-center text-slate-500 text-xs">
+                <div className="p-8 text-center text-gray-500 text-xs">
                   No activity logs match your search query.
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="ml-2 text-amber-600 underline font-medium cursor-pointer"
+                      className="ml-2 text-gold-600 underline font-medium cursor-pointer"
                     >
                       Clear search
                     </button>
@@ -1743,17 +2232,17 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 </div>
               ) : (
                 filteredActivityLogs.map((log) => (
-                  <div key={log.id} className="p-4 flex items-start justify-between gap-4 hover:bg-slate-50/70">
+                  <div key={log.id} className="p-4 flex items-start justify-between gap-4 hover:bg-amber-50/20 transition-colors">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-xs text-slate-900">{log.title}</span>
-                        <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                        <span className="font-bold text-xs text-dark-900">{log.title}</span>
+                        <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-dark-900/5 text-dark-900">
                           {log.tag}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-600 leading-relaxed">{log.description}</p>
+                      <p className="text-xs text-gray-600 leading-relaxed font-light">{log.description}</p>
                     </div>
-                    <span className="text-[11px] font-mono text-slate-400 whitespace-nowrap">{log.time}</span>
+                    <span className="text-[11px] font-mono text-gray-400 whitespace-nowrap">{log.time}</span>
                   </div>
                 ))
               )}
@@ -1765,43 +2254,43 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
         {activeTab === 'Settings' && (
           <div className="p-4 sm:px-6 lg:px-8 py-6 max-w-3xl space-y-6">
             <div>
-              <h1 className="font-serif text-2xl font-bold text-slate-900">
+              <h1 className="font-serif text-2xl font-bold text-dark-900">
                 Hotel System & Property Settings
               </h1>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-gray-500 mt-1 font-light">
                 Configure taxation rates, default currency, and operational protocols.
               </p>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200/80 p-6 shadow-2xs space-y-4">
+            <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-xs space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                   Property Name
                 </label>
                 <input
                   type="text"
                   defaultValue="Efoy Hotel & Suites"
-                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg bg-slate-50"
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg bg-[#fafafa] text-dark-900 font-medium"
                   readOnly
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                     State Hospitality Surcharge & Tax (%)
                   </label>
                   <input
                     type="number"
                     defaultValue={12}
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg"
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                     Default Currency
                   </label>
-                  <select className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg bg-white">
+                  <select className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg bg-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 focus:outline-none">
                     <option>USD ($)</option>
                     <option>EUR (€)</option>
                     <option>GBP (£)</option>
@@ -1809,7 +2298,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => {
@@ -1825,7 +2314,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 <button
                   type="button"
                   onClick={() => showToast('Hotel settings updated successfully!')}
-                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-5 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-xs font-medium transition-colors cursor-pointer shadow-xs"
                 >
                   Save Configuration
                 </button>
@@ -1839,25 +2328,26 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
       {/* STAFF MODAL */}
       {(modalType === 'addStaff' || modalType === 'editStaff') && (
         <div
-          className="fixed inset-0 z-[140] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-[140] bg-dark-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setModalType(null)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full p-6"
+            className="bg-white rounded-xl shadow-2xl border border-gray-100 max-w-md w-full p-6 relative overflow-hidden animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="font-serif font-bold text-lg text-slate-900">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-600 via-gold-400 to-amber-500" />
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 pt-1">
+              <h3 className="font-serif font-bold text-lg text-dark-900">
                 {modalType === 'addStaff' ? 'Add Staff Member' : 'Edit Staff Details'}
               </h3>
-              <button onClick={() => setModalType(null)} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer">
+              <button onClick={() => setModalType(null)} className="text-gray-400 hover:text-dark-900 p-1 cursor-pointer transition-colors">
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleSaveStaff} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                   Full Name *
                 </label>
                 <input
@@ -1866,12 +2356,12 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   value={staffForm.name}
                   onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })}
                   placeholder="e.g. Maria Santos"
-                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800"
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                   Email Address *
                 </label>
                 <input
@@ -1880,19 +2370,19 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   value={staffForm.email}
                   onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
                   placeholder="name@efoyhotel.com"
-                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800"
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                     Department
                   </label>
                   <select
                     value={staffForm.department}
                     onChange={(e) => setStaffForm({ ...staffForm, department: e.target.value })}
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 bg-white"
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 bg-white"
                   >
                     <option>Front Desk</option>
                     <option>Kitchen / F&B</option>
@@ -1902,7 +2392,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                     Role Title
                   </label>
                   <input
@@ -1911,14 +2401,14 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     value={staffForm.role}
                     onChange={(e) => setStaffForm({ ...staffForm, role: e.target.value })}
                     placeholder="e.g. Receptionist, Chef, Cleaner"
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800"
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                     Assigned Shift
                   </label>
                   <input
@@ -1926,17 +2416,17 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     value={staffForm.shift}
                     onChange={(e) => setStaffForm({ ...staffForm, shift: e.target.value })}
                     placeholder="e.g. Morning (07:00 - 15:30)"
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800"
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                     Duty Status
                   </label>
                   <select
                     value={staffForm.status}
                     onChange={(e) => setStaffForm({ ...staffForm, status: e.target.value })}
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 bg-white"
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 bg-white"
                   >
                     <option value="Active Duty">Active Duty</option>
                     <option value="Off Duty">Off Duty</option>
@@ -1945,17 +2435,17 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setModalType(null)}
-                  className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                  className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors font-light"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm cursor-pointer"
+                  className="px-5 py-2 text-xs font-medium text-white bg-gold-500 hover:bg-gold-600 rounded-lg shadow-xs cursor-pointer transition-colors"
                 >
                   Save Staff
                 </button>
@@ -1968,18 +2458,19 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
       {/* ROOM MODAL */}
       {(modalType === 'addRoom' || modalType === 'editRoom') && (
         <div
-          className="fixed inset-0 z-[140] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-[140] bg-dark-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setModalType(null)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full p-6"
+            className="bg-white rounded-xl shadow-2xl border border-gray-100 max-w-md w-full p-6 relative overflow-hidden animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="font-serif font-bold text-lg text-slate-900">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-600 via-gold-400 to-amber-500" />
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 pt-1">
+              <h3 className="font-serif font-bold text-lg text-dark-900">
                 {modalType === 'addRoom' ? 'Add Room to Inventory' : 'Edit Room Parameters'}
               </h3>
-              <button onClick={() => setModalType(null)} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer">
+              <button onClick={() => setModalType(null)} className="text-gray-400 hover:text-dark-900 p-1 cursor-pointer transition-colors">
                 ✕
               </button>
             </div>
@@ -1987,7 +2478,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
             <form onSubmit={handleSaveRoom} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                     Room Number *
                   </label>
                   <input
@@ -1996,16 +2487,16 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     disabled={modalType === 'editRoom'}
                     value={roomForm.roomNumber}
                     onChange={(e) => setRoomForm({ ...roomForm, roomNumber: e.target.value })}
-                    className={`w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none ${
-                      modalType === 'editRoom' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'focus:border-slate-800'
+                    className={`w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none ${
+                      modalType === 'editRoom' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20'
                     }`}
                   />
                   {modalType === 'editRoom' && (
-                    <span className="text-[10px] text-slate-400">Fixed room identifier</span>
+                    <span className="text-[10px] text-gray-400">Fixed room identifier</span>
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                     Nightly Rate ($) *
                   </label>
                   <input
@@ -2013,20 +2504,20 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     required
                     value={roomForm.rate}
                     onChange={(e) => setRoomForm({ ...roomForm, rate: parseFloat(e.target.value) || 0 })}
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800"
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                     Room Type
                   </label>
                   <select
                     value={roomForm.type}
                     onChange={(e) => setRoomForm({ ...roomForm, type: e.target.value })}
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 bg-white"
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 bg-white"
                   >
                     <option value="Single Classic">Single Classic</option>
                     <option value="Single Deluxe">Single Deluxe</option>
@@ -2037,7 +2528,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                     Floor Location
                   </label>
                   <input
@@ -2045,13 +2536,13 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     value={roomForm.floor}
                     onChange={(e) => setRoomForm({ ...roomForm, floor: e.target.value })}
                     placeholder="e.g. Floor 2 (East Wing)"
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800"
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                   Capacity
                 </label>
                 <input
@@ -2059,12 +2550,12 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   value={roomForm.capacity}
                   onChange={(e) => setRoomForm({ ...roomForm, capacity: e.target.value })}
                   placeholder="e.g. 2 Adults, 1 Child"
-                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800"
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                   Features & Amenities
                 </label>
                 <input
@@ -2072,21 +2563,21 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   value={roomForm.features}
                   onChange={(e) => setRoomForm({ ...roomForm, features: e.target.value })}
                   placeholder="e.g. King Bed • Balcony • Marble Bath"
-                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800"
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setModalType(null)}
-                  className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                  className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors font-light"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm cursor-pointer"
+                  className="px-5 py-2 text-xs font-medium text-white bg-gold-500 hover:bg-gold-600 rounded-lg shadow-xs cursor-pointer transition-colors"
                 >
                   Save Room
                 </button>
@@ -2099,25 +2590,26 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
       {/* FOOD MODAL */}
       {(modalType === 'addFood' || modalType === 'editFood') && (
         <div
-          className="fixed inset-0 z-[140] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-[140] bg-dark-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setModalType(null)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full p-6"
+            className="bg-white rounded-xl shadow-2xl border border-gray-100 max-w-md w-full p-6 relative overflow-hidden animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="font-serif font-bold text-lg text-slate-900">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-600 via-gold-400 to-amber-500" />
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 pt-1">
+              <h3 className="font-serif font-bold text-lg text-dark-900">
                 {modalType === 'addFood' ? 'Add Culinary Item' : 'Edit Culinary Item'}
               </h3>
-              <button onClick={() => setModalType(null)} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer">
+              <button onClick={() => setModalType(null)} className="text-gray-400 hover:text-dark-900 p-1 cursor-pointer transition-colors">
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleSaveFood} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                   Dish / Item Name *
                 </label>
                 <input
@@ -2125,13 +2617,13 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   required
                   value={foodForm.name}
                   onChange={(e) => setFoodForm({ ...foodForm, name: e.target.value })}
-                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800"
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                     Price ($) *
                   </label>
                   <input
@@ -2140,17 +2632,17 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     required
                     value={foodForm.price}
                     onChange={(e) => setFoodForm({ ...foodForm, price: parseFloat(e.target.value) || 0 })}
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800"
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                     Category
                   </label>
                   <select
                     value={foodForm.category}
                     onChange={(e) => setFoodForm({ ...foodForm, category: e.target.value })}
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800 bg-white"
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 bg-white"
                   >
                     <option>Breakfast</option>
                     <option>All-Day Dining</option>
@@ -2162,7 +2654,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                   Preparation Time
                 </label>
                 <input
@@ -2170,33 +2662,33 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   value={foodForm.prepTime}
                   onChange={(e) => setFoodForm({ ...foodForm, prepTime: e.target.value })}
                   placeholder="e.g. 15-20 mins"
-                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800"
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                   Description
                 </label>
                 <textarea
                   rows={2}
                   value={foodForm.description}
                   onChange={(e) => setFoodForm({ ...foodForm, description: e.target.value })}
-                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-800"
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setModalType(null)}
-                  className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                  className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors font-light"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm cursor-pointer"
+                  className="px-5 py-2 text-xs font-medium text-white bg-gold-500 hover:bg-gold-600 rounded-lg shadow-xs cursor-pointer transition-colors"
                 >
                   Save Item
                 </button>
@@ -2209,26 +2701,27 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
       {/* USER ACCOUNT MODAL (Add / Edit User in Postgres users table) */}
       {(modalType === 'addUser' || modalType === 'editUser') && (
         <div
-          className="fixed inset-0 z-[140] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-[140] bg-dark-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
           onClick={() => {
             setModalType(null);
             setSelectedItemForEdit(null);
           }}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full p-6 animate-scale-up"
+            className="bg-white rounded-xl shadow-2xl border border-gray-100 max-w-md w-full p-6 relative overflow-hidden animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-600 via-gold-400 to-amber-500" />
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 pt-1">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-gold-50 text-gold-700 border border-gold-200 flex items-center justify-center">
                   <UserCheck size={16} />
                 </div>
                 <div>
-                  <h3 className="font-serif font-bold text-base text-slate-900">
+                  <h3 className="font-serif font-bold text-base text-dark-900">
                     {modalType === 'addUser' ? 'Create User Account' : 'Edit User Account'}
                   </h3>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-gray-500 font-light">
                     Direct synchronization with database users table
                   </p>
                 </div>
@@ -2238,7 +2731,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   setModalType(null);
                   setSelectedItemForEdit(null);
                 }}
-                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                className="text-gray-400 hover:text-dark-900 p-1 cursor-pointer transition-colors"
               >
                 ✕
               </button>
@@ -2246,7 +2739,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
 
             <form onSubmit={handleSaveUser} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                   Full Name *
                 </label>
                 <input
@@ -2255,12 +2748,12 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   placeholder="e.g. Eleanor Vance"
                   value={userForm.name}
                   onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
-                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-500"
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                   Email Address *
                 </label>
                 <input
@@ -2269,19 +2762,19 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   placeholder="name@efoyhotel.com"
                   value={userForm.email}
                   onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
-                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-500"
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                     System Role *
                   </label>
                   <select
                     value={userForm.role}
                     onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600 bg-white"
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 bg-white"
                   >
                     <option value="guest">Guest / Member</option>
                     <option value="receptionist">Receptionist</option>
@@ -2292,7 +2785,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                     Phone Contact
                   </label>
                   <input
@@ -2300,13 +2793,13 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     placeholder="+1 (555) 234-5678"
                     value={userForm.phone}
                     onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })}
-                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600"
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                   {modalType === 'addUser' ? 'Password *' : 'New Password (Optional)'}
                 </label>
                 <div className="relative">
@@ -2316,39 +2809,319 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     placeholder={modalType === 'addUser' ? 'Min 6 characters' : 'Leave blank to preserve current password'}
                     value={userForm.password}
                     onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                    className="w-full text-xs pl-3 pr-10 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-600"
+                    className="w-full text-xs pl-3 pr-10 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
                   />
                   <button
                     type="button"
                     onClick={() => setShowUserPassword(!showUserPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-dark-900 transition-colors cursor-pointer"
                   >
                     {showUserPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
                 {modalType === 'editUser' && (
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-[10px] text-gray-400 mt-1 font-light">
                     Only fill if you wish to reset or change the user's password.
                   </p>
                 )}
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => {
                     setModalType(null);
                     setSelectedItemForEdit(null);
                   }}
-                  className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                  className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors font-light"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm cursor-pointer transition-colors"
+                  className="px-5 py-2 text-xs font-medium text-white bg-gold-500 hover:bg-gold-600 rounded-lg shadow-xs cursor-pointer transition-colors"
                 >
                   {modalType === 'addUser' ? 'Create Account' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ROOM CATEGORY MODAL */}
+      {(modalType === 'addCategory' || modalType === 'editCategory') && (
+        <div
+          className="fixed inset-0 z-[140] bg-dark-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setModalType(null)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl border border-gray-100 max-w-md w-full p-6 relative overflow-hidden animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-600 via-gold-400 to-amber-500" />
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 pt-1">
+              <h3 className="font-serif font-bold text-lg text-dark-900">
+                {modalType === 'addCategory' ? 'Add Room Category' : 'Edit Suite Classification'}
+              </h3>
+              <button
+                onClick={() => setModalType(null)}
+                className="text-gray-400 hover:text-dark-900 p-1 cursor-pointer transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCategory} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                  Category Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Presidential Penthouse"
+                  value={categoryForm.name}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                    Base Rate ($ / night) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    required
+                    value={categoryForm.baseRate}
+                    onChange={(e) => setCategoryForm({ ...categoryForm, baseRate: e.target.value })}
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                    Guest Capacity
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 2 Persons"
+                    value={categoryForm.capacity}
+                    onChange={(e) => setCategoryForm({ ...categoryForm, capacity: e.target.value })}
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                  Amenities & Features
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. King Bed • Balcony • Panoramic Skyline View"
+                  value={categoryForm.features}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, features: e.target.value })}
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                  Description
+                </label>
+                <textarea
+                  rows="2"
+                  placeholder="Tier overview, luxury finishes, and VIP privileges..."
+                  value={categoryForm.description}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                  Preview Image URL
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={categoryForm.imageUrl}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, imageUrl: e.target.value })}
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalType(null);
+                    setSelectedItemForEdit(null);
+                  }}
+                  className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors font-light"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-medium text-white bg-gold-500 hover:bg-gold-600 rounded-lg shadow-xs cursor-pointer transition-colors"
+                >
+                  {modalType === 'addCategory' ? 'Create Tier' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CULINARY INVENTORY MODAL */}
+      {(modalType === 'addInventory' || modalType === 'editInventory') && (
+        <div
+          className="fixed inset-0 z-[140] bg-dark-900/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setModalType(null)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl border border-gray-100 max-w-md w-full p-6 relative overflow-hidden animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-600 via-gold-400 to-amber-500" />
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 pt-1">
+              <h3 className="font-serif font-bold text-lg text-dark-900">
+                {modalType === 'addInventory' ? 'Add Inventory Item' : 'Modify Stock SKU'}
+              </h3>
+              <button
+                onClick={() => setModalType(null)}
+                className="text-gray-400 hover:text-dark-900 p-1 cursor-pointer transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveInventory} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                  Item / Ingredient Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Prime Wagyu Beef Ribeye"
+                  value={inventoryForm.name}
+                  onChange={(e) => setInventoryForm({ ...inventoryForm, name: e.target.value })}
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                    Category
+                  </label>
+                  <select
+                    value={inventoryForm.category}
+                    onChange={(e) => setInventoryForm({ ...inventoryForm, category: e.target.value })}
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 bg-white"
+                  >
+                    <option>Produce</option>
+                    <option>Meat & Poultry</option>
+                    <option>Seafood</option>
+                    <option>Dairy & Cheese</option>
+                    <option>Bakery & Dry Goods</option>
+                    <option>Beverages & Wine</option>
+                    <option>Spices & Condiments</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                    Measurement Unit
+                  </label>
+                  <select
+                    value={inventoryForm.unit}
+                    onChange={(e) => setInventoryForm({ ...inventoryForm, unit: e.target.value })}
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 bg-white"
+                  >
+                    <option value="kg">kg (Kilograms)</option>
+                    <option value="g">g (Grams)</option>
+                    <option value="L">L (Liters)</option>
+                    <option value="bottles">bottles</option>
+                    <option value="boxes">boxes</option>
+                    <option value="units">units / pcs</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                    Current Quantity *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    required
+                    value={inventoryForm.quantity}
+                    onChange={(e) => setInventoryForm({ ...inventoryForm, quantity: e.target.value })}
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                    Min Stock Threshold *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    required
+                    value={inventoryForm.minStock}
+                    onChange={(e) => setInventoryForm({ ...inventoryForm, minStock: e.target.value })}
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                  Linked Menu Dish (Auto-86 Trigger)
+                </label>
+                <select
+                  value={inventoryForm.linkedDishId}
+                  onChange={(e) => setInventoryForm({ ...inventoryForm, linkedDishId: e.target.value })}
+                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 bg-white"
+                >
+                  <option value="">-- No Linked Menu Item --</option>
+                  {menuItems.map((dish) => (
+                    <option key={dish.id} value={dish.id}>
+                      {dish.name} (${dish.price})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-gray-400 mt-1 font-light">
+                  If this item's stock reaches 0, the kitchen will receive an automatic 86 prompt.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalType(null);
+                    setSelectedItemForEdit(null);
+                  }}
+                  className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors font-light"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-medium text-white bg-gold-500 hover:bg-gold-600 rounded-lg shadow-xs cursor-pointer transition-colors"
+                >
+                  {modalType === 'addInventory' ? 'Add to Inventory' : 'Update Stock'}
                 </button>
               </div>
             </form>

@@ -26,30 +26,30 @@ const PrintableInvoice = ({ folio, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[120] bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in print:p-0 print:bg-white print:static print:inset-auto cursor-pointer"
+      className="fixed inset-0 z-[120] bg-dark-900/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in print:p-0 print:bg-white print:static print:inset-auto cursor-pointer"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-3xl w-full overflow-hidden print:border-none print:shadow-none print:max-w-none cursor-default"
+        className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-3xl w-full overflow-hidden print:border-none print:shadow-none print:max-w-none cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Controls Header - Hidden during print */}
-        <div className="px-4 sm:px-6 py-3 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-2 print:hidden border-b border-slate-800">
+        <div className="px-4 sm:px-6 py-3 bg-dark-900 text-white flex flex-wrap items-center justify-between gap-2 print:hidden border-b border-dark-800">
           <div className="flex items-center gap-2">
-            <span className="text-amber-400 font-serif text-sm font-semibold">Efoy Hotel & Suites</span>
-            <span className="text-slate-400 text-xs hidden sm:inline">• Guest Folio & Tax Invoice</span>
+            <span className="text-gold-500 font-serif text-sm font-semibold">Efoy Hotel & Suites</span>
+            <span className="text-gray-400 text-xs hidden sm:inline">• Guest Folio & Tax Invoice</span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-sm"
             >
               <Printer size={14} />
               <span>Print Invoice</span>
             </button>
             <button
               onClick={onClose}
-              className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-xs font-medium transition-colors cursor-pointer border border-slate-700"
+              className="flex items-center gap-1 px-3 py-1.5 bg-dark-800 hover:bg-gray-800 text-gray-200 hover:text-white rounded-lg text-xs font-medium transition-colors cursor-pointer border border-dark-800"
             >
               <X size={15} />
               <span>Close</span>
@@ -184,6 +184,30 @@ const PrintableInvoice = ({ folio, onClose }) => {
                       </tr>
                     ))
                   )}
+
+                  {/* Concierge & Service charges */}
+                  {folio.serviceCharges && folio.serviceCharges.length > 0 && (
+                    folio.serviceCharges.map((svc) => (
+                      <tr key={svc.id} className="hover:bg-slate-50/50">
+                        <td className="py-3 px-2">
+                          <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                            <span>Concierge Service: {svc.serviceType || svc.title || 'Hotel Service'}</span>
+                            <span className="text-[9px] bg-blue-50 text-blue-800 border border-blue-200 px-1 rounded">
+                              {svc.status || 'COMPLETED'}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            {svc.notes || 'Exclusive luxury guest amenity / specialized concierge service'}
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-center font-medium text-slate-700">1</td>
+                        <td className="py-3 px-2 text-right font-mono text-slate-500">-</td>
+                        <td className="py-3 px-2 text-right font-mono font-semibold text-slate-900">
+                          ${(svc.amount || svc.price || 0).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -200,9 +224,15 @@ const PrintableInvoice = ({ folio, onClose }) => {
                 <span>In-Room Dining (Food & Beverage):</span>
                 <span className="font-mono">${folio.foodTotal?.toFixed(2)}</span>
               </div>
+              {folio.serviceTotal > 0 && (
+                <div className="flex justify-between text-slate-600">
+                  <span>Concierge & Guest Services:</span>
+                  <span className="font-mono">${folio.serviceTotal?.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-slate-600">
                 <span>Subtotal:</span>
-                <span className="font-mono">${(folio.roomTotal + folio.foodTotal).toFixed(2)}</span>
+                <span className="font-mono">${((folio.roomTotal || 0) + (folio.foodTotal || 0) + (folio.serviceTotal || 0)).toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>State Tax & Hospitality Surcharge (12%):</span>
@@ -241,19 +271,19 @@ const PrintableInvoice = ({ folio, onClose }) => {
         </div>
 
         {/* Modal Bottom Controls - Hidden during print */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between print:hidden">
-          <span className="text-xs text-slate-500 font-mono">Invoice #{invoiceNumber}</span>
+        <div className="p-4 bg-stone-50 border-t border-gray-200 flex items-center justify-between print:hidden">
+          <span className="text-xs text-gray-500 font-mono">Invoice #{invoiceNumber}</span>
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-sm"
+              className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-sm transition-colors"
             >
               <Printer size={14} />
               <span>Print Tax Invoice</span>
             </button>
             <button
               onClick={onClose}
-              className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold cursor-pointer shadow-sm"
+              className="px-5 py-2 bg-dark-900 hover:bg-dark-800 text-white rounded-lg text-xs font-semibold cursor-pointer shadow-sm transition-colors"
             >
               Close & Return to Dashboard
             </button>
