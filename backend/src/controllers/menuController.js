@@ -1,4 +1,5 @@
 import { query } from '../config/db.js';
+import { emitPmsEvent } from '../socket.js';
 
 export const getMenu = async (req, res, next) => {
   try {
@@ -182,6 +183,9 @@ export const toggleStock = async (req, res, next) => {
         `${itemRes.rows[0].name} marked as ${newStock ? 'In Stock' : '86ed / Out of Stock'}.`,
       ]
     );
+
+    // Broadcast real-time stock change to Guest Portal and Kitchen
+    emitPmsEvent('PMS_MENU_STOCK_CHANGED', result.rows[0]);
 
     return res.status(200).json({
       success: true,
