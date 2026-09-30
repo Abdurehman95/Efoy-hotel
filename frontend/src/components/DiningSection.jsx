@@ -9,6 +9,7 @@ import {
   ShoppingBag,
   Utensils
 } from 'lucide-react';
+import { useHotel } from '../context/HotelContext';
 
 // Menu dishes mapped to food1 - food6
 const DISHES_DATA = [
@@ -150,6 +151,7 @@ const CATEGORIES = [
 ];
 
 const DiningSection = () => {
+  const { menuItems: dbMenu } = useHotel();
   const [activeCategory, setActiveCategory] = useState('All Breakfast Items');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(0);
@@ -157,9 +159,35 @@ const DiningSection = () => {
 
   const itemsPerPage = 6;
 
+  // Map live PostgreSQL database menu items
+  const dishes = useMemo(() => {
+    if (dbMenu && dbMenu.length > 0) {
+      return dbMenu.map((dish, idx) => ({
+        id: dish.id,
+        title: dish.name,
+        price: `$${(parseFloat(dish.price) || 0).toFixed(2)}`,
+        priceNum: parseFloat(dish.price) || 0,
+        description: dish.description || 'Gourmet artisanal preparation using organic Forbes 5-star culinary ingredients.',
+        tags: [dish.category?.toUpperCase() || 'CHEF SPECIAL', dish.prepTime || 'FRESHLY PREPARED'],
+        category: dish.category || 'Hot Savory Classics',
+        badge: !dish.inStock ? '86 / OUT OF STOCK' : "CHEF'S CHOICE",
+        badgeType: !dish.inStock ? 'rose' : 'dark',
+        image: dish.image || dish.imageUrl || `/images/food${(idx % 8) + 1}.png`,
+        featured: idx === 3,
+        inStock: dish.inStock !== false,
+      }));
+    }
+    return DISHES_DATA;
+  }, [dbMenu]);
+
+  // Dynamic categories derived from live menu
+  const categories = useMemo(() => {
+    return ['All Breakfast Items', ...new Set(dishes.map((d) => d.category).filter(Boolean))];
+  }, [dishes]);
+
   // Filtered dishes
   const filteredDishes = useMemo(() => {
-    return DISHES_DATA.filter((dish) => {
+    return dishes.filter((dish) => {
       const matchesCategory =
         activeCategory === 'All Breakfast Items' || dish.category === activeCategory;
       const matchesSearch =
@@ -168,7 +196,7 @@ const DiningSection = () => {
         dish.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchesCategory && matchesSearch;
     });
-  }, [activeCategory, searchQuery]);
+  }, [dishes, activeCategory, searchQuery]);
 
   // Pagination slice
   const maxPages = Math.ceil(filteredDishes.length / itemsPerPage);
@@ -185,8 +213,13 @@ const DiningSection = () => {
     setCurrentPage((prev) => (prev + 1 < maxPages ? prev + 1 : 0));
   };
 
-  const handleAddToCart = (dishTitle) => {
-    setToastMessage(`🍽️ Added "${dishTitle}" to your breakfast tray`);
+  const handleAddToCart = (dish) => {
+    if (!dish.inStock) {
+      setToastMessage(`⚠️ "${dish.title}" is currently 86 / Out of Stock in Kitchen.`);
+      setTimeout(() => setToastMessage(''), 3000);
+      return;
+    }
+    setToastMessage(`🍽️ Added "${dish.title}" to your dining order`);
     setTimeout(() => setToastMessage(''), 3000);
   };
 
@@ -254,7 +287,7 @@ const DiningSection = () => {
 
         {/* ===================== CATEGORY FILTER PILLS ===================== */}
         <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-8 sm:mb-12 no-scrollbar scroll-smooth">
-          {CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const isActive = activeCategory === cat;
             return (
               <button
