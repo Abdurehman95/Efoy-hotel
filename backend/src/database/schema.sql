@@ -13,6 +13,19 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 1.5 ROOM CATEGORIES
+CREATE TABLE IF NOT EXISTS room_categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    base_rate NUMERIC(10, 2) NOT NULL CHECK (base_rate >= 0),
+    capacity VARCHAR(50) NOT NULL,
+    description TEXT,
+    features TEXT,
+    image_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 2. ROOM INVENTORY
 CREATE TABLE IF NOT EXISTS rooms (
     room_number VARCHAR(20) PRIMARY KEY,
@@ -21,13 +34,23 @@ CREATE TABLE IF NOT EXISTS rooms (
     capacity VARCHAR(50) NOT NULL,
     rate NUMERIC(10, 2) NOT NULL CHECK (rate >= 0),
     features TEXT,
-    cleanliness VARCHAR(50) NOT NULL DEFAULT 'Clean' CHECK (cleanliness IN ('Clean', 'Dirty', 'Cleaning', 'Inspected')),
+    -- Legacy fields preserved for backward compatibility
+    cleanliness VARCHAR(50) NOT NULL DEFAULT 'Clean',
     dirty_reason TEXT,
-    occupancy VARCHAR(50) NOT NULL DEFAULT 'Available' CHECK (occupancy IN ('Available', 'Occupied', 'Reserved')),
+    occupancy VARCHAR(50) NOT NULL DEFAULT 'Available',
+    -- Three Explicit Separated Statuses (Per Hospitality Specifications)
+    occupancy_status VARCHAR(50) NOT NULL DEFAULT 'VACANT' CHECK (occupancy_status IN ('VACANT', 'OCCUPIED')),
+    housekeeping_status VARCHAR(50) NOT NULL DEFAULT 'CLEAN' CHECK (housekeeping_status IN ('CLEAN', 'DIRTY', 'CLEANING', 'INSPECTION')),
+    maintenance_status VARCHAR(50) NOT NULL DEFAULT 'AVAILABLE' CHECK (maintenance_status IN ('AVAILABLE', 'MAINTENANCE', 'OUT_OF_SERVICE')),
     guest_id VARCHAR(50),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Ensure columns exist if table was already created
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS occupancy_status VARCHAR(50) DEFAULT 'VACANT';
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS housekeeping_status VARCHAR(50) DEFAULT 'CLEAN';
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS maintenance_status VARCHAR(50) DEFAULT 'AVAILABLE';
 
 -- 3. BOOKINGS & RESERVATIONS
 CREATE TABLE IF NOT EXISTS bookings (
@@ -41,10 +64,24 @@ CREATE TABLE IF NOT EXISTS bookings (
     check_out DATE NOT NULL,
     nights INT NOT NULL CHECK (nights > 0),
     room_rate NUMERIC(10, 2) NOT NULL CHECK (room_rate >= 0),
-    status VARCHAR(50) NOT NULL DEFAULT 'In-House' CHECK (status IN ('Arriving Today', 'In-House', 'Departing Today', 'Checked Out', 'Cancelled')),
+    status VARCHAR(50) NOT NULL DEFAULT 'CONFIRMED' CHECK (status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT', 'CANCELLED', 'NO_SHOW', 'Arriving Today', 'In-House', 'Departing Today')),
     notes TEXT,
     paid BOOLEAN NOT NULL DEFAULT FALSE,
     payment_method VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3.5 GUEST STAYS (Guest -> Reservation -> Stay -> Folio)
+CREATE TABLE IF NOT EXISTS stays (
+    id VARCHAR(50) PRIMARY KEY,
+    booking_id VARCHAR(50) REFERENCES bookings(id) ON DELETE CASCADE,
+    room_number VARCHAR(20) REFERENCES rooms(room_number) ON DELETE SET NULL,
+    guest_name VARCHAR(150) NOT NULL,
+    check_in_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    check_out_time TIMESTAMP WITH TIME ZONE,
+    status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'COMPLETED', 'CANCELLED')),
+    digital_key_code VARCHAR(100),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -199,7 +236,53 @@ CREATE TABLE IF NOT EXISTS guest_profiles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 14. NIGHT AUDIT & DAILY FINANCIAL CLOSING LOGS
+-- 14. HOUSEKEEPING QUEUE & ATTENDANT TASKS
+CREATE TABLE IF NOT EXISTS housekeeping_tasks (
+    id VARCHAR(50) PRIMARY KEY,
+    room_number VARCHAR(20) REFERENCES rooms(room_number) ON DELETE CASCADE,
+    priority VARCHAR(50) NOT NULL DEFAULT 'NORMAL' CHECK (priority IN ('LOW', 'NORMAL', 'HIGH', 'VIP', 'CHECKOUT')),
+    assigned_to VARCHAR(150),
+    status VARCHAR(50) NOT NULL DEFAULT 'DIRTY' CHECK (status IN ('DIRTY', 'CLEANING', 'INSPECTION', 'CLEAN')),
+    start_time TIMESTAMP WITH TIME ZONE,
+    completion_time TIMESTAMP WITH TIME ZONE,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 15. CONCIERGE & WHITE-GLOVE SERVICE REQUESTS
+CREATE TABLE IF NOT EXISTS service_requests (
+    id VARCHAR(50) PRIMARY KEY,
+    room_number VARCHAR(20) REFERENCES rooms(room_number) ON DELETE CASCADE,
+    booking_id VARCHAR(50) REFERENCES bookings(id) ON DELETE SET NULL,
+    guest_name VARCHAR(150) NOT NULL,
+    service_type VARCHAR(100) NOT NULL,
+    details TEXT,
+    priority VARCHAR(50) NOT NULL DEFAULT 'NORMAL' CHECK (priority IN ('LOW', 'NORMAL', 'HIGH', 'URGENT')),
+    status VARCHAR(50) NOT NULL DEFAULT 'REQUESTED' CHECK (status IN ('REQUESTED', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')),
+    department VARCHAR(50) NOT NULL DEFAULT 'Front Desk' CHECK (department IN ('Front Desk', 'Housekeeping', 'Concierge', 'Valet', 'Maintenance')),
+    assigned_to VARCHAR(150),
+    charge_amount NUMERIC(10, 2) DEFAULT 0.00,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 16. KITCHEN INVENTORY & INGREDIENT 86 TRACKING
+CREATE TABLE IF NOT EXISTS inventory_items (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    category VARCHAR(100) NOT NULL DEFAULT 'Kitchen',
+    quantity NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    unit VARCHAR(50) NOT NULL DEFAULT 'units',
+    min_stock NUMERIC(10, 2) NOT NULL DEFAULT 5,
+    cost_per_unit NUMERIC(10, 2) DEFAULT 0.00,
+    status VARCHAR(50) NOT NULL DEFAULT 'IN_STOCK' CHECK (status IN ('IN_STOCK', 'LOW_STOCK', 'OUT_OF_STOCK')),
+    linked_menu_item_id INT REFERENCES menu_items(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 17. NIGHT AUDIT & DAILY FINANCIAL CLOSING LOGS
 CREATE TABLE IF NOT EXISTS night_audit_logs (
     id SERIAL PRIMARY KEY,
     business_date DATE NOT NULL UNIQUE,
@@ -220,6 +303,9 @@ CREATE TABLE IF NOT EXISTS night_audit_logs (
 -- INDICES FOR HIGH QUERY PERFORMANCE
 CREATE INDEX IF NOT EXISTS idx_rooms_occupancy ON rooms(occupancy);
 CREATE INDEX IF NOT EXISTS idx_rooms_cleanliness ON rooms(cleanliness);
+CREATE INDEX IF NOT EXISTS idx_rooms_occupancy_status ON rooms(occupancy_status);
+CREATE INDEX IF NOT EXISTS idx_rooms_housekeeping_status ON rooms(housekeeping_status);
+CREATE INDEX IF NOT EXISTS idx_rooms_maintenance_status ON rooms(maintenance_status);
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
 CREATE INDEX IF NOT EXISTS idx_bookings_dates ON bookings(check_in, check_out);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
@@ -231,3 +317,28 @@ CREATE INDEX IF NOT EXISTS idx_maintenance_room ON maintenance_tickets(room_numb
 CREATE INDEX IF NOT EXISTS idx_maintenance_status ON maintenance_tickets(status);
 CREATE INDEX IF NOT EXISTS idx_guest_profiles_email ON guest_profiles(email);
 CREATE INDEX IF NOT EXISTS idx_night_audit_date ON night_audit_logs(business_date);
+CREATE INDEX IF NOT EXISTS idx_hk_tasks_room ON housekeeping_tasks(room_number);
+CREATE INDEX IF NOT EXISTS idx_hk_tasks_status ON housekeeping_tasks(status);
+CREATE INDEX IF NOT EXISTS idx_service_requests_room ON service_requests(room_number);
+CREATE INDEX IF NOT EXISTS idx_service_requests_status ON service_requests(status);
+CREATE INDEX IF NOT EXISTS idx_inventory_status ON inventory_items(status);
+
+-- SYNCHRONIZE ROOM STATUS VALUES
+UPDATE rooms 
+SET occupancy_status = CASE 
+  WHEN occupancy = 'Occupied' THEN 'OCCUPIED' 
+  ELSE 'VACANT' 
+END 
+WHERE occupancy_status IS NULL OR occupancy_status = 'VACANT';
+
+UPDATE rooms 
+SET housekeeping_status = CASE 
+  WHEN cleanliness ILIKE 'Dirty' THEN 'DIRTY'
+  WHEN cleanliness ILIKE 'Cleaning' THEN 'CLEANING'
+  WHEN cleanliness ILIKE 'Inspected' OR cleanliness ILIKE 'Inspection' THEN 'INSPECTION'
+  ELSE 'CLEAN'
+END;
+
+UPDATE rooms 
+SET maintenance_status = 'AVAILABLE' 
+WHERE maintenance_status IS NULL;
