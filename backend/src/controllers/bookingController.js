@@ -7,42 +7,45 @@ export const getBookings = async (req, res, next) => {
 
     let sql = `
       SELECT 
-        id,
-        guest_name AS "guestName",
-        email,
-        phone,
-        room_number AS "roomNumber",
-        room_type AS "roomType",
-        TO_CHAR(check_in, 'YYYY-MM-DD') AS "checkIn",
-        TO_CHAR(check_out, 'YYYY-MM-DD') AS "checkOut",
-        nights,
-        room_rate::FLOAT AS "roomRate",
-        status,
-        notes,
-        paid,
-        payment_method AS "paymentMethod",
-        created_at AS "createdAt"
-      FROM bookings
+        b.id,
+        b.guest_name AS "guestName",
+        b.email,
+        b.phone,
+        b.room_number AS "roomNumber",
+        b.room_type AS "roomType",
+        TO_CHAR(b.check_in, 'YYYY-MM-DD') AS "checkIn",
+        TO_CHAR(b.check_out, 'YYYY-MM-DD') AS "checkOut",
+        b.nights,
+        b.room_rate::FLOAT AS "roomRate",
+        b.status,
+        b.notes,
+        b.paid,
+        b.payment_method AS "paymentMethod",
+        b.created_at AS "createdAt",
+        s.id AS "stayId",
+        s.digital_key_code AS "digitalKeyCode"
+      FROM bookings b
+      LEFT JOIN stays s ON b.id = s.booking_id AND s.status = 'ACTIVE'
       WHERE 1=1
     `;
     const params = [];
 
     if (status && status !== 'all') {
       params.push(status);
-      sql += ` AND status = $${params.length}`;
+      sql += ` AND b.status = $${params.length}`;
     }
 
     if (roomNumber) {
       params.push(roomNumber);
-      sql += ` AND room_number = $${params.length}`;
+      sql += ` AND b.room_number = $${params.length}`;
     }
 
     if (search) {
       params.push(`%${search}%`);
-      sql += ` AND (guest_name ILIKE $${params.length} OR id ILIKE $${params.length} OR email ILIKE $${params.length})`;
+      sql += ` AND (b.guest_name ILIKE $${params.length} OR b.id ILIKE $${params.length} OR b.email ILIKE $${params.length})`;
     }
 
-    sql += ` ORDER BY created_at DESC`;
+    sql += ` ORDER BY b.created_at DESC`;
 
     const result = await query(sql, params);
 
@@ -61,23 +64,26 @@ export const getBookingById = async (req, res, next) => {
     const { id } = req.params;
     const result = await query(
       `SELECT 
-        id,
-        guest_name AS "guestName",
-        email,
-        phone,
-        room_number AS "roomNumber",
-        room_type AS "roomType",
-        TO_CHAR(check_in, 'YYYY-MM-DD') AS "checkIn",
-        TO_CHAR(check_out, 'YYYY-MM-DD') AS "checkOut",
-        nights,
-        room_rate::FLOAT AS "roomRate",
-        status,
-        notes,
-        paid,
-        payment_method AS "paymentMethod",
-        created_at AS "createdAt"
-      FROM bookings
-      WHERE id = $1`,
+        b.id,
+        b.guest_name AS "guestName",
+        b.email,
+        b.phone,
+        b.room_number AS "roomNumber",
+        b.room_type AS "roomType",
+        TO_CHAR(b.check_in, 'YYYY-MM-DD') AS "checkIn",
+        TO_CHAR(b.check_out, 'YYYY-MM-DD') AS "checkOut",
+        b.nights,
+        b.room_rate::FLOAT AS "roomRate",
+        b.status,
+        b.notes,
+        b.paid,
+        b.payment_method AS "paymentMethod",
+        b.created_at AS "createdAt",
+        s.id AS "stayId",
+        s.digital_key_code AS "digitalKeyCode"
+      FROM bookings b
+      LEFT JOIN stays s ON b.id = s.booking_id AND s.status = 'ACTIVE'
+      WHERE b.id = $1`,
       [id]
     );
 
@@ -136,13 +142,13 @@ export const createBooking = async (req, res, next) => {
       });
     }
 
-    // Double-Booking Collision Prevention (Date-Range Overlap Check)
+    // Double-Booking Collision Prevention (Date-Range Overlap Check against non-cancelled/checked-out bookings)
     if (roomNumber) {
       const collisionCheck = await client.query(
         `SELECT id, guest_name, TO_CHAR(check_in, 'YYYY-MM-DD') AS "checkIn", TO_CHAR(check_out, 'YYYY-MM-DD') AS "checkOut"
          FROM bookings 
          WHERE room_number = $1
-           AND status NOT IN ('Cancelled', 'Checked Out')
+           AND status NOT IN ('CANCELLED', 'CHECKED_OUT', 'Cancelled', 'Checked Out')
            AND check_in < $3::date
            AND check_out > $2::date
          LIMIT 1`,
@@ -155,7 +161,7 @@ export const createBooking = async (req, res, next) => {
         return res.status(409).json({
           success: false,
           isCollision: true,
-          message: `Room ${roomNumber} is already booked from ${c.checkIn} to ${c.checkOut} by ${c.guest_name}. Double-booking prevented by PMS safeguard.`,
+          message: `Room ${roomNumber} is already reserved from ${c.checkIn} to ${c.checkOut} by ${c.guest_name}. Date conflict prevented by PMS.`,
         });
       }
 
@@ -165,7 +171,7 @@ export const createBooking = async (req, res, next) => {
          FROM maintenance_tickets 
          WHERE room_number = $1 
            AND status IN ('REPORTED', 'IN_PROGRESS')
-           AND inventory_impact = 'OUT_OF_ORDER'
+           AND inventory_impact IN ('OUT_OF_ORDER', 'OUT_OF_SERVICE')
            AND start_date < $3::date
            AND COALESCE(end_date, CURRENT_DATE + INTERVAL '30 days') > $2::date
          LIMIT 1`,
@@ -185,7 +191,7 @@ export const createBooking = async (req, res, next) => {
     // Generate Booking ID
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const bookingId = req.body.id || `BK-${randomSuffix}`;
-    const bookingStatus = status || 'Arriving Today';
+    const bookingStatus = status || 'CONFIRMED';
     const computedNights = nights || Math.max(1, Math.round((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)));
 
     const bookingRes = await client.query(
@@ -259,12 +265,36 @@ export const createBooking = async (req, res, next) => {
       );
     }
 
-    // If assigned to a room and in-house or arriving, set room occupancy
-    if (roomNumber) {
-      const roomOccupancy = bookingStatus === 'In-House' ? 'Occupied' : 'Reserved';
+    // If walk-in or checked in immediately
+    let stayRecord = null;
+    if (bookingStatus === 'CHECKED_IN' || bookingStatus === 'In-House') {
+      const stayId = `STAY-${bookingId}`;
+      const digitalKey = `AURA-${roomNumber || 'PENDING'}-${Math.floor(100 + Math.random() * 900)}`;
+      const stayRes = await client.query(
+        `INSERT INTO stays (id, booking_id, room_number, guest_name, status, digital_key_code)
+         VALUES ($1, $2, $3, $4, 'ACTIVE', $5)
+         ON CONFLICT (id) DO UPDATE SET status = 'ACTIVE'
+         RETURNING *`,
+        [stayId, bookingId, roomNumber || null, guestName.trim(), digitalKey]
+      );
+      stayRecord = stayRes.rows[0];
+
+      if (roomNumber) {
+        await client.query(
+          `UPDATE rooms 
+           SET 
+            occupancy = 'Occupied', 
+            occupancy_status = 'OCCUPIED', 
+            guest_id = $1 
+           WHERE room_number = $2`,
+          [bookingId, roomNumber]
+        );
+      }
+    } else if (roomNumber) {
+      // Just reserved
       await client.query(
-        `UPDATE rooms SET occupancy = $1, guest_id = $2 WHERE room_number = $3`,
-        [roomOccupancy, bookingId, roomNumber]
+        `UPDATE rooms SET occupancy = 'Reserved', guest_id = $1 WHERE room_number = $2`,
+        [bookingId, roomNumber]
       );
     }
 
@@ -280,14 +310,278 @@ export const createBooking = async (req, res, next) => {
 
     await client.query('COMMIT');
 
+    const resultBooking = {
+      ...bookingRes.rows[0],
+      stayId: stayRecord?.id || null,
+      digitalKeyCode: stayRecord?.digital_key_code || null,
+    };
+
     // Broadcast new booking to Front Desk and Admin
-    emitPmsEvent('PMS_BOOKING_CREATED', bookingRes.rows[0]);
+    emitPmsEvent('PMS_BOOKING_CREATED', resultBooking);
 
     return res.status(201).json({
       success: true,
       message: 'Reservation and financial folio created successfully.',
-      booking: bookingRes.rows[0],
+      booking: resultBooking,
       folioId,
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    next(error);
+  } finally {
+    client.release();
+  }
+};
+
+export const updateBooking = async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { id } = req.params;
+    const { guestName, email, phone, roomNumber, checkIn, checkOut, nights, roomRate, status, notes } = req.body;
+
+    const existingRes = await client.query('SELECT * FROM bookings WHERE id = $1', [id]);
+    if (existingRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, message: `Booking ${id} not found.` });
+    }
+    const existing = existingRes.rows[0];
+
+    const targetRoomNumber = roomNumber !== undefined ? roomNumber : existing.room_number;
+    const targetCheckIn = checkIn || existing.check_in;
+    const targetCheckOut = checkOut || existing.check_out;
+
+    // If dates or room changed, check collisions
+    if (targetRoomNumber && (checkIn || checkOut || roomNumber)) {
+      const collisionCheck = await client.query(
+        `SELECT id, guest_name, TO_CHAR(check_in, 'YYYY-MM-DD') AS "checkIn", TO_CHAR(check_out, 'YYYY-MM-DD') AS "checkOut"
+         FROM bookings 
+         WHERE room_number = $1
+           AND id != $2
+           AND status NOT IN ('CANCELLED', 'CHECKED_OUT', 'Cancelled', 'Checked Out')
+           AND check_in < $4::date
+           AND check_out > $3::date
+         LIMIT 1`,
+        [targetRoomNumber, id, targetCheckIn, targetCheckOut]
+      );
+
+      if (collisionCheck.rows.length > 0) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({
+          success: false,
+          isCollision: true,
+          message: `Room ${targetRoomNumber} is already reserved for these dates by ${collisionCheck.rows[0].guest_name}.`,
+        });
+      }
+    }
+
+    const updatedRes = await client.query(
+      `UPDATE bookings 
+       SET 
+        guest_name = COALESCE($1, guest_name),
+        email = COALESCE($2, email),
+        phone = COALESCE($3, phone),
+        room_number = COALESCE($4, room_number),
+        check_in = COALESCE($5, check_in),
+        check_out = COALESCE($6, check_out),
+        nights = COALESCE($7, nights),
+        room_rate = COALESCE($8, room_rate),
+        status = COALESCE($9, status),
+        notes = COALESCE($10, notes),
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = $11
+       RETURNING 
+        id,
+        guest_name AS "guestName",
+        email,
+        phone,
+        room_number AS "roomNumber",
+        room_type AS "roomType",
+        TO_CHAR(check_in, 'YYYY-MM-DD') AS "checkIn",
+        TO_CHAR(check_out, 'YYYY-MM-DD') AS "checkOut",
+        nights,
+        room_rate::FLOAT AS "roomRate",
+        status,
+        notes,
+        paid,
+        payment_method AS "paymentMethod"`,
+      [
+        guestName,
+        email,
+        phone,
+        roomNumber,
+        checkIn,
+        checkOut,
+        nights ? parseInt(nights, 10) : null,
+        roomRate !== undefined ? parseFloat(roomRate) : null,
+        status,
+        notes,
+        id,
+      ]
+    );
+
+    await client.query('COMMIT');
+
+    emitPmsEvent('PMS_BOOKING_UPDATED', updatedRes.rows[0]);
+
+    return res.status(200).json({
+      success: true,
+      message: `Reservation ${id} updated successfully.`,
+      booking: updatedRes.rows[0],
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    next(error);
+  } finally {
+    client.release();
+  }
+};
+
+export const checkInGuest = async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { id } = req.params;
+    const { roomNumber, forceOverride } = req.body;
+
+    const bookingRes = await client.query('SELECT * FROM bookings WHERE id = $1', [id]);
+    if (bookingRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, message: `Booking ${id} not found.` });
+    }
+    const booking = bookingRes.rows[0];
+
+    const targetRoomNumber = roomNumber || booking.room_number;
+    if (!targetRoomNumber) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        message: 'A target room number must be assigned to complete check-in.',
+      });
+    }
+
+    const roomRes = await client.query('SELECT * FROM rooms WHERE room_number = $1', [targetRoomNumber]);
+    if (roomRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, message: `Room ${targetRoomNumber} does not exist.` });
+    }
+    const room = roomRes.rows[0];
+
+    // Verification 1: Maintenance Status must be AVAILABLE
+    const maintStatus = room.maintenance_status || 'AVAILABLE';
+    if (maintStatus !== 'AVAILABLE') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        isMaintenance: true,
+        message: `Cannot check in to Room ${targetRoomNumber}: Room is currently marked ${maintStatus}.`,
+      });
+    }
+
+    // Verification 2: Housekeeping Status must be CLEAN
+    const hkStatus = room.housekeeping_status || (room.cleanliness === 'Dirty' ? 'DIRTY' : 'CLEAN');
+    if (hkStatus !== 'CLEAN' && forceOverride !== true) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        warning: true,
+        isDirty: true,
+        room,
+        message: `Room ${targetRoomNumber} is marked ${hkStatus} (${room.dirty_reason || 'Turnover required'}). Guests must only be checked into a CLEAN room.`,
+      });
+    }
+
+    // Release old room if booking had a different one assigned
+    if (booking.room_number && booking.room_number !== targetRoomNumber) {
+      await client.query(
+        `UPDATE rooms SET occupancy = 'Available', occupancy_status = 'VACANT', guest_id = NULL WHERE room_number = $1`,
+        [booking.room_number]
+      );
+    }
+
+    // Set Room to OCCUPIED
+    await client.query(
+      `UPDATE rooms 
+       SET 
+        occupancy = 'Occupied', 
+        occupancy_status = 'OCCUPIED', 
+        guest_id = $1, 
+        updated_at = CURRENT_TIMESTAMP 
+       WHERE room_number = $2`,
+      [id, targetRoomNumber]
+    );
+
+    // Update Booking Status to CHECKED_IN
+    const updatedBooking = await client.query(
+      `UPDATE bookings 
+       SET 
+        room_number = $1, 
+        status = 'CHECKED_IN', 
+        updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $2
+       RETURNING 
+        id,
+        guest_name AS "guestName",
+        email,
+        phone,
+        room_number AS "roomNumber",
+        room_type AS "roomType",
+        TO_CHAR(check_in, 'YYYY-MM-DD') AS "checkIn",
+        TO_CHAR(check_out, 'YYYY-MM-DD') AS "checkOut",
+        nights,
+        room_rate::FLOAT AS "roomRate",
+        status,
+        notes,
+        paid,
+        payment_method AS "paymentMethod"`,
+      [targetRoomNumber, id]
+    );
+
+    // Create / Activate Stay
+    const stayId = `STAY-${id}`;
+    const digitalKey = `AURA-${targetRoomNumber}-${Math.floor(100 + Math.random() * 900)}`;
+    const stayRes = await client.query(
+      `INSERT INTO stays (id, booking_id, room_number, guest_name, status, digital_key_code)
+       VALUES ($1, $2, $3, $4, 'ACTIVE', $5)
+       ON CONFLICT (id) DO UPDATE 
+        SET room_number = EXCLUDED.room_number, status = 'ACTIVE', updated_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [stayId, id, targetRoomNumber, booking.guest_name, digitalKey]
+    );
+
+    // Ensure Folio is linked to this room
+    await client.query(
+      `UPDATE folios SET room_number = $1, status = 'OPEN', updated_at = CURRENT_TIMESTAMP WHERE booking_id = $2`,
+      [targetRoomNumber, id]
+    );
+
+    // Audit log
+    await client.query(
+      `INSERT INTO activity_logs (title, category, description, tag)
+       VALUES ($1, 'Front Desk', $2, 'Check-In')`,
+      [
+        `Guest Checked In: Room ${targetRoomNumber}`,
+        `Front desk verified ID and checked in ${booking.guest_name} to Room ${targetRoomNumber}. Stay #${stayId} activated.`,
+      ]
+    );
+
+    await client.query('COMMIT');
+
+    const result = {
+      ...updatedBooking.rows[0],
+      stayId,
+      digitalKeyCode: digitalKey,
+    };
+
+    emitPmsEvent('PMS_GUEST_CHECKED_IN', { booking: result, roomNumber: targetRoomNumber });
+
+    return res.status(200).json({
+      success: true,
+      message: `Guest ${booking.guest_name} successfully checked into Room ${targetRoomNumber}.`,
+      booking: result,
+      stay: stayRes.rows[0],
     });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -313,7 +607,6 @@ export const assignRoom = async (req, res, next) => {
       });
     }
 
-    // Fetch booking
     const bookingRes = await client.query('SELECT * FROM bookings WHERE id = $1', [id]);
     if (bookingRes.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -321,7 +614,6 @@ export const assignRoom = async (req, res, next) => {
     }
     const booking = bookingRes.rows[0];
 
-    // Fetch room
     const roomRes = await client.query('SELECT * FROM rooms WHERE room_number = $1', [roomNumber]);
     if (roomRes.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -329,8 +621,19 @@ export const assignRoom = async (req, res, next) => {
     }
     const targetRoom = roomRes.rows[0];
 
-    // SMART DIRTY CHECK
-    if (targetRoom.cleanliness === 'Dirty' && forceOverride !== true) {
+    // Maintenance check
+    if (targetRoom.maintenance_status && targetRoom.maintenance_status !== 'AVAILABLE') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        isMaintenance: true,
+        message: `Room ${roomNumber} cannot be assigned: Currently in ${targetRoom.maintenance_status}.`,
+      });
+    }
+
+    // Cleanliness check
+    const isDirty = targetRoom.housekeeping_status === 'DIRTY' || targetRoom.cleanliness === 'Dirty';
+    if (isDirty && forceOverride !== true) {
       await client.query('ROLLBACK');
       return res.status(400).json({
         success: false,
@@ -338,13 +641,14 @@ export const assignRoom = async (req, res, next) => {
         isDirty: true,
         message: `Room ${roomNumber} is currently Dirty. Assigning an uncleaned room violates 5-star protocol.`,
         dirtyReason: targetRoom.dirty_reason || 'Turnover required',
+        room: targetRoom,
       });
     }
 
-    // Release old room if different
+    // Release old room
     if (booking.room_number && booking.room_number !== roomNumber) {
       await client.query(
-        `UPDATE rooms SET occupancy = 'Available', guest_id = NULL WHERE room_number = $1`,
+        `UPDATE rooms SET occupancy = 'Available', occupancy_status = 'VACANT', guest_id = NULL WHERE room_number = $1`,
         [booking.room_number]
       );
     }
@@ -352,15 +656,18 @@ export const assignRoom = async (req, res, next) => {
     // Assign new room
     await client.query(
       `UPDATE rooms 
-       SET occupancy = 'Occupied', guest_id = $1, updated_at = CURRENT_TIMESTAMP 
+       SET 
+        occupancy = 'Occupied', 
+        occupancy_status = 'OCCUPIED', 
+        guest_id = $1, 
+        updated_at = CURRENT_TIMESTAMP 
        WHERE room_number = $2`,
       [id, roomNumber]
     );
 
-    // Update booking
     const updatedBooking = await client.query(
       `UPDATE bookings 
-       SET room_number = $1, status = 'In-House', updated_at = CURRENT_TIMESTAMP 
+       SET room_number = $1, status = 'CHECKED_IN', updated_at = CURRENT_TIMESTAMP 
        WHERE id = $2
        RETURNING 
         id,
@@ -380,19 +687,19 @@ export const assignRoom = async (req, res, next) => {
       [roomNumber, id]
     );
 
-    // Audit log
+    // Also ensure stay record exists
+    const stayId = `STAY-${id}`;
+    const digitalKey = `AURA-${roomNumber}-${Math.floor(100 + Math.random() * 900)}`;
     await client.query(
-      `INSERT INTO activity_logs (title, category, description, tag)
-       VALUES ($1, 'Front Desk', $2, 'Front Desk')`,
-      [
-        `Room ${roomNumber} Assigned to ${booking.guest_name}`,
-        `Front desk assigned ${booking.guest_name} (${id}) to Room ${roomNumber}.${forceOverride ? ' [Dirty Override Applied]' : ''}`,
-      ]
+      `INSERT INTO stays (id, booking_id, room_number, guest_name, status, digital_key_code)
+       VALUES ($1, $2, $3, $4, 'ACTIVE', $5)
+       ON CONFLICT (id) DO UPDATE 
+        SET room_number = EXCLUDED.room_number, status = 'ACTIVE', updated_at = CURRENT_TIMESTAMP`,
+      [stayId, id, roomNumber, booking.guest_name, digitalKey]
     );
 
     await client.query('COMMIT');
 
-    // Broadcast room assignment to all stations
     emitPmsEvent('PMS_ROOM_ASSIGNED', { booking: updatedBooking.rows[0], roomNumber });
 
     return res.status(200).json({
@@ -408,11 +715,99 @@ export const assignRoom = async (req, res, next) => {
   }
 };
 
+export const cancelBooking = async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { id } = req.params;
+
+    const bookingRes = await client.query('SELECT * FROM bookings WHERE id = $1', [id]);
+    if (bookingRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, message: `Booking ${id} not found.` });
+    }
+    const booking = bookingRes.rows[0];
+
+    // Release room if assigned
+    if (booking.room_number) {
+      await client.query(
+        `UPDATE rooms SET occupancy = 'Available', occupancy_status = 'VACANT', guest_id = NULL WHERE room_number = $1`,
+        [booking.room_number]
+      );
+    }
+
+    const updatedRes = await client.query(
+      `UPDATE bookings SET status = 'CANCELLED', updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
+      [id]
+    );
+
+    // Cancel stay if any
+    await client.query(`UPDATE stays SET status = 'CANCELLED' WHERE booking_id = $1`, [id]);
+
+    await client.query('COMMIT');
+
+    emitPmsEvent('PMS_BOOKING_UPDATED', updatedRes.rows[0]);
+
+    return res.status(200).json({
+      success: true,
+      message: `Reservation ${id} has been cancelled.`,
+      booking: updatedRes.rows[0],
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    next(error);
+  } finally {
+    client.release();
+  }
+};
+
+export const markNoShow = async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { id } = req.params;
+
+    const bookingRes = await client.query('SELECT * FROM bookings WHERE id = $1', [id]);
+    if (bookingRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, message: `Booking ${id} not found.` });
+    }
+    const booking = bookingRes.rows[0];
+
+    if (booking.room_number) {
+      await client.query(
+        `UPDATE rooms SET occupancy = 'Available', occupancy_status = 'VACANT', guest_id = NULL WHERE room_number = $1`,
+        [booking.room_number]
+      );
+    }
+
+    const updatedRes = await client.query(
+      `UPDATE bookings SET status = 'NO_SHOW', updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
+      [id]
+    );
+
+    await client.query('COMMIT');
+
+    emitPmsEvent('PMS_BOOKING_UPDATED', updatedRes.rows[0]);
+
+    return res.status(200).json({
+      success: true,
+      message: `Reservation ${id} marked as No-Show.`,
+      booking: updatedRes.rows[0],
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    next(error);
+  } finally {
+    client.release();
+  }
+};
+
 export const getFolio = async (req, res, next) => {
   try {
     const { roomNumber } = req.params;
 
-    // Find active or most recent in-house/departing booking for this room
+    // Find active or most recent booking for this room
     const bookingRes = await query(
       `SELECT 
         id,
@@ -430,8 +825,8 @@ export const getFolio = async (req, res, next) => {
         paid,
         payment_method AS "paymentMethod"
       FROM bookings 
-      WHERE room_number = $1 AND status != 'Cancelled'
-      ORDER BY (status = 'In-House' OR status = 'Departing Today') DESC, created_at DESC 
+      WHERE room_number = $1 AND status NOT IN ('CANCELLED', 'Cancelled')
+      ORDER BY (status IN ('CHECKED_IN', 'In-House', 'Departing Today')) DESC, created_at DESC 
       LIMIT 1`,
       [roomNumber]
     );
@@ -446,7 +841,7 @@ export const getFolio = async (req, res, next) => {
     const booking = bookingRes.rows[0];
     const roomTotal = Number((booking.roomRate * booking.nights).toFixed(2));
 
-    // Get orders
+    // Get food orders
     const ordersRes = await query(
       `SELECT 
         id,
@@ -466,8 +861,26 @@ export const getFolio = async (req, res, next) => {
       ordersRes.rows.reduce((acc, curr) => acc + (parseFloat(curr.total) || 0), 0).toFixed(2)
     );
 
-    const subtotal = Number((roomTotal + foodTotal).toFixed(2));
-    const taxRate = 0.12; // 12% luxury tax
+    // Get service requests with charges
+    const servicesRes = await query(
+      `SELECT 
+        id,
+        service_type AS "serviceType",
+        details,
+        charge_amount::FLOAT AS "chargeAmount",
+        status,
+        TO_CHAR(created_at, 'Mon DD, HH12:MI AM') AS "createdAt"
+      FROM service_requests
+      WHERE room_number = $1 AND charge_amount > 0 AND status != 'CANCELLED'`,
+      [roomNumber]
+    );
+
+    const serviceTotal = Number(
+      servicesRes.rows.reduce((acc, curr) => acc + (parseFloat(curr.chargeAmount) || 0), 0).toFixed(2)
+    );
+
+    const subtotal = Number((roomTotal + foodTotal + serviceTotal).toFixed(2));
+    const taxRate = 0.12; // 12% luxury tax & service charge
     const tax = Number((subtotal * taxRate).toFixed(2));
     const grandTotal = Number((subtotal + tax).toFixed(2));
 
@@ -479,6 +892,7 @@ export const getFolio = async (req, res, next) => {
     );
 
     let transactions = [];
+    let paymentsTotal = 0;
     if (folioRow.rows.length > 0) {
       const transRes = await query(
         `SELECT 
@@ -495,7 +909,17 @@ export const getFolio = async (req, res, next) => {
         [folioRow.rows[0].id]
       );
       transactions = transRes.rows;
+      paymentsTotal = transactions
+        .filter((t) => t.transactionType === 'PAYMENT')
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
     }
+
+    const remainingBalance = booking.paid ? 0 : Math.max(0, Number((grandTotal - paymentsTotal).toFixed(2)));
+    const paymentStatus = booking.paid || remainingBalance <= 0 
+      ? 'PAID' 
+      : paymentsTotal > 0 
+      ? 'PARTIALLY_PAID' 
+      : 'PENDING';
 
     return res.status(200).json({
       success: true,
@@ -503,6 +927,7 @@ export const getFolio = async (req, res, next) => {
         roomNumber,
         booking,
         orders: ordersRes.rows,
+        serviceRequests: servicesRes.rows,
         folioRecord: folioRow.rows[0] || null,
         transactions,
         breakdown: {
@@ -510,10 +935,14 @@ export const getFolio = async (req, res, next) => {
           roomRate: booking.roomRate,
           roomTotal,
           foodTotal,
+          serviceTotal,
           subtotal,
           taxRatePercent: 12,
           tax,
           grandTotal,
+          paymentsTotal: Number(paymentsTotal.toFixed(2)),
+          remainingBalance,
+          paymentStatus,
         },
       },
     });
@@ -528,12 +957,12 @@ export const checkoutGuest = async (req, res, next) => {
     await client.query('BEGIN');
 
     const { roomNumber } = req.params;
-    const { paymentMethod } = req.body;
+    const { paymentMethod = 'Visa Signature •••• 4092' } = req.body;
 
     // Find active booking for this room
     const bookingRes = await client.query(
       `SELECT * FROM bookings 
-       WHERE room_number = $1 AND status IN ('In-House', 'Departing Today')
+       WHERE room_number = $1 AND status IN ('CHECKED_IN', 'In-House', 'Departing Today', 'CONFIRMED')
        ORDER BY created_at DESC LIMIT 1`,
       [roomNumber]
     );
@@ -548,13 +977,13 @@ export const checkoutGuest = async (req, res, next) => {
 
     const booking = bookingRes.rows[0];
 
-    // Mark booking checked out and paid
+    // Mark booking CHECKED_OUT and paid
     const updatedBooking = await client.query(
       `UPDATE bookings 
        SET 
-        status = 'Checked Out',
+        status = 'CHECKED_OUT',
         paid = TRUE,
-        payment_method = COALESCE($1, 'Card (Visa/Mastercard)'),
+        payment_method = $1,
         updated_at = CURRENT_TIMESTAMP
        WHERE id = $2
        RETURNING 
@@ -571,7 +1000,15 @@ export const checkoutGuest = async (req, res, next) => {
       [paymentMethod, booking.id]
     );
 
-    // Settle ledger folio if exists
+    // Complete stay record
+    await client.query(
+      `UPDATE stays 
+       SET status = 'COMPLETED', check_out_time = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
+       WHERE booking_id = $1`,
+      [booking.id]
+    );
+
+    // Settle folio record
     const folioRes = await client.query(
       `SELECT id, balance::FLOAT AS balance FROM folios WHERE booking_id = $1 LIMIT 1`,
       [booking.id]
@@ -583,7 +1020,7 @@ export const checkoutGuest = async (req, res, next) => {
         await client.query(
           `INSERT INTO folio_transactions (folio_id, transaction_type, department, description, amount, tax_amount)
            VALUES ($1, 'PAYMENT', 'PAYMENT', $2, $3, 0)`,
-          [f.id, `Settlement at Checkout (${paymentMethod || 'Terminal Verified'})`, -f.balance]
+          [f.id, `Settlement at Checkout (${paymentMethod})`, -f.balance]
         );
       }
       await client.query(
@@ -592,17 +1029,30 @@ export const checkoutGuest = async (req, res, next) => {
       );
     }
 
-    // Flag room as Available + Dirty with turnover reason
+    // AUTOMATIC CHECKOUT -> HOUSEKEEPING TRANSITION (Requirement 10)
+    // 1. Room occupancy -> VACANT
+    // 2. Housekeeping status -> DIRTY
     await client.query(
       `UPDATE rooms 
        SET 
         occupancy = 'Available',
+        occupancy_status = 'VACANT',
         cleanliness = 'Dirty',
-        dirty_reason = 'Guest checked out today • Full turnover required',
+        housekeeping_status = 'DIRTY',
+        dirty_reason = 'Guest checked out • Full turnover required',
         guest_id = NULL,
         updated_at = CURRENT_TIMESTAMP
        WHERE room_number = $1`,
       [roomNumber]
+    );
+
+    // 3. Automatically create a Housekeeping task in the queue
+    const taskId = `HKT-${Math.floor(1000 + Math.random() * 9000)}`;
+    const hkTaskRes = await client.query(
+      `INSERT INTO housekeeping_tasks (id, room_number, priority, status, notes)
+       VALUES ($1, $2, 'CHECKOUT', 'DIRTY', $3)
+       RETURNING *`,
+      [taskId, roomNumber, `Full sanitization and linen turnover for departing guest ${booking.guest_name}.`]
     );
 
     // Audit log
@@ -611,19 +1061,24 @@ export const checkoutGuest = async (req, res, next) => {
        VALUES ($1, 'Front Desk', $2, 'Front Desk')`,
       [
         `Check-out Completed: Room ${roomNumber}`,
-        `${booking.guest_name} settled folio and checked out. Room ${roomNumber} flagged Dirty for Housekeeping.`,
+        `${booking.guest_name} settled folio via ${paymentMethod} and checked out. Room ${roomNumber} automatically flagged DIRTY for Housekeeping queue (#${taskId}).`,
       ]
     );
 
     await client.query('COMMIT');
 
-    // Broadcast checkout event to Housekeeping and Front Desk
-    emitPmsEvent('PMS_GUEST_CHECKED_OUT', { roomNumber, booking: updatedBooking.rows[0] });
+    // Broadcast checkout event to Housekeeping, Front Desk, and Guest Portal
+    emitPmsEvent('PMS_GUEST_CHECKED_OUT', { 
+      roomNumber, 
+      booking: updatedBooking.rows[0], 
+      housekeepingTask: hkTaskRes.rows[0] 
+    });
 
     return res.status(200).json({
       success: true,
-      message: `Guest ${booking.guest_name} checked out of Room ${roomNumber}. Turnover requested.`,
+      message: `Guest ${booking.guest_name} checked out of Room ${roomNumber}. Room transitioned to Housekeeping queue.`,
       booking: updatedBooking.rows[0],
+      housekeepingTask: hkTaskRes.rows[0],
     });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -648,22 +1103,35 @@ export const undoCheckout = async (req, res, next) => {
     const booking = bookingRes.rows[0];
 
     await client.query(
-      `UPDATE bookings SET status = 'In-House', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+      `UPDATE bookings SET status = 'CHECKED_IN', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
       [id]
     );
 
     if (booking.room_number) {
       await client.query(
-        `UPDATE rooms SET occupancy = 'Occupied', guest_id = $1 WHERE room_number = $2`,
+        `UPDATE rooms 
+         SET 
+          occupancy = 'Occupied', 
+          occupancy_status = 'OCCUPIED', 
+          cleanliness = 'Clean', 
+          housekeeping_status = 'CLEAN', 
+          dirty_reason = NULL,
+          guest_id = $1 
+         WHERE room_number = $2`,
         [id, booking.room_number]
       );
     }
+
+    await client.query(
+      `UPDATE stays SET status = 'ACTIVE', updated_at = CURRENT_TIMESTAMP WHERE booking_id = $1`,
+      [id]
+    );
 
     await client.query('COMMIT');
 
     return res.status(200).json({
       success: true,
-      message: `Booking ${id} restored to In-House.`,
+      message: `Booking ${id} restored to Checked-In status.`,
     });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -677,7 +1145,11 @@ export default {
   getBookings,
   getBookingById,
   createBooking,
+  updateBooking,
+  checkInGuest,
   assignRoom,
+  cancelBooking,
+  markNoShow,
   getFolio,
   checkoutGuest,
   undoCheckout,
