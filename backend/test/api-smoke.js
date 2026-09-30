@@ -55,7 +55,20 @@ const runSmokeTest = async () => {
     await testEndpoint('GET', '/api/staff');
 
     // 8. Housekeeping
+    await testEndpoint('GET', '/api/housekeeping/tasks');
     await testEndpoint('GET', '/api/housekeeping/history');
+
+    // 8.5. Room Categories
+    await testEndpoint('GET', '/api/rooms/categories');
+
+    // 8.6. Service Requests
+    await testEndpoint('GET', '/api/service-requests');
+
+    // 8.7. Maintenance
+    await testEndpoint('GET', '/api/maintenance');
+
+    // 8.8. Inventory
+    await testEndpoint('GET', '/api/inventory');
 
     // 9. Analytics
     await testEndpoint('GET', '/api/analytics/overview');
@@ -69,7 +82,10 @@ const runSmokeTest = async () => {
     console.log('\n🎉 API Smoke Test completed!');
   } finally {
     server.close();
+    const { pool } = await import('../src/config/db.js');
+    await pool.end();
   }
 };
 
 runSmokeTest();
+
