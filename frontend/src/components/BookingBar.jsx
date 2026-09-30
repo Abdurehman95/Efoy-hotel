@@ -44,8 +44,8 @@ const TIER_OPTIONS = [
 ];
 
 const BookingBar = () => {
-  const [checkIn, setCheckIn] = useState('2026-09-15');
-  const [checkOut, setCheckOut] = useState('2026-09-20');
+  const [checkIn, setCheckIn] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0]);
+  const [checkOut, setCheckOut] = useState(() => new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0]);
   const [selectedGuests, setSelectedGuests] = useState('2 Adults, 1 Suite');
   const [selectedTier, setSelectedTier] = useState('Horizon Member Tier');
 
