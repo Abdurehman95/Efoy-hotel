@@ -104,6 +104,22 @@ const RoomsSection = () => {
     setSelectedRoom(room);
     setBookingError('');
     setConfirmedBooking(null);
+    try {
+      const savedAuth = localStorage.getItem('efoy_hotel_auth');
+      if (savedAuth) {
+        const u = JSON.parse(savedAuth);
+        if (u && (u.name || u.email)) {
+          setBookingFormData((prev) => ({
+            ...prev,
+            name: prev.name || u.name || '',
+            email: prev.email || u.email || '',
+            phone: prev.phone || u.phone || '',
+          }));
+        }
+      }
+    } catch {
+      // ignore
+    }
   };
 
   const handleCloseModal = () => {
@@ -346,12 +362,23 @@ const RoomsSection = () => {
                     </div>
                   </div>
 
-                  <button
-                    onClick={handleCloseModal}
-                    className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md cursor-pointer"
-                  >
-                    Done & Close
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                    <button
+                      onClick={() => {
+                        handleCloseModal();
+                        window.location.hash = 'guest';
+                      }}
+                      className="flex-1 py-3 bg-gold-500 hover:bg-gold-600 text-white font-semibold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md cursor-pointer text-center"
+                    >
+                      View in Guest Dashboard →
+                    </button>
+                    <button
+                      onClick={handleCloseModal}
+                      className="py-3 px-5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               ) : (
                 /* Reservation Form */

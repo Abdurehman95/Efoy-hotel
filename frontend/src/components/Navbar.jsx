@@ -1,10 +1,18 @@
-// Grand Horizon Hotel & Suites - Primary Navigation Component
-// Supports sticky luxury glassmorphism, responsive mobile drawer, and Auth modal
+// Efoy Hotel & Suites - Primary Navigation Component
+// Supports sticky luxury glassmorphism, active page highlights, responsive mobile drawer, and Auth modal
 import React, { useState, useEffect } from 'react';
-import { User, Menu, X, CalendarCheck, Phone } from 'lucide-react';
+import { User, Menu, X, CalendarCheck, Phone, Sparkles } from 'lucide-react';
 import AuthModal from './AuthModal';
 
-const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNavigateToDashboard }) => {
+const Navbar = ({ 
+  currentUser, 
+  currentView = 'home', 
+  onNavigate, 
+  onLoginSuccess, 
+  onLogout, 
+  onNavigateToAdmin, 
+  onNavigateToDashboard 
+}) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState('login');
@@ -20,13 +28,28 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
   }, []);
 
   const navLinks = [
-    { label: 'Home', href: '#' },
-    { label: 'Rooms', href: '#rooms' },
-    { label: 'Dining', href: '#dining' },
-    { label: 'Services', href: '#services' },
-    { label: 'About Us', href: '#about-us' },
-    { label: 'Contact', href: '#contact' },
+    { id: 'home', label: 'Home', href: '#' },
+    { id: 'rooms', label: 'Rooms & Suites', href: '#rooms' },
+    { id: 'dining', label: 'Dining', href: '#dining' },
+    { id: 'services', label: 'Services', href: '#services' },
+    { id: 'contact', label: 'Contact', href: '#contact' },
   ];
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.toLowerCase();
+      if (hash === '#login' || hash === '#signin') {
+        setAuthMode('login');
+        setIsAuthModalOpen(true);
+      } else if (hash === '#signup' || hash === '#register') {
+        setAuthMode('signup');
+        setIsAuthModalOpen(true);
+      }
+    };
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
 
   const handleOpenAuth = (mode) => {
     setAuthMode(mode);
@@ -34,8 +57,22 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
     setIsMobileMenuOpen(false);
   };
 
-  const handleNavClick = () => {
+  const handleCloseAuth = () => {
+    setIsAuthModalOpen(false);
+    const hash = window.location.hash.toLowerCase();
+    if (['#login', '#signin', '#signup', '#register'].includes(hash)) {
+      window.location.hash = '';
+    }
+  };
+
+  const handleNavLinkClick = (e, targetId) => {
+    e.preventDefault();
     setIsMobileMenuOpen(false);
+    if (onNavigate) {
+      onNavigate(targetId);
+    } else {
+      window.location.hash = targetId === 'home' ? '' : `#${targetId}`;
+    }
   };
 
   return (
@@ -48,7 +85,11 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
         }`}
       >
         {/* Brand Logo */}
-        <a href="#" className="flex items-center gap-3 cursor-pointer group">
+        <a 
+          href="#" 
+          onClick={(e) => handleNavLinkClick(e, 'home')}
+          className="flex items-center gap-3 cursor-pointer group"
+        >
           <img
             src="/images/logo.png"
             alt="Efoy Hotel & Suites"
@@ -58,29 +99,52 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
           />
         </a>
 
-        {/* Center Desktop Links */}
-        <div className="hidden lg:flex items-center space-x-8 xl:space-x-10">
-          {navLinks.map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              className="text-sm font-medium text-gray-600 hover:text-dark-900 transition-colors relative group py-1"
-            >
-              {item.label}
-              <span className="absolute left-0 -bottom-1 w-0 h-[1.5px] bg-dark-900 transition-all duration-300 group-hover:w-full"></span>
-            </a>
-          ))}
+        {/* Center Desktop Links with Active Indicators */}
+        <div className="hidden lg:flex items-center space-x-7 xl:space-x-9">
+          {navLinks.map((item) => {
+            const isActive = currentView === item.id;
+            return (
+              <a
+                key={item.id}
+                href={item.href}
+                onClick={(e) => handleNavLinkClick(e, item.id)}
+                className={`text-sm transition-all relative py-1.5 cursor-pointer font-medium ${
+                  isActive 
+                    ? 'text-gold-600 font-semibold' 
+                    : 'text-gray-600 hover:text-dark-900'
+                }`}
+              >
+                <span>{item.label}</span>
+                {/* Active Indicator Underline */}
+                <span 
+                  className={`absolute left-0 -bottom-0.5 h-[2px] transition-all duration-300 ${
+                    isActive 
+                      ? 'w-full bg-gold-600' 
+                      : 'w-0 bg-dark-900 hover:w-full'
+                  }`} 
+                />
+              </a>
+            );
+          })}
         </div>
 
         {/* Right side Desktop actions */}
         <div className="hidden lg:flex items-center space-x-4 xl:space-x-6">
-          <a
-            href="#rooms"
+          <button
+            onClick={(e) => {
+              if (currentUser?.role === 'guest') {
+                onNavigateToDashboard ? onNavigateToDashboard('guest') : handleNavLinkClick(e, 'rooms');
+              } else if (!currentUser) {
+                handleOpenAuth('login');
+              } else {
+                handleNavLinkClick(e, 'rooms');
+              }
+            }}
             className="text-sm font-medium text-gray-600 hover:text-dark-900 transition-colors cursor-pointer flex items-center gap-1.5"
           >
             <CalendarCheck size={16} className="text-gold-600" />
             <span>My Booking</span>
-          </a>
+          </button>
 
           {/* Login and Sign Up / Role Dashboard controls */}
           {currentUser ? (
@@ -122,12 +186,12 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
           )}
 
           <div className="flex items-center space-x-3 pl-2">
-            <a
-              href="#rooms"
+            <button
+              onClick={(e) => handleNavLinkClick(e, 'rooms')}
               className="bg-dark-900 text-white px-6 py-2.5 text-sm font-medium hover:bg-gold-600 transition-colors duration-300 cursor-pointer shadow-sm rounded-xs flex items-center gap-2"
             >
               Book Now
-            </a>
+            </button>
             <button
               onClick={() => handleOpenAuth('login')}
               aria-label="Guest Account"
@@ -141,18 +205,18 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
         {/* Mobile & Tablet Right Controls */}
         <div className="flex lg:hidden items-center gap-2 sm:gap-3">
           {/* Quick Book CTA on Mobile */}
-          <a
-            href="#rooms"
-            className="bg-dark-900 text-white text-xs font-semibold px-3.5 py-2 rounded-xs uppercase tracking-wider hover:bg-gold-600 transition-colors"
+          <button
+            onClick={(e) => handleNavLinkClick(e, 'rooms')}
+            className="bg-dark-900 text-white text-xs font-semibold px-3.5 py-2 rounded-xs uppercase tracking-wider hover:bg-gold-600 transition-colors cursor-pointer"
           >
             Book
-          </a>
+          </button>
 
           {/* User Icon Button */}
           <button
             onClick={() => handleOpenAuth('login')}
             aria-label="User Account"
-            className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors"
+            className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
           >
             <User size={17} />
           </button>
@@ -190,42 +254,57 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
                 aria-label="Close menu"
-                className="p-1.5 text-gray-400 hover:text-dark-900 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-1.5 text-gray-400 hover:text-dark-900 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
               >
                 <X size={20} />
               </button>
             </div>
 
             {/* Nav Links */}
-            <div className="flex flex-col space-y-3 mb-6">
-              {navLinks.map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  onClick={handleNavClick}
-                  className="text-base font-medium text-gray-800 hover:text-gold-600 hover:pl-2 transition-all py-1.5 border-b border-gray-50 flex items-center justify-between"
-                >
-                  <span>{item.label}</span>
-                  <span className="text-gray-400 text-xs">→</span>
-                </a>
-              ))}
-              <a
-                href="#rooms"
-                onClick={handleNavClick}
-                className="text-base font-medium text-gray-800 hover:text-gold-600 hover:pl-2 transition-all py-1.5 flex items-center justify-between"
+            <div className="flex flex-col space-y-2 mb-6">
+              {navLinks.map((item) => {
+                const isActive = currentView === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={(e) => handleNavLinkClick(e, item.id)}
+                    className={`w-full text-left text-base py-2.5 px-3 rounded transition-all flex items-center justify-between cursor-pointer ${
+                      isActive 
+                        ? 'bg-gold-50 text-gold-700 font-semibold border-l-4 border-gold-600 pl-3' 
+                        : 'text-gray-800 hover:text-gold-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    <span className={isActive ? "text-gold-600 text-xs font-bold" : "text-gray-400 text-xs"}>
+                      {isActive ? '●' : '→'}
+                    </span>
+                  </button>
+                );
+              })}
+              <button
+                onClick={(e) => {
+                  if (currentUser?.role === 'guest') {
+                    onNavigateToDashboard ? onNavigateToDashboard('guest') : handleNavLinkClick(e, 'rooms');
+                  } else if (!currentUser) {
+                    handleOpenAuth('login');
+                  } else {
+                    handleNavLinkClick(e, 'rooms');
+                  }
+                }}
+                className="w-full text-left text-base py-2.5 px-3 rounded text-gray-800 hover:text-gold-600 hover:bg-gray-50 transition-all flex items-center justify-between cursor-pointer"
               >
                 <span className="flex items-center gap-2">
                   <CalendarCheck size={16} className="text-gold-600" />
                   My Booking
                 </span>
                 <span className="text-gray-400 text-xs">→</span>
-              </a>
+              </button>
             </div>
 
             {/* Auth Buttons: Side-by-Side Login and Sign Up / Admin */}
             <div className="pt-2 border-t border-gray-100">
               <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold block mb-2">
-                Horizon Circle Access
+                Efoy Privilege Access
               </span>
               {currentUser ? (
                 <div className="grid grid-cols-2 gap-3 mb-4">
@@ -274,13 +353,12 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
               )}
 
               {/* Full CTA Button */}
-              <a
-                href="#rooms"
-                onClick={handleNavClick}
-                className="block w-full py-3.5 text-center bg-gold-500 hover:bg-gold-600 text-white font-semibold text-xs uppercase tracking-widest rounded transition-colors shadow-sm"
+              <button
+                onClick={(e) => handleNavLinkClick(e, 'rooms')}
+                className="block w-full py-3.5 text-center bg-gold-500 hover:bg-gold-600 text-white font-semibold text-xs uppercase tracking-widest rounded transition-colors shadow-sm cursor-pointer"
               >
                 Book Your Stay Online
-              </a>
+              </button>
 
               {/* Concierge phone */}
               <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
@@ -288,8 +366,8 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
                   <Phone size={14} className="text-gold-600" />
                   24/7 Concierge
                 </span>
-                <a href="tel:+18005550199" className="font-semibold text-dark-900 hover:text-gold-600">
-                  +1 (800) 555-0199
+                <a href="tel:+251116678900" className="font-semibold text-dark-900 hover:text-gold-600">
+                  +251 11 667 8900
                 </a>
               </div>
             </div>
@@ -300,7 +378,7 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
       {/* Interactive Authentication Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        onClose={handleCloseAuth}
         initialMode={authMode}
         onLoginSuccess={onLoginSuccess}
       />
@@ -309,4 +387,3 @@ const Navbar = ({ currentUser, onLoginSuccess, onLogout, onNavigateToAdmin, onNa
 };
 
 export default Navbar;
-

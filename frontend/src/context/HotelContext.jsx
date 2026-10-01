@@ -1505,6 +1505,8 @@ export const HotelProvider = ({ children }) => {
       booking,
       roomNumber,
       guestName: booking?.guestName || 'Valued Guest',
+      email: booking?.email || '',
+      phone: booking?.phone || '',
       roomType: booking?.roomType || 'Deluxe Suite',
       nights: booking?.nights || 1,
       roomRate: booking?.roomRate || 0,

@@ -1,13 +1,13 @@
 // Grand Horizon Hotel & Suites - Main Application Layout
-// Features responsive hero banner, dynamic reservation bar, modular sections, and authenticated Dashboards for all 5 roles
+// Features modular dedicated pages for Home, Rooms, Dining, Services, and Contact,
+// each with a five-star luxury Footer, plus authenticated Dashboards for all 5 PMS roles
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
-import RoomsSection from './components/RoomsSection';
-import AboutSection from './components/AboutSection';
-import DiningSection from './components/DiningSection';
-import ServicesSection from './components/ServicesSection';
-import ContactSection from './components/ContactSection';
-import BookingBar from './components/BookingBar';
+import HomePage from './pages/HomePage';
+import RoomsPage from './pages/RoomsPage';
+import DiningPage from './pages/DiningPage';
+import ServicesPage from './pages/ServicesPage';
+import ContactPage from './pages/ContactPage';
 import AdminDashboard from './components/admin/AdminDashboard';
 import ReceptionistDashboard from './components/receptionist/ReceptionistDashboard';
 import KitchenDashboard from './components/kitchen/KitchenDashboard';
@@ -28,17 +28,15 @@ function AppContent() {
 
   const [currentView, setCurrentView] = useState(() => {
     try {
+      const hash = window.location.hash.replace('#', '').toLowerCase();
       const saved = localStorage.getItem('efoy_hotel_auth');
       const parsed = saved ? JSON.parse(saved) : null;
-      if (parsed?.role) {
-        const hash = window.location.hash.replace('#', '');
-        if (hash === parsed.role) {
-          return parsed.role;
-        }
-        if (!hash) {
-          window.location.hash = parsed.role;
-          return parsed.role;
-        }
+      
+      if (parsed?.role && hash === parsed.role) {
+        return parsed.role;
+      }
+      if (['rooms', 'dining', 'services', 'contact', 'home'].includes(hash)) {
+        return hash;
       }
     } catch {
       // fallback
@@ -48,24 +46,46 @@ function AppContent() {
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  // Sync hash changes
+  // Sync hash changes across page views and authenticated dashboards
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '');
-      if (currentUser && ['admin', 'receptionist', 'kitchen', 'housekeeping', 'guest'].includes(hash)) {
-        if (currentUser.role === hash) {
-          setCurrentView(hash);
+      const rawHash = window.location.hash.replace('#', '').toLowerCase();
+      
+      if (['admin', 'receptionist', 'kitchen', 'housekeeping', 'guest'].includes(rawHash)) {
+        if (currentUser && currentUser.role === rawHash) {
+          setCurrentView(rawHash);
+          return;
         }
-      } else if (window.location.hash === '' || window.location.hash === '#') {
-        if (currentView !== 'home') {
-          setCurrentView('home');
-        }
+      }
+      
+      if (['rooms', 'dining', 'services', 'contact', 'home'].includes(rawHash)) {
+        setCurrentView(rawHash);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (rawHash === 'about-us') {
+        setCurrentView('home');
+        setTimeout(() => {
+          const el = document.getElementById('about-us');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 120);
+      } else if (!rawHash) {
+        setCurrentView('home');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     };
 
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [currentUser, currentView]);
+  }, [currentUser]);
+
+  const handleNavigate = (viewId) => {
+    setCurrentView(viewId);
+    if (viewId === 'home') {
+      window.location.hash = '';
+    } else {
+      window.location.hash = viewId;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
@@ -103,7 +123,7 @@ function AppContent() {
     }
   };
 
-  // Render role-specific dashboards when active and user authenticated
+  // Render role-specific dashboards when active and user is authenticated
   if (currentUser) {
     let dashboardElement = null;
 
@@ -169,9 +189,25 @@ function AppContent() {
     }
   }
 
-  // Home Landing Page (completely preserved and intact)
+  // Render Page Content based on currentView (Home, Rooms, Dining, Services, Contact)
+  const renderCurrentPage = () => {
+    switch (currentView) {
+      case 'rooms':
+        return <RoomsPage onNavigate={handleNavigate} />;
+      case 'dining':
+        return <DiningPage onNavigate={handleNavigate} />;
+      case 'services':
+        return <ServicesPage onNavigate={handleNavigate} />;
+      case 'contact':
+        return <ContactPage onNavigate={handleNavigate} />;
+      case 'home':
+      default:
+        return <HomePage onNavigate={handleNavigate} />;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden relative">
+    <div className="min-h-screen bg-white overflow-x-hidden relative flex flex-col">
       <ConfirmModal
         isOpen={showLogoutConfirm}
         onClose={() => setShowLogoutConfirm(false)}
@@ -188,7 +224,7 @@ function AppContent() {
         {currentUser && (
           <div className="bg-dark-900 text-white text-xs px-3 sm:px-4 py-2 flex flex-col sm:flex-row items-center justify-between gap-2.5 border-b border-gold-500/30 shadow-xs">
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2 text-center sm:text-left">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
               <span className="font-medium text-gold-500">
                 {currentUser.role === 'admin' && '👑 Admin Mode Active:'}
                 {currentUser.role === 'receptionist' && '🔔 Front Desk Active:'}
@@ -217,6 +253,8 @@ function AppContent() {
 
         <Navbar
           currentUser={currentUser}
+          currentView={currentView}
+          onNavigate={handleNavigate}
           onLoginSuccess={handleLoginSuccess}
           onLogout={promptLogout}
           onNavigateToAdmin={() => handleNavigateToDashboard('admin')}
@@ -227,63 +265,9 @@ function AppContent() {
       {/* Spacer to prevent page content from being obscured under the fixed header */}
       <div className={currentUser ? "h-[128px] sm:h-[136px]" : "h-[74px] sm:h-[84px]"} aria-hidden="true" />
       
-      <main>
-        {/* Hero Section with public image background */}
-        <div 
-          className="relative min-h-[80vh] lg:min-h-[85vh] flex flex-col items-center justify-center bg-cover bg-center transition-all duration-700"
-          style={{ 
-            backgroundImage: 'url("/images/room2.jpg")',
-            backgroundPosition: 'center 45%'
-          }}
-        >
-          {/* Subtle dark gradient overlay for optimal readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-dark-900/70 via-dark-900/50 to-dark-900/85 z-10"></div>
-          
-          <div className="relative z-20 text-center text-white px-4 sm:px-6 max-w-4xl pt-12 sm:pt-16 pb-12 sm:pb-20 lg:pb-28">
-            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 mb-4 sm:mb-6 shadow-sm">
-              <span className="text-gold-500 font-serif text-sm">★</span>
-              <p className="text-[10px] sm:text-xs md:text-sm font-semibold tracking-[0.2em] sm:tracking-[0.25em] uppercase text-gray-100">
-                Forbes Five Star <span className="mx-1 text-gold-500">•</span> Leading Hotels of the World
-              </p>
-            </div>
-            
-            <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-serif mb-4 sm:mb-6 leading-tight tracking-tight drop-shadow-md text-white">
-              Stay somewhere exceptional.
-            </h2>
-            
-            <p className="text-sm sm:text-base md:text-lg lg:text-xl font-light text-gray-200 max-w-2xl mx-auto mb-8 sm:mb-10 drop-shadow-sm leading-relaxed px-2">
-              Experience uncompromising comfort, architectural elegance, and intuitive white-glove hospitality along the pristine San Francisco waterfront.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-md sm:max-w-none mx-auto">
-              <a 
-                href="#rooms" 
-                className="w-full sm:w-auto bg-gold-500 hover:bg-gold-600 text-white px-7 sm:px-8 py-3.5 text-xs sm:text-sm font-semibold uppercase tracking-wider transition-all duration-300 shadow-lg hover:shadow-gold-500/25 cursor-pointer flex items-center justify-center gap-2 rounded-xs"
-              >
-                Book Your Stay <span className="text-base">→</span>
-              </a>
-              <a 
-                href="#rooms" 
-                className="w-full sm:w-auto bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/30 text-white px-7 sm:px-8 py-3.5 text-xs sm:text-sm font-semibold uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 rounded-xs"
-              >
-                <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border border-white/60 flex items-center justify-center text-[8px] sm:text-[10px]">▶</span> Explore Rooms & Suites
-              </a>
-            </div>
-          </div>
-
-          {/* Booking Bar Component - fully responsive with luxury styling */}
-          <BookingBar />
-        </div>
-
-        {/* Spacing for overlapping booking bar on large screens */}
-        <div className="hidden lg:block h-20 bg-[#fafafa]"></div>
-
-        {/* Dynamic Sections */}
-        <RoomsSection />
-        <AboutSection />
-        <DiningSection />
-        <ServicesSection />
-        <ContactSection />
+      {/* Individual Page View with universal Footer */}
+      <main className="flex-1 flex flex-col">
+        {renderCurrentPage()}
       </main>
     </div>
   );

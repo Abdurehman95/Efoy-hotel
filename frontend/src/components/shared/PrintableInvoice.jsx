@@ -102,8 +102,8 @@ const PrintableInvoice = ({ folio, onClose }) => {
                 Guest Information
               </span>
               <div className="font-bold text-sm text-slate-900">{folio.guestName}</div>
-              <div className="text-slate-600">{folio.booking?.email || 'guest@efoyhotel.com'}</div>
-              <div className="text-slate-600">{folio.booking?.phone || '+1 (555) 234-5678'}</div>
+              <div className="text-slate-600">{folio.booking?.email || folio.email || '—'}</div>
+              <div className="text-slate-600">{folio.booking?.phone || folio.phone || '—'}</div>
               <div className="text-slate-500 text-[11px] mt-1">Horizon Privilege Club VIP Member</div>
             </div>
 
