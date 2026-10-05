@@ -81,13 +81,13 @@ async function runMigration() {
       await appClient.query(`
         INSERT INTO room_categories (name, base_rate, capacity, description, features, image_url)
         VALUES 
-          ('Single Classic', 180, '1 Person', 'Elegantly appointed urban haven featuring bespoke Italian millwork and city skyline vistas.', 'Single Bed • City View • Espresso Machine', '/images/room1.jpg'),
-          ('Single Deluxe', 220, '1 Person', 'Private retreat overlooking quiet interior botanical courtyard with marble shower.', 'Queen Bed • Garden Courtyard • Rain Shower', '/images/room2.jpg'),
-          ('Double Deluxe', 280, '2 Adults', 'Expansive suite featuring dual vanities, soaking tub and private promenade balcony.', 'King Bed • Balcony • Marble Bath', '/images/room3.jpg'),
-          ('Double Executive', 340, '2 Adults, 1 Child', 'Executive-level luxury with dedicated workstation, lounge alcove, and high-fidelity acoustics.', 'King Bed • Oceanfront • Lounge Area • B&O Audio', '/images/room4.jpg'),
-          ('Luxury Suite', 520, '4 Persons', 'Two-bedroom architectural triumph featuring limestone fireplace and dedicated 24h butler service.', 'Master King + Twin • Fireplace • Private Butler', '/images/room5.jpg'),
-          ('Penthouse Panoramic', 850, '6 Persons', 'Top-floor expansive luxury boasting 360-degree waterfront wrap terrace and chef kitchen.', '3 En-Suite Bedrooms • 360° Terrace • Chef Kitchen', '/images/room6.jpg'),
-          ('Presidential Penthouse', 1200, '6 Persons', 'The pinnacle of private luxury: full private floor, direct helipad access, and cedar spa.', 'Full Floor Luxury • Helipad Access • Private Spa', '/images/room7.jpg')
+          ('Single Classic', 1500, '1 Person', 'Elegantly appointed urban haven featuring bespoke Italian millwork and city skyline vistas.', 'Single Bed • City View • Espresso Machine', '/images/room1.jpg'),
+          ('Single Deluxe', 2200, '1 Person', 'Private retreat overlooking quiet interior botanical courtyard with marble shower.', 'Queen Bed • Garden Courtyard • Rain Shower', '/images/room2.jpg'),
+          ('Double Deluxe', 3500, '2 Adults', 'Expansive suite featuring dual vanities, soaking tub and private promenade balcony.', 'King Bed • Balcony • Marble Bath', '/images/room3.jpg'),
+          ('Double Executive', 4800, '2 Adults, 1 Child', 'Executive-level luxury with dedicated workstation, lounge alcove, and high-fidelity acoustics.', 'King Bed • Oceanfront • Lounge Area • B&O Audio', '/images/room4.jpg'),
+          ('Luxury Suite', 6800, '4 Persons', 'Two-bedroom architectural triumph featuring limestone fireplace and dedicated 24h butler service.', 'Master King + Twin • Fireplace • Private Butler', '/images/room5.jpg'),
+          ('Penthouse Panoramic', 8500, '6 Persons', 'Top-floor expansive luxury boasting 360-degree waterfront wrap terrace and chef kitchen.', '3 En-Suite Bedrooms • 360° Terrace • Chef Kitchen', '/images/room6.jpg'),
+          ('Presidential Penthouse', 10000, '6 Persons', 'The pinnacle of private luxury: full private floor, direct helipad access, and cedar spa.', 'Full Floor Luxury • Helipad Access • Private Spa', '/images/room7.jpg')
         ON CONFLICT (name) DO NOTHING;
       `);
       console.log('✅ Room categories seeded.');
