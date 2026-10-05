@@ -70,7 +70,7 @@ const RoomsSection = () => {
             ? `${r.features}. Forbes five-star certified luxury suite with 24/7 dedicated concierge assistance.`
             : (cat?.description || 'Forbes 5-star certified luxury suite with panoramic terrace.'),
           guests: r.capacity?.includes('4') ? 4 : r.capacity?.includes('3') ? 3 : r.capacity?.includes('1') ? 1 : 2,
-          price: Number(r.rate) || 200,
+          price: Number(r.rate) || 2200,
           image: meta.image || cat?.imageUrl || `/images/room${(idx % 8) + 1}.jpg`,
           badge,
           occupancyStatus: r.occupancyStatus || (isOccupied ? 'OCCUPIED' : 'VACANT'),
@@ -95,7 +95,7 @@ const RoomsSection = () => {
     1,
     Math.round((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) || 1
   );
-  const baseRate = selectedRoom ? selectedRoom.price : 200;
+  const baseRate = selectedRoom ? selectedRoom.price : 2200;
   const subtotal = baseRate * computedNights;
   const taxes = Number((subtotal * 0.12).toFixed(2));
   const grandTotal = Number((subtotal + taxes).toFixed(2));
@@ -252,7 +252,7 @@ const RoomsSection = () => {
                     </span>
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-2xl sm:text-3xl font-serif text-dark-900">
-                        ${room.price}
+                        {room.price.toLocaleString()} ETB
                       </span>
                       <span className="text-xs text-gray-500">/ night</span>
                     </div>
@@ -294,7 +294,7 @@ const RoomsSection = () => {
                     Reserve {selectedRoom.name}
                   </h3>
                   <p className="text-[10px] text-amber-300/90 font-mono tracking-wider">
-                    SUITE #{selectedRoom.roomNumber} • ${selectedRoom.price}/NIGHT
+                    SUITE #{selectedRoom.roomNumber} • {selectedRoom.price.toLocaleString()} ETB / NIGHT
                   </p>
                 </div>
               </div>
@@ -357,7 +357,7 @@ const RoomsSection = () => {
                     <div className="flex justify-between items-center pt-1 font-bold">
                       <span className="text-slate-800">Total Charged to Folio:</span>
                       <span className="font-serif text-sm text-slate-900">
-                        ${grandTotal.toFixed(2)} (incl. 12% tax)
+                        {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB (incl. 12% tax)
                       </span>
                     </div>
                   </div>
@@ -365,6 +365,16 @@ const RoomsSection = () => {
                   <div className="flex flex-col sm:flex-row gap-2 pt-1">
                     <button
                       onClick={() => {
+                        const guestUser = {
+                          id: confirmedBooking?.booking?.id || `BK-${Date.now()}`,
+                          name: bookingFormData.name.trim(),
+                          email: bookingFormData.email.trim(),
+                          phone: bookingFormData.phone.trim(),
+                          role: 'guest',
+                          roomNumber: selectedRoom?.roomNumber,
+                        };
+                        localStorage.setItem('efoy_hotel_auth', JSON.stringify(guestUser));
+                        window.dispatchEvent(new CustomEvent('efoy_auth_change', { detail: guestUser }));
                         handleCloseModal();
                         window.location.hash = 'guest';
                       }}
@@ -460,7 +470,7 @@ const RoomsSection = () => {
                       <input
                         type="tel"
                         required
-                        placeholder="+1 (555) 000-1122"
+                        placeholder="+251 91 123 4567"
                         value={bookingFormData.phone}
                         onChange={(e) =>
                           setBookingFormData({ ...bookingFormData, phone: e.target.value })
@@ -489,7 +499,7 @@ const RoomsSection = () => {
                   <div className="bg-amber-50/70 p-3.5 rounded-xl border border-amber-200/80 text-xs space-y-1.5">
                     <div className="flex justify-between text-slate-600">
                       <span>Rate per Night:</span>
-                      <span className="font-mono font-medium">${baseRate}</span>
+                      <span className="font-mono font-medium">{baseRate.toLocaleString()} ETB</span>
                     </div>
                     <div className="flex justify-between text-slate-600">
                       <span>Nights Selected:</span>
@@ -497,11 +507,11 @@ const RoomsSection = () => {
                     </div>
                     <div className="flex justify-between text-slate-600">
                       <span>Luxury Tax & Service (12%):</span>
-                      <span className="font-mono font-medium">${taxes.toFixed(2)}</span>
+                      <span className="font-mono font-medium">{taxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
                     </div>
                     <div className="flex justify-between text-slate-900 font-bold border-t border-amber-200 pt-1.5 text-sm">
                       <span>Estimated Folio Total:</span>
-                      <span className="font-serif">${grandTotal.toFixed(2)}</span>
+                      <span className="font-serif">{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
                     </div>
                   </div>
 

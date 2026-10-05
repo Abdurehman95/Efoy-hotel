@@ -46,6 +46,20 @@ function AppContent() {
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  // Listen for dynamic auth changes (e.g. online booking -> guest session)
+  useEffect(() => {
+    const handleAuthChange = (e) => {
+      if (e.detail) {
+        setCurrentUser(e.detail);
+        setCurrentView(e.detail.role || 'guest');
+        window.location.hash = e.detail.role || 'guest';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+    window.addEventListener('efoy_auth_change', handleAuthChange);
+    return () => window.removeEventListener('efoy_auth_change', handleAuthChange);
+  }, []);
+
   // Sync hash changes across page views and authenticated dashboards
   useEffect(() => {
     const handleHashChange = () => {
@@ -55,6 +69,19 @@ function AppContent() {
         if (currentUser && currentUser.role === rawHash) {
           setCurrentView(rawHash);
           return;
+        }
+
+        // Check localStorage if session was just established
+        try {
+          const saved = localStorage.getItem('efoy_hotel_auth');
+          const parsed = saved ? JSON.parse(saved) : null;
+          if (parsed && parsed.role === rawHash) {
+            setCurrentUser(parsed);
+            setCurrentView(rawHash);
+            return;
+          }
+        } catch {
+          // ignore
         }
       }
       

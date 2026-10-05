@@ -152,7 +152,7 @@ const HomePage = ({ onNavigate }) => {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 />
                 <div className="absolute top-4 right-4 bg-dark-900/80 backdrop-blur-md text-gold-400 text-xs px-3 py-1 font-mono font-semibold">
-                  From $280 / night
+                  From 3,500 ETB / night
                 </div>
               </div>
               <div className="p-6 flex-1 flex flex-col justify-between">
@@ -187,7 +187,7 @@ const HomePage = ({ onNavigate }) => {
                   Signature Suite
                 </div>
                 <div className="absolute top-4 right-4 bg-dark-900/80 backdrop-blur-md text-gold-400 text-xs px-3 py-1 font-mono font-semibold">
-                  From $550 / night
+                  From 6,800 ETB / night
                 </div>
               </div>
               <div className="p-6 flex-1 flex flex-col justify-between">
@@ -219,7 +219,7 @@ const HomePage = ({ onNavigate }) => {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 />
                 <div className="absolute top-4 right-4 bg-dark-900/80 backdrop-blur-md text-gold-400 text-xs px-3 py-1 font-mono font-semibold">
-                  From $890 / night
+                  From 10,000 ETB / night
                 </div>
               </div>
               <div className="p-6 flex-1 flex flex-col justify-between">

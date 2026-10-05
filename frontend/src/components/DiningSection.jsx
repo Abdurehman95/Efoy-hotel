@@ -16,8 +16,8 @@ const DISHES_DATA = [
   {
     id: 1,
     title: 'Eggs & Bacon',
-    price: '$24.00',
-    priceNum: 24,
+    price: '650 ETB',
+    priceNum: 650,
     description: 'It is a culinary innovation that puts a unique spin on the beloved breakfast combination.',
     tags: ['ORGANIC EGGS', 'SMOKED CRISP'],
     category: 'Hot Savory Classics',
@@ -29,8 +29,8 @@ const DISHES_DATA = [
   {
     id: 2,
     title: 'Tea or Coffee',
-    price: '$10.00',
-    priceNum: 10,
+    price: '180 ETB',
+    priceNum: 180,
     description: 'A classic choice for your daily dose of comfort and calmness.',
     tags: ['SINGLE ORIGIN', 'LOOSE LEAF'],
     category: 'Cold Pressed & Infusions',
@@ -42,8 +42,8 @@ const DISHES_DATA = [
   {
     id: 3,
     title: 'Chia Oatmeal',
-    price: '$18.00',
-    priceNum: 18,
+    price: '350 ETB',
+    priceNum: 350,
     description: 'Our Chia Oatmeal is a wholesome nutrient-packed breakfast delight.',
     tags: ['VEGAN', 'GLUTEN-FREE'],
     category: 'Healthy Granola & Bowls',
@@ -55,8 +55,8 @@ const DISHES_DATA = [
   {
     id: 4,
     title: 'Fruit Parfait',
-    price: '$16.00',
-    priceNum: 16,
+    price: '380 ETB',
+    priceNum: 380,
     description: 'Our Fruit Parfait is a delightful culinary masterpiece of freshness and flavor.',
     tags: ['HOUSE GRANOLA', 'GREEK YOGURT'],
     category: 'Healthy Granola & Bowls',
@@ -68,8 +68,8 @@ const DISHES_DATA = [
   {
     id: 5,
     title: 'Marmalade Selection',
-    price: '$14.00',
-    priceNum: 14,
+    price: '280 ETB',
+    priceNum: 280,
     description: 'Our Marmalade Selection is a delectable medley of vibrant, handcrafted citrus preserves.',
     tags: ['SEVILLE ORANGE', 'WARM BRIOCHE'],
     category: 'Morning Bakery & Viennoiserie',
@@ -81,8 +81,8 @@ const DISHES_DATA = [
   {
     id: 6,
     title: 'Cheese Plate',
-    price: '$28.00',
-    priceNum: 28,
+    price: '1,200 ETB',
+    priceNum: 1200,
     description: 'Our cheese plate is a masterpiece that celebrates rich and diverse world of cheeses.',
     tags: ['AOC CHEESES', 'WILD HONEYCOMB'],
     category: 'Artisanal Cheeses & Spreads',
@@ -94,8 +94,8 @@ const DISHES_DATA = [
   {
     id: 7,
     title: 'Brioche French Toast',
-    price: '$22.00',
-    priceNum: 22,
+    price: '520 ETB',
+    priceNum: 520,
     description: 'Caramelized Madagascar vanilla crust with wild mountain berry compote and whipped crème fraiche.',
     tags: ['ARTISAN BRIOCHE', 'MAPLE GLAZE'],
     category: 'Morning Bakery & Viennoiserie',
@@ -107,8 +107,8 @@ const DISHES_DATA = [
   {
     id: 8,
     title: 'Avocado Tartine & Poached Egg',
-    price: '$21.00',
-    priceNum: 21,
+    price: '580 ETB',
+    priceNum: 580,
     description: 'Wood-fired sourdough, crushed Hass avocado, micro radish sprouts, and organic farm soft yolk.',
     tags: ['HAAS AVOCADO', 'FARM EGG'],
     category: 'Hot Savory Classics',
@@ -165,7 +165,7 @@ const DiningSection = () => {
       return dbMenu.map((dish, idx) => ({
         id: dish.id,
         title: dish.name,
-        price: `$${(parseFloat(dish.price) || 0).toFixed(2)}`,
+        price: `${(parseFloat(dish.price) || 0).toLocaleString()} ETB`,
         priceNum: parseFloat(dish.price) || 0,
         description: dish.description || 'Gourmet artisanal preparation using organic Forbes 5-star culinary ingredients.',
         tags: [dish.category?.toUpperCase() || 'CHEF SPECIAL', dish.prepTime || 'FRESHLY PREPARED'],
@@ -213,13 +213,15 @@ const DiningSection = () => {
     setCurrentPage((prev) => (prev + 1 < maxPages ? prev + 1 : 0));
   };
 
-  const handleAddToCart = (dish) => {
-    if (!dish.inStock) {
-      setToastMessage(`⚠️ "${dish.title}" is currently 86 / Out of Stock in Kitchen.`);
+  const handleAddToCart = (dishOrTitle) => {
+    const title = typeof dishOrTitle === 'string' ? dishOrTitle : dishOrTitle?.title;
+    const inStock = typeof dishOrTitle === 'object' ? dishOrTitle?.inStock : true;
+    if (inStock === false) {
+      setToastMessage(`⚠️ "${title}" is currently 86 / Out of Stock in Kitchen.`);
       setTimeout(() => setToastMessage(''), 3000);
       return;
     }
-    setToastMessage(`🍽️ Added "${dish.title}" to your dining order`);
+    setToastMessage(`🍽️ Added "${title}" to your dining order`);
     setTimeout(() => setToastMessage(''), 3000);
   };
 
