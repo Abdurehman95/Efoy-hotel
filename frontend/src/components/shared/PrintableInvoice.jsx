@@ -78,8 +78,8 @@ const PrintableInvoice = ({ folio, onClose }) => {
                 </div>
               </div>
               <p className="text-xs text-slate-500 mt-2">
-                100 Waterfront Promenade • San Francisco, CA 94105<br />
-                Direct: +1 (800) 555-0199 • concierge@efoyhotel.com
+                Africa Avenue • Bole Diplomatic District, Addis Ababa, Ethiopia<br />
+                Direct: +251 11 661 8888 • concierge@efoyhotel.com
               </p>
             </div>
 
@@ -153,9 +153,9 @@ const PrintableInvoice = ({ folio, onClose }) => {
                       </div>
                     </td>
                     <td className="py-3 px-2 text-center font-medium text-slate-700">{folio.nights}</td>
-                    <td className="py-3 px-2 text-right font-mono">${folio.roomRate?.toFixed(2)}</td>
+                    <td className="py-3 px-2 text-right font-mono">{folio.roomRate?.toLocaleString()} ETB</td>
                     <td className="py-3 px-2 text-right font-mono font-semibold text-slate-900">
-                      ${folio.roomTotal?.toFixed(2)}
+                      {folio.roomTotal?.toLocaleString()} ETB
                     </td>
                   </tr>
 
@@ -179,7 +179,7 @@ const PrintableInvoice = ({ folio, onClose }) => {
                         </td>
                         <td className="py-3 px-2 text-right font-mono text-slate-500">-</td>
                         <td className="py-3 px-2 text-right font-mono font-semibold text-slate-900">
-                          ${ord.total?.toFixed(2)}
+                          {ord.total?.toLocaleString()} ETB
                         </td>
                       </tr>
                     ))
@@ -203,7 +203,7 @@ const PrintableInvoice = ({ folio, onClose }) => {
                         <td className="py-3 px-2 text-center font-medium text-slate-700">1</td>
                         <td className="py-3 px-2 text-right font-mono text-slate-500">-</td>
                         <td className="py-3 px-2 text-right font-mono font-semibold text-slate-900">
-                          ${(svc.amount || svc.price || 0).toFixed(2)}
+                          {(svc.amount || svc.price || 0).toLocaleString()} ETB
                         </td>
                       </tr>
                     ))
@@ -218,29 +218,29 @@ const PrintableInvoice = ({ folio, onClose }) => {
             <div className="w-full max-w-xs space-y-1.5 text-xs">
               <div className="flex justify-between text-slate-600">
                 <span>Room Charges:</span>
-                <span className="font-mono">${folio.roomTotal?.toFixed(2)}</span>
+                <span className="font-mono">{folio.roomTotal?.toLocaleString()} ETB</span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>In-Room Dining (Food & Beverage):</span>
-                <span className="font-mono">${folio.foodTotal?.toFixed(2)}</span>
+                <span className="font-mono">{folio.foodTotal?.toLocaleString()} ETB</span>
               </div>
               {folio.serviceTotal > 0 && (
                 <div className="flex justify-between text-slate-600">
                   <span>Concierge & Guest Services:</span>
-                  <span className="font-mono">${folio.serviceTotal?.toFixed(2)}</span>
+                  <span className="font-mono">{folio.serviceTotal?.toLocaleString()} ETB</span>
                 </div>
               )}
               <div className="flex justify-between text-slate-600">
                 <span>Subtotal:</span>
-                <span className="font-mono">${((folio.roomTotal || 0) + (folio.foodTotal || 0) + (folio.serviceTotal || 0)).toFixed(2)}</span>
+                <span className="font-mono">{((folio.roomTotal || 0) + (folio.foodTotal || 0) + (folio.serviceTotal || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>State Tax & Hospitality Surcharge (12%):</span>
-                <span className="font-mono">${folio.taxes?.toFixed(2)}</span>
+                <span className="font-mono">{folio.taxes?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
               </div>
               <div className="flex justify-between pt-2 border-t border-slate-900 text-sm font-bold text-slate-900">
                 <span>Grand Total Settled:</span>
-                <span className="font-mono text-base text-amber-700">${folio.grandTotal?.toFixed(2)}</span>
+                <span className="font-mono text-base text-amber-700">{folio.grandTotal?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
               </div>
               <div className="text-[10px] text-slate-500 text-right pt-1">
                 Payment Received • Electronic Authorization Approved
