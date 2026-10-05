@@ -21,7 +21,7 @@ const INITIAL_ROOM_CATEGORIES = [
   {
     id: 1,
     name: 'Single Classic',
-    baseRate: 180,
+    baseRate: 1500,
     capacity: '1 Person',
     description: 'Elegantly appointed urban haven featuring bespoke Italian millwork and city skyline vistas.',
     features: 'Single Bed • City View • Espresso Machine',
@@ -30,7 +30,7 @@ const INITIAL_ROOM_CATEGORIES = [
   {
     id: 2,
     name: 'Single Deluxe',
-    baseRate: 220,
+    baseRate: 2200,
     capacity: '1 Person',
     description: 'Private retreat overlooking quiet interior botanical courtyard with marble shower.',
     features: 'Queen Bed • Garden Courtyard • Rain Shower',
@@ -39,7 +39,7 @@ const INITIAL_ROOM_CATEGORIES = [
   {
     id: 3,
     name: 'Double Deluxe',
-    baseRate: 280,
+    baseRate: 3500,
     capacity: '2 Adults',
     description: 'Expansive suite featuring dual vanities, soaking tub and private promenade balcony.',
     features: 'King Bed • Balcony • Marble Bath',
@@ -48,7 +48,7 @@ const INITIAL_ROOM_CATEGORIES = [
   {
     id: 4,
     name: 'Double Executive',
-    baseRate: 340,
+    baseRate: 4800,
     capacity: '2 Adults, 1 Child',
     description: 'Executive-level luxury with dedicated workstation, lounge alcove, and high-fidelity acoustics.',
     features: 'King Bed • Oceanfront • Lounge Area • B&O Audio',
@@ -57,7 +57,7 @@ const INITIAL_ROOM_CATEGORIES = [
   {
     id: 5,
     name: 'Luxury Suite',
-    baseRate: 520,
+    baseRate: 6800,
     capacity: '4 Persons',
     description: 'Two-bedroom architectural triumph featuring limestone fireplace and dedicated 24h butler service.',
     features: 'Master King + Twin • Fireplace • Private Butler',
@@ -66,7 +66,7 @@ const INITIAL_ROOM_CATEGORIES = [
   {
     id: 6,
     name: 'Penthouse Panoramic',
-    baseRate: 850,
+    baseRate: 8500,
     capacity: '6 Persons',
     description: 'Top-floor expansive luxury boasting 360-degree waterfront wrap terrace and chef kitchen.',
     features: '3 En-Suite Bedrooms • 360° Terrace • Chef Kitchen',
@@ -75,7 +75,7 @@ const INITIAL_ROOM_CATEGORIES = [
   {
     id: 7,
     name: 'Presidential Penthouse',
-    baseRate: 1200,
+    baseRate: 10000,
     capacity: '6 Persons',
     description: 'The pinnacle of private luxury: full private floor, direct helipad access, and cedar spa.',
     features: 'Full Floor Luxury • Helipad Access • Private Spa',
@@ -89,7 +89,7 @@ const INITIAL_ROOMS = [
     type: 'Single Classic',
     floor: 'Floor 1 (West Wing)',
     capacity: '1 Person',
-    rate: 180,
+    rate: 1500,
     features: 'Single Bed • City View • Espresso Machine',
     // 3 Explicit Separated Statuses
     occupancyStatus: 'OCCUPIED', // 'VACANT' | 'OCCUPIED'
@@ -105,7 +105,7 @@ const INITIAL_ROOMS = [
     type: 'Single Deluxe',
     floor: 'Floor 1 (West Wing)',
     capacity: '1 Person',
-    rate: 220,
+    rate: 2200,
     features: 'Queen Bed • Garden Courtyard • Rain Shower',
     occupancyStatus: 'VACANT',
     housekeepingStatus: 'DIRTY',
@@ -120,7 +120,7 @@ const INITIAL_ROOMS = [
     type: 'Double Deluxe',
     floor: 'Floor 2 (East Wing)',
     capacity: '2 Adults',
-    rate: 280,
+    rate: 3500,
     features: 'King Bed • Balcony • Marble Bath',
     occupancyStatus: 'VACANT',
     housekeepingStatus: 'CLEAN',
@@ -135,7 +135,7 @@ const INITIAL_ROOMS = [
     type: 'Double Deluxe',
     floor: 'Floor 2 (East Wing)',
     capacity: '2 Adults',
-    rate: 290,
+    rate: 3600,
     features: 'Two Queen Beds • Bay View • Work Desk',
     occupancyStatus: 'VACANT',
     housekeepingStatus: 'DIRTY',
@@ -150,7 +150,7 @@ const INITIAL_ROOMS = [
     type: 'Double Executive',
     floor: 'Floor 3 (East Wing)',
     capacity: '2 Adults, 1 Child',
-    rate: 340,
+    rate: 4800,
     features: 'King Bed • Oceanfront • Lounge Area',
     occupancyStatus: 'OCCUPIED',
     housekeepingStatus: 'CLEAN',
@@ -165,7 +165,7 @@ const INITIAL_ROOMS = [
     type: 'Double Executive',
     floor: 'Floor 3 (East Wing)',
     capacity: '2 Adults, 1 Child',
-    rate: 350,
+    rate: 5000,
     features: 'King Bed • Skyline View • B&O Audio',
     occupancyStatus: 'VACANT',
     housekeepingStatus: 'CLEANING',
@@ -180,7 +180,7 @@ const INITIAL_ROOMS = [
     type: 'Luxury Suite',
     floor: 'Floor 4 (North Panorama)',
     capacity: '4 Persons',
-    rate: 520,
+    rate: 6800,
     features: 'Master King + Twin • Fireplace • Private Butler',
     occupancyStatus: 'OCCUPIED',
     housekeepingStatus: 'CLEAN',
@@ -195,7 +195,7 @@ const INITIAL_ROOMS = [
     type: 'Luxury Suite',
     floor: 'Floor 4 (North Panorama)',
     capacity: '4 Persons',
-    rate: 560,
+    rate: 7200,
     features: '2 King Beds • Terrace & Jacuzzi • Wine Cellar',
     occupancyStatus: 'VACANT',
     housekeepingStatus: 'DIRTY',
@@ -210,7 +210,7 @@ const INITIAL_ROOMS = [
     type: 'Penthouse Panoramic',
     floor: 'Floor 5 (Penthouse Level)',
     capacity: '6 Persons',
-    rate: 850,
+    rate: 8500,
     features: '3 En-Suite Bedrooms • 360° Terrace • Chef Kitchen',
     occupancyStatus: 'VACANT',
     housekeepingStatus: 'CLEAN',
@@ -225,7 +225,7 @@ const INITIAL_ROOMS = [
     type: 'Presidential Penthouse',
     floor: 'Floor 5 (Penthouse Level)',
     capacity: '6 Persons',
-    rate: 1200,
+    rate: 10000,
     features: 'Full Floor Luxury • Helipad Access • Private Spa',
     occupancyStatus: 'VACANT',
     housekeepingStatus: 'INSPECTION',
@@ -248,7 +248,7 @@ const INITIAL_BOOKINGS = [
     checkIn: '2026-09-28',
     checkOut: '2026-10-03',
     nights: 5,
-    roomRate: 180,
+    roomRate: 1500,
     status: 'CHECKED_IN', // 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED' | 'NO_SHOW'
     notes: 'Member VIP • Prefers feather pillows and early morning newspaper',
     paid: false,
@@ -266,7 +266,7 @@ const INITIAL_BOOKINGS = [
     checkIn: '2026-09-29',
     checkOut: '2026-10-01',
     nights: 2,
-    roomRate: 340,
+    roomRate: 4800,
     status: 'CHECKED_IN',
     notes: 'Forbes reviewer • Late check-out requested (1:00 PM)',
     paid: false,
@@ -284,7 +284,7 @@ const INITIAL_BOOKINGS = [
     checkIn: '2026-09-27',
     checkOut: '2026-10-04',
     nights: 7,
-    roomRate: 520,
+    roomRate: 6800,
     status: 'CHECKED_IN',
     notes: 'Celebrity guest • Valet parked Bentley #442',
     paid: false,
@@ -302,7 +302,7 @@ const INITIAL_BOOKINGS = [
     checkIn: '2026-09-30',
     checkOut: '2026-10-05',
     nights: 5,
-    roomRate: 1200,
+    roomRate: 10000,
     status: 'CONFIRMED',
     notes: 'Airport limousine pickup booked for 3:00 PM',
     paid: false,
@@ -318,7 +318,7 @@ const INITIAL_BOOKINGS = [
     checkIn: '2026-10-01',
     checkOut: '2026-10-04',
     nights: 3,
-    roomRate: 280,
+    roomRate: 3500,
     status: 'PENDING',
     notes: 'Arriving late evening • High-speed WiFi credentials needed for keynote prep',
     paid: false,
@@ -331,7 +331,7 @@ const INITIAL_MENU = [
     id: 1,
     name: 'Truffle Wagyu Burger',
     category: 'All-Day Dining',
-    price: 36.0,
+    price: 1200.0,
     prepTime: '20-25 mins',
     inStock: true,
     description: 'Brioche bun, caramelized onion, Gruyere, black truffle aioli, rosemary parmesan fries.',
@@ -342,7 +342,7 @@ const INITIAL_MENU = [
     id: 2,
     name: 'Belgian Waffle Stack',
     category: 'Breakfast',
-    price: 24.0,
+    price: 550.0,
     prepTime: '15 mins',
     inStock: true,
     description: 'Organic berry compote, Madagascar vanilla bean cream, grade-A Canadian maple syrup.',
@@ -353,7 +353,7 @@ const INITIAL_MENU = [
     id: 3,
     name: 'Chilean Sea Bass',
     category: 'Chef Special',
-    price: 48.0,
+    price: 2800.0,
     prepTime: '25-30 mins',
     inStock: true,
     description: 'Pan-seared with saffron emulsion, baby fennel, and fingerling potato crisps.',
@@ -364,7 +364,7 @@ const INITIAL_MENU = [
     id: 4,
     name: 'Valrhona Molten Fondant',
     category: 'Desserts',
-    price: 18.0,
+    price: 480.0,
     prepTime: '12 mins',
     inStock: true,
     description: 'Warm molten 70% chocolate center, hazelnut praline gelato, edible 24k gold leaf.',
@@ -375,7 +375,7 @@ const INITIAL_MENU = [
     id: 5,
     name: 'Smoked Salmon Bagel Royale',
     category: 'Breakfast',
-    price: 26.0,
+    price: 750.0,
     prepTime: '12 mins',
     inStock: true,
     description: 'Norwegian cold-smoked salmon, dill cream cheese, caper berries, pickled red onion.',
@@ -386,7 +386,7 @@ const INITIAL_MENU = [
     id: 6,
     name: 'Prime Dry-Aged Ribeye 12oz',
     category: 'Chef Special',
-    price: 64.0,
+    price: 3600.0,
     prepTime: '30 mins',
     inStock: true,
     description: '45-day dry aged, garlic confit butter, grilled asparagus, marrow bordelaise sauce.',
@@ -397,7 +397,7 @@ const INITIAL_MENU = [
     id: 7,
     name: 'Artisanal Charcuterie & Fromage',
     category: 'All-Day Dining',
-    price: 32.0,
+    price: 1800.0,
     prepTime: '10 mins',
     inStock: true,
     description: 'Prosciutto di Parma, Comte 24-mo, honeycomb, Marcona almonds, house sourdough.',
@@ -408,12 +408,34 @@ const INITIAL_MENU = [
     id: 8,
     name: 'Signature Horizon Espresso Martini',
     category: 'Beverages',
-    price: 22.0,
+    price: 450.0,
     prepTime: '5 mins',
     inStock: true,
     description: 'Grey Goose vodka, freshly pulled single-origin espresso, Kahlúa, dark chocolate rim.',
     calories: '210 kcal',
     image: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&q=80',
+  },
+  {
+    id: 9,
+    name: 'Ethiopian Single-Origin Yirgacheffe Roast',
+    category: 'Beverages',
+    price: 180.0,
+    prepTime: '5 mins',
+    inStock: true,
+    description: 'Handcrafted pour-over with jasmine floral notes, bergamot, and sweet peach undertones.',
+    calories: '5 kcal',
+    image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&q=80',
+  },
+  {
+    id: 10,
+    name: 'Imperial Grand Seafood Platter & Tasting',
+    category: 'Chef Special',
+    price: 4500.0,
+    prepTime: '35 mins',
+    inStock: true,
+    description: 'Whole rock lobster, king crab legs, oysters, tiger prawns, and sea urchin with champagne pairings.',
+    calories: '1150 kcal',
+    image: 'https://images.unsplash.com/photo-1559737558-2453e9a56cb6?w=600&q=80',
   },
 ];
 
@@ -423,10 +445,10 @@ const INITIAL_ORDERS = [
     roomNumber: '301',
     guestName: 'Sophia Montgomery',
     items: [
-      { id: 1, name: 'Truffle Wagyu Burger', price: 36.0, qty: 1 },
-      { id: 8, name: 'Signature Horizon Espresso Martini', price: 22.0, qty: 1 },
+      { id: 1, name: 'Truffle Wagyu Burger', price: 1200.0, qty: 1 },
+      { id: 8, name: 'Signature Horizon Espresso Martini', price: 450.0, qty: 1 },
     ],
-    total: 58.0,
+    total: 1650.0,
     status: 'Cooking', // 'Pending' | 'Cooking' | 'Ready' | 'Delivered'
     createdAt: '10:30 AM',
     elapsedMinutes: 18,
@@ -438,10 +460,10 @@ const INITIAL_ORDERS = [
     roomNumber: '401',
     guestName: 'Elena Rostova',
     items: [
-      { id: 2, name: 'Belgian Waffle Stack', price: 24.0, qty: 2 },
-      { id: 5, name: 'Smoked Salmon Bagel Royale', price: 26.0, qty: 1 },
+      { id: 2, name: 'Belgian Waffle Stack', price: 550.0, qty: 2 },
+      { id: 5, name: 'Smoked Salmon Bagel Royale', price: 750.0, qty: 1 },
     ],
-    total: 74.0,
+    total: 1850.0,
     status: 'Ready',
     createdAt: '10:42 AM',
     elapsedMinutes: 8,
@@ -453,10 +475,10 @@ const INITIAL_ORDERS = [
     roomNumber: '101',
     guestName: 'Lord Alexander Wright',
     items: [
-      { id: 3, name: 'Chilean Sea Bass', price: 48.0, qty: 1 },
-      { id: 4, name: 'Valrhona Molten Fondant', price: 18.0, qty: 1 },
+      { id: 3, name: 'Chilean Sea Bass', price: 2800.0, qty: 1 },
+      { id: 4, name: 'Valrhona Molten Fondant', price: 480.0, qty: 1 },
     ],
-    total: 66.0,
+    total: 3280.0,
     status: 'Pending',
     createdAt: '10:52 AM',
     elapsedMinutes: 2,
@@ -1432,7 +1454,7 @@ export const HotelProvider = ({ children }) => {
     const newId = `BK-${Math.floor(1000 + Math.random() * 9000)}`;
     const nights = guestData.nights || 1;
     const selectedRoom = rooms.find((r) => r.roomNumber === guestData.roomNumber);
-    const roomRate = selectedRoom ? selectedRoom.rate : 200;
+    const roomRate = selectedRoom ? selectedRoom.rate : 2200;
     const digitalKey = `AURA-${guestData.roomNumber}-${Math.floor(100 + Math.random() * 900)}`;
 
     const newBooking = {
@@ -1467,7 +1489,7 @@ export const HotelProvider = ({ children }) => {
     addLog(
       `Walk-In Guest Checked In (#${newId})`,
       'Front Desk',
-      `${guestData.name} checked into Room ${guestData.roomNumber} (${nights} nights, $${roomRate}/nt). Stay active.`,
+      `${guestData.name} checked into Room ${guestData.roomNumber} (${nights} nights, ${roomRate} ETB/nt). Stay active.`,
       'Walk-In'
     );
 
@@ -1572,7 +1594,7 @@ export const HotelProvider = ({ children }) => {
     addLog(
       `Guest Checked Out (Room ${roomNumber})`,
       'Front Desk',
-      `${folio.guestName} settled folio ($${folio.grandTotal.toFixed(2)}) via ${paymentMethod}. Room transitioned to Housekeeping queue as DIRTY.`,
+      `${folio.guestName} settled folio (${folio.grandTotal.toFixed(2)} ETB) via ${paymentMethod}. Room transitioned to Housekeeping queue as DIRTY.`,
       'Checkout'
     );
 
@@ -1649,7 +1671,7 @@ export const HotelProvider = ({ children }) => {
     addLog(
       `Room Service Order Placed (${orderId})`,
       'Kitchen',
-      `Room ${roomNumber} ordered ${items.length} item(s) totaling $${total.toFixed(2)}. Sent to KDS.`,
+      `Room ${roomNumber} ordered ${items.length} item(s) totaling ${total.toFixed(2)} ETB. Sent to KDS.`,
       'Kitchen KDS'
     );
 
@@ -1694,7 +1716,7 @@ export const HotelProvider = ({ children }) => {
   const addMenuItem = (item) => {
     const newItem = { ...item, id: Date.now(), inStock: true };
     setMenuItems((prev) => [...prev, newItem]);
-    addLog(`Menu Item Added: ${item.name}`, 'Menu', `Added dish priced at $${item.price}.`, 'Admin');
+    addLog(`Menu Item Added: ${item.name}`, 'Menu', `Added dish priced at ${item.price} ETB.`, 'Admin');
     menuApi.create(item).catch((err) => {
       console.warn('menuApi.create sync error:', err.message);
     });
@@ -1978,9 +2000,10 @@ export const HotelProvider = ({ children }) => {
   };
 
   // 14. Guest Online Booking
-  const createGuestOnlineBooking = async ({ guestName, email, phone, roomNumber, checkIn, checkOut, nights, notes, autoCheckIn = false }) => {
+  const createGuestOnlineBooking = async ({ guestName, email, phone, roomNumber, roomType, checkIn, checkOut, nights, notes, autoCheckIn = false }) => {
     const selectedRoom = rooms.find((r) => r.roomNumber === roomNumber);
     const roomRate = selectedRoom ? selectedRoom.rate : 220;
+    const resolvedRoomType = roomType || selectedRoom?.type || 'Deluxe Suite';
     const newId = `BK-${Math.floor(2000 + Math.random() * 8000)}`;
 
     const isToday = new Date(checkIn).toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
@@ -1989,14 +2012,14 @@ export const HotelProvider = ({ children }) => {
 
     const newBooking = {
       id: newId,
-      guestName,
-      email,
-      phone,
+      guestName: (guestName || 'Valued Guest').trim(),
+      email: (email || 'guest@efoyhotel.com').trim().toLowerCase(),
+      phone: (phone || '+1 (555) 234-5678').trim(),
       roomNumber,
-      roomType: selectedRoom?.type || 'Deluxe Suite',
+      roomType: resolvedRoomType,
       checkIn,
       checkOut,
-      nights,
+      nights: Number(nights) || 1,
       roomRate,
       status: bookingStatus,
       notes: notes || 'Online booking via Guest Portal',
@@ -2006,31 +2029,42 @@ export const HotelProvider = ({ children }) => {
       digitalKeyCode: digitalKey,
     };
 
+    // Optimistically update local PMS state immediately
+    setBookings((prev) => [newBooking, ...prev]);
+
+    if (roomNumber) {
+      setRooms((prev) =>
+        prev.map((r) =>
+          r.roomNumber === roomNumber
+            ? {
+                ...r,
+                occupancy: bookingStatus === 'CHECKED_IN' ? 'Occupied' : 'Reserved',
+                occupancyStatus: bookingStatus === 'CHECKED_IN' ? 'OCCUPIED' : r.occupancyStatus,
+                guestId: newId,
+              }
+            : r
+        )
+      );
+    }
+
+    addLog(
+      `Online Booking Confirmed (#${newId})`,
+      'Guest Portal',
+      `${guestName} booked Room ${roomNumber} (${nights} nights). Check-in: ${checkIn}.`,
+      'Online Booking'
+    );
+
     try {
       const res = await bookingsApi.create(newBooking);
       if (res?.booking) {
-        setBookings((prev) => [res.booking, ...prev]);
-        if (roomNumber && bookingStatus === 'CHECKED_IN') {
-          setRooms((prev) =>
-            prev.map((r) =>
-              r.roomNumber === roomNumber
-                ? { ...r, occupancy: 'Occupied', occupancyStatus: 'OCCUPIED', guestId: res.booking.id }
-                : r
-            )
-          );
-        }
-        addLog(
-          `Online Booking Confirmed (#${res.booking.id})`,
-          'Guest Portal',
-          `${guestName} booked Room ${roomNumber} (${nights} nights). Check-in: ${checkIn}.`,
-          'Online Booking'
-        );
+        setBookings((prev) => prev.map((b) => (b.id === newId ? { ...newBooking, ...res.booking } : b)));
         return { success: true, booking: res.booking, folioId: res.folioId };
       }
       return { success: true, booking: newBooking };
     } catch (err) {
-      console.warn('bookingsApi.create online sync error:', err.message);
-      return { success: false, message: err.message };
+      console.warn('bookingsApi.create online sync notice:', err.message);
+      // Local optimistic record ensures guest flow continues uninterrupted
+      return { success: true, booking: newBooking, warning: err.message };
     }
   };
 
