@@ -514,7 +514,7 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
                         {ord.items.map((item, idx) => (
                           <div key={idx} className="flex justify-between text-gray-700">
                             <span className="font-medium text-dark-900">{item.qty}x {item.name}</span>
-                            <span className="font-mono text-gray-400">${(item.price * item.qty).toFixed(2)}</span>
+                            <span className="font-mono text-gray-400">{(item.price * item.qty).toLocaleString()} ETB</span>
                           </div>
                         ))}
                       </div>
@@ -527,7 +527,7 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
 
                       <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                         <span className="font-mono font-bold text-dark-900 text-xs">
-                          ${ord.total.toFixed(2)}
+                          {ord.total.toLocaleString()} ETB
                         </span>
                         <button
                           onClick={() => handleNextStatus(ord)}
@@ -582,7 +582,7 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
                         {ord.items.map((item, idx) => (
                           <div key={idx} className="flex justify-between text-gray-700">
                             <span className="font-medium text-dark-900">{item.qty}x {item.name}</span>
-                            <span className="font-mono text-gray-400">${(item.price * item.qty).toFixed(2)}</span>
+                            <span className="font-mono text-gray-400">{(item.price * item.qty).toLocaleString()} ETB</span>
                           </div>
                         ))}
                       </div>
@@ -595,7 +595,7 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
 
                       <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                         <span className="font-mono font-bold text-dark-900 text-xs">
-                          ${ord.total.toFixed(2)}
+                          {ord.total.toLocaleString()} ETB
                         </span>
                         <button
                           onClick={() => handleNextStatus(ord)}
@@ -650,14 +650,14 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
                         {ord.items.map((item, idx) => (
                           <div key={idx} className="flex justify-between text-gray-700">
                             <span className="font-medium text-dark-900">{item.qty}x {item.name}</span>
-                            <span className="font-mono text-gray-400">${(item.price * item.qty).toFixed(2)}</span>
+                            <span className="font-mono text-gray-400">{(item.price * item.qty).toLocaleString()} ETB</span>
                           </div>
                         ))}
                       </div>
 
                       <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                         <span className="font-mono font-bold text-dark-900 text-xs">
-                          ${ord.total.toFixed(2)}
+                          {ord.total.toLocaleString()} ETB
                         </span>
                         <button
                           onClick={() => handleNextStatus(ord)}
@@ -712,7 +712,7 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
 
                       <div className="flex justify-between items-center text-xs font-mono font-bold text-dark-900 pt-2 border-t border-gray-100">
                         <span>Folio Charged:</span>
-                        <span className="text-emerald-700">${ord.total.toFixed(2)}</span>
+                        <span className="text-emerald-700">{ord.total.toLocaleString()} ETB</span>
                       </div>
                     </div>
                   ))}
@@ -847,7 +847,7 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
                     <p className="text-[11px] text-gray-500 mb-3 leading-relaxed font-light">{dish.description}</p>
                     <div className="flex justify-between text-xs font-mono mb-3">
                       <span className="text-gray-400 font-light">Prep: {dish.prepTime}</span>
-                      <span className="font-bold text-dark-900">${dish.price.toFixed(2)}</span>
+                      <span className="font-bold text-dark-900">{dish.price.toLocaleString()} ETB</span>
                     </div>
                   </div>
 

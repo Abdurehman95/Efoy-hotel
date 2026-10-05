@@ -1204,7 +1204,7 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
                           <div className="text-[11px] text-gray-500 font-medium">{room.type}</div>
                         </div>
                         <div className="text-right">
-                          <span className="text-xs font-mono font-bold text-dark-900">${room.rate}</span>
+                          <span className="text-xs font-mono font-bold text-dark-900">{room.rate.toLocaleString()} ETB</span>
                           <span className="text-[10px] text-gray-400 block">/night</span>
                         </div>
                       </div>
@@ -1468,7 +1468,7 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
                     <option>Credit Card (Terminal Verified)</option>
                     <option>Amex Centurion •••• 8820</option>
                     <option>Corporate Direct Bill</option>
-                    <option>Cash Deposit ($500 Pre-Auth)</option>
+                    <option>Cash Deposit (5,000 ETB Pre-Auth)</option>
                     <option>Horizon Privilege Club VIP</option>
                   </select>
                 </div>
@@ -1540,33 +1540,33 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
                         <div className="p-3 bg-[#fafafa] rounded-lg border border-gray-100 space-y-1.5 text-xs mb-4">
                           <div className="flex justify-between text-gray-600">
                             <span>Room Charge:</span>
-                            <span className="font-mono font-medium">${folio.roomTotal.toFixed(2)}</span>
+                            <span className="font-mono font-medium">{folio.roomTotal.toLocaleString()} ETB</span>
                           </div>
                           <div className="flex justify-between text-gray-600">
                             <span>Food & Room Service:</span>
                             <span className="font-mono font-medium text-gold-600">
-                              +${folio.foodTotal.toFixed(2)}
+                              +{folio.foodTotal.toLocaleString()} ETB
                             </span>
                           </div>
                           {folio.serviceTotal > 0 && (
                             <div className="flex justify-between text-gray-600">
                               <span>Concierge Services:</span>
                               <span className="font-mono font-medium text-blue-600">
-                                +${folio.serviceTotal.toFixed(2)}
+                                +{(folio.serviceTotal || 0).toLocaleString()} ETB
                               </span>
                             </div>
                           )}
                           <div className="flex justify-between text-gray-500 text-[11px]">
                             <span>Taxes & Luxury Surcharge (12%):</span>
-                            <span className="font-mono">${folio.taxes.toFixed(2)}</span>
+                            <span className="font-mono">{folio.taxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
                           </div>
                           <div className="flex justify-between pt-2 border-t border-gray-200 text-sm font-bold text-dark-900">
                             <span>Grand Total Folio:</span>
-                            <span className="font-mono text-gold-700">${folio.grandTotal.toFixed(2)}</span>
+                            <span className="font-mono text-gold-700">{folio.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
                           </div>
                           <div className="flex justify-between text-[11px] text-gray-500">
                             <span>Balance Due:</span>
-                            <span className="font-mono font-bold text-dark-900">${(folio.balanceDue !== undefined ? folio.balanceDue : folio.grandTotal).toFixed(2)}</span>
+                            <span className="font-mono font-bold text-dark-900">{(folio.balanceDue !== undefined ? folio.balanceDue : folio.grandTotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
                           </div>
                         </div>
 
@@ -1580,7 +1580,7 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
                               {folio.foodOrders.map((ord) => (
                                 <div key={ord.id} className="text-[11px] text-gray-600 flex justify-between font-light">
                                   <span>#{ord.id} ({ord.status})</span>
-                                  <span className="font-mono font-medium">${ord.total.toFixed(2)}</span>
+                                  <span className="font-mono font-medium">{ord.total.toLocaleString()} ETB</span>
                                 </div>
                               ))}
                             </div>
@@ -1766,10 +1766,10 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
                           </td>
                           <td className="py-3 px-4 font-semibold text-dark-900">{b.guestName}</td>
                           <td className="py-3 px-4 font-light">Room {b.roomNumber}</td>
-                          <td className="py-3 px-4 font-mono">${folio.roomTotal.toFixed(2)}</td>
-                          <td className="py-3 px-4 font-mono text-gold-600">${folio.foodTotal.toFixed(2)}</td>
+                          <td className="py-3 px-4 font-mono">{folio.roomTotal.toLocaleString()} ETB</td>
+                          <td className="py-3 px-4 font-mono text-gold-600">{folio.foodTotal.toLocaleString()} ETB</td>
                           <td className="py-3 px-4 font-mono font-bold text-dark-900">
-                            ${folio.grandTotal.toFixed(2)}
+                            {folio.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB
                           </td>
                           <td className="py-3 px-4 text-right">
                             <button
@@ -1831,26 +1831,26 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
             {/* Folio itemization */}
             <div className="p-4 bg-[#fafafa] rounded-xl border border-gray-100 space-y-2 text-xs mb-4">
               <div className="flex justify-between text-gray-600">
-                <span>Accommodation ({checkoutConfirmFolio.nights} Night(s) @ ${checkoutConfirmFolio.roomRate}/nt):</span>
-                <span className="font-mono font-medium">${checkoutConfirmFolio.roomTotal.toFixed(2)}</span>
+                <span>Accommodation ({checkoutConfirmFolio.nights} Night(s) @ {checkoutConfirmFolio.roomRate.toLocaleString()} ETB/nt):</span>
+                <span className="font-mono font-medium">{checkoutConfirmFolio.roomTotal.toLocaleString()} ETB</span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>In-Room Dining Delivered Orders ({checkoutConfirmFolio.foodOrders?.length || 0}):</span>
-                <span className="font-mono font-medium text-gold-600">+${checkoutConfirmFolio.foodTotal.toFixed(2)}</span>
+                <span className="font-mono font-medium text-gold-600">+{checkoutConfirmFolio.foodTotal.toLocaleString()} ETB</span>
               </div>
               {checkoutConfirmFolio.serviceTotal > 0 && (
                 <div className="flex justify-between text-gray-600">
                   <span>Concierge & Guest Services:</span>
-                  <span className="font-mono font-medium text-blue-600">+${checkoutConfirmFolio.serviceTotal.toFixed(2)}</span>
+                  <span className="font-mono font-medium text-blue-600">+{(checkoutConfirmFolio.serviceTotal || 0).toLocaleString()} ETB</span>
                 </div>
               )}
               <div className="flex justify-between text-gray-500 text-[11px]">
                 <span>State Tax & Luxury Surcharge (12%):</span>
-                <span className="font-mono">${checkoutConfirmFolio.taxes.toFixed(2)}</span>
+                <span className="font-mono">{checkoutConfirmFolio.taxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
               </div>
               <div className="flex justify-between pt-2 border-t border-gray-200 text-sm font-bold text-dark-900">
                 <span>Grand Total Folio Balance:</span>
-                <span className="font-mono text-base text-gold-700">${checkoutConfirmFolio.grandTotal.toFixed(2)}</span>
+                <span className="font-mono text-base text-gold-700">{checkoutConfirmFolio.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
               </div>
             </div>
 

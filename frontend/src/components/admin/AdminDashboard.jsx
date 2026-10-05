@@ -353,7 +353,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
           scales: {
             y: {
               grid: { color: '#f1f5f9' },
-              ticks: { font: { size: 10 }, callback: (v) => `$${v / 1000}k` },
+              ticks: { font: { size: 10 }, callback: (v) => `${v / 1000}k ETB` },
             },
             x: {
               grid: { display: false },
@@ -947,10 +947,10 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   </span>
                 </div>
                 <div className="font-serif text-3xl font-bold text-dark-900 mb-1">
-                  $48,920
+                  489,200 ETB
                 </div>
                 <div className="text-[11px] text-gray-500">
-                  Tariffs: $38.5k • Culinary: {orders.length} orders ({orders.filter((o) => (o.status || '').toLowerCase() === 'pending' || (o.status || '').toLowerCase() === 'cooking').length} active)
+                  Tariffs: 385k ETB • Culinary: {orders.length} orders ({orders.filter((o) => (o.status || '').toLowerCase() === 'pending' || (o.status || '').toLowerCase() === 'cooking').length} active)
                 </div>
               </div>
 
@@ -1070,7 +1070,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-mono font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                    Gross: $342,800 MTD
+                    Gross: 3,428,000 ETB MTD
                   </span>
                 </div>
               </div>
@@ -1566,7 +1566,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                       <p className="text-xs text-gray-500 mb-3 leading-relaxed">{dish.description}</p>
                       <div className="flex justify-between text-xs font-mono font-bold mb-4">
                         <span className="text-gray-500 font-normal">⏱ {dish.prepTime || '15 mins'}</span>
-                        <span className="text-gold-700 text-sm">${Number(dish.price || 0).toFixed(2)}</span>
+                        <span className="text-gold-700 text-sm">{Number(dish.price || 0).toLocaleString()} ETB</span>
                       </div>
                     </div>
 
