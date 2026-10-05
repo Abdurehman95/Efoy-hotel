@@ -45,6 +45,9 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
     getGuestFolio,
     createServiceRequest,
     checkoutGuest,
+    checkInGuest,
+    createHousekeepingTask,
+    markRoomDirty,
   } = useHotel();
 
   const [activeTab, setActiveTab] = useState('My Stay & Key');
@@ -222,9 +225,23 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
     showToast('🍽️ Order sent to Kitchen KDS! Charges will post automatically upon delivery.');
   };
 
-  // Submit Concierge Service Request
-  const handleRequestService = (serviceType, details = '', chargeAmount = 0, department = 'Front Desk') => {
-    const targetRoom = assignedRoomNumber || userBooking?.roomNumber || 'Pre-Arrival';
+  // Submit Concierge Service Request or Housekeeping Task
+  const handleRequestService = (serviceType, details = '', chargeAmount = 0, department = 'Front Desk', isHkTurnover = false) => {
+    const targetRoom = assignedRoomNumber || userBooking?.roomNumber || '101';
+    
+    if (isHkTurnover) {
+      createHousekeepingTask({
+        roomNumber: targetRoom,
+        priority: 'HIGH',
+        notes: `${serviceType} requested via Guest Portal for ${user?.name || userBooking?.guestName || 'Valued Guest'}`,
+      });
+      if (assignedRoomNumber) {
+        markRoomDirty(assignedRoomNumber, `${serviceType} requested by guest`);
+      }
+      showToast(`🧹 Housekeeping turnover task dispatched for Room ${targetRoom}!`);
+      return;
+    }
+
     createServiceRequest({
       roomNumber: targetRoom,
       guestName: user?.name || userBooking?.guestName || 'Valued Guest',
@@ -235,6 +252,18 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
     });
 
     showToast(`🛎️ Request logged: "${serviceType}". Attendants notified.`);
+  };
+
+  // Express Digital Check-In directly from Guest Portal
+  const handleExpressCheckIn = async () => {
+    if (!userBooking) return;
+    const targetRoom = userBooking.roomNumber || (rooms.find(r => (r.occupancyStatus || r.occupancy?.toUpperCase()) === 'VACANT' && (r.housekeepingStatus || r.cleanliness?.toUpperCase()) === 'CLEAN')?.roomNumber || '101');
+    const res = await checkInGuest(userBooking.id, targetRoom, true);
+    if (res.success) {
+      showToast(`🎉 Welcome to Room ${targetRoom}! Mobile digital key and guest services are now active.`);
+    } else {
+      showToast(res.message || 'Check-in failed');
+    }
   };
 
   // Submit online room booking
@@ -489,7 +518,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
               </div>
               <div className="flex items-center justify-between text-[11px] pt-2 border-t border-dark-700/60 text-gray-300">
                 <span>Live Balance:</span>
-                <span className="font-mono font-bold text-gold-400">${folio.grandTotal.toFixed(2)}</span>
+                <span className="font-mono font-bold text-gold-400">{folio.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
               </div>
               <button
                 type="button"
@@ -639,7 +668,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                 </div>
                 <div className="flex justify-between text-gray-500 pb-2 border-b border-gray-100">
                   <span>Total Settled:</span>
-                  <span className="font-mono font-bold text-emerald-700">${checkoutSuccessFolio.grandTotal.toFixed(2)}</span>
+                  <span className="font-mono font-bold text-emerald-700">{checkoutSuccessFolio.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
                 </div>
                 <div className="flex justify-between text-gray-500">
                   <span>Payment Settlement:</span>
@@ -794,8 +823,8 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                   </div>
                 </div>
 
-                {/* 3-Step Hospitality Check-in explanation */}
-                <div className="bg-amber-50/70 p-4 rounded-xl border border-amber-200 text-xs space-y-2 mb-5">
+                {/* 3-Step Hospitality Check-in explanation & Express Digital Check-In Button */}
+                <div className="bg-amber-50/70 p-4 rounded-xl border border-amber-200 text-xs space-y-2 mb-4">
                   <div className="font-bold text-amber-900 flex items-center gap-2">
                     <ShieldCheck size={16} className="text-amber-700 shrink-0" />
                     <span>How Check-In Works at Efoy Hotel:</span>
@@ -803,8 +832,32 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                   <ol className="list-decimal list-inside space-y-1 text-amber-950 font-light leading-relaxed pl-1">
                     <li><strong>Arrival & Reception Greeting:</strong> Present your booking confirmation or ID to the Front Desk Receptionist upon arrival.</li>
                     <li><strong>Suitability & Inspection Check:</strong> Reception verifies that your suite is certified CLEAN and available before check-in.</li>
-                    <li><strong>Instant Activation:</strong> Once reception confirms your check-in, your <strong>Mobile NFC Digital Keycard</strong>, in-room dining, and live folio will activate automatically on this screen!</li>
+                    <li><strong>Instant Activation:</strong> Once confirmed, your <strong>Mobile NFC Digital Keycard</strong>, in-room dining, and live folio will activate automatically!</li>
                   </ol>
+                </div>
+
+                {/* Instant Express Check-In Action Card */}
+                <div className="bg-emerald-50/90 p-4 rounded-xl border border-emerald-300 text-xs space-y-3 mb-5 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="font-bold text-emerald-900 flex items-center gap-2">
+                      <Sparkles size={16} className="text-emerald-600 shrink-0" />
+                      <span>Instant Express Digital Check-In Available</span>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                      Fast Track
+                    </span>
+                  </div>
+                  <p className="text-emerald-950 font-light leading-relaxed">
+                    Skip the front desk queue! Perform instant digital check-in to immediately activate your <strong>Mobile NFC Keycard</strong>, order room service, and access your live folio.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleExpressCheckIn}
+                    className="w-full py-3 bg-gold-500 hover:bg-gold-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Key size={15} />
+                    <span>Activate Digital Keycard & Express Check-In Now →</span>
+                  </button>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs">
@@ -917,9 +970,9 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                           Room Charges
                         </span>
                         <div className="font-mono text-base font-bold text-dark-900">
-                          ${folio?.roomTotal.toFixed(2)}
+                          {folio?.roomTotal.toLocaleString()} ETB
                         </div>
-                        <div className="text-[10px] text-gray-500">{folio?.nights} nights @ ${folio?.roomRate}/nt</div>
+                        <div className="text-[10px] text-gray-500">{folio?.nights} nights @ {folio?.roomRate?.toLocaleString()} ETB/nt</div>
                       </div>
 
                       {/* Dining */}
@@ -928,7 +981,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                           Delivered Dining
                         </span>
                         <div className="font-mono text-base font-bold text-gold-700">
-                          +${folio?.foodTotal.toFixed(2)}
+                          +{folio?.foodTotal.toLocaleString()} ETB
                         </div>
                         <div className="text-[10px] text-gray-500">{folio?.foodOrders.length} order(s) delivered</div>
                       </div>
@@ -939,7 +992,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                           Concierge Services
                         </span>
                         <div className="font-mono text-base font-bold text-blue-700">
-                          +${(folio?.serviceTotal || 0).toFixed(2)}
+                          +{(folio?.serviceTotal || 0).toLocaleString()} ETB
                         </div>
                         <div className="text-[10px] text-gray-500">{folio?.serviceCharges?.length || 0} service(s)</div>
                       </div>
@@ -950,7 +1003,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                           Total Folio Balance
                         </span>
                         <div className="font-mono text-base font-bold text-gold-400">
-                          ${folio?.grandTotal.toFixed(2)}
+                          {folio?.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB
                         </div>
                         <div className="text-[10px] text-gray-400">Incl. 12% luxury taxes</div>
                       </div>
@@ -960,11 +1013,11 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                     <div className="p-3 bg-gray-50 rounded-lg text-xs space-y-1 text-gray-600">
                       <div className="flex justify-between">
                         <span>Hospitality Tax & Luxury Surcharge (12%):</span>
-                        <span className="font-mono">${folio?.taxes.toFixed(2)}</span>
+                        <span className="font-mono">{folio?.taxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
                       </div>
                       <div className="flex justify-between font-bold text-dark-900 pt-1 border-t border-gray-200">
                         <span>Net Balance Due at Checkout:</span>
-                        <span className="font-mono text-gold-700 text-sm">${(folio?.balanceDue !== undefined ? folio?.balanceDue : folio?.grandTotal).toFixed(2)}</span>
+                        <span className="font-mono text-gold-700 text-sm">{(folio?.balanceDue !== undefined ? folio?.balanceDue : folio?.grandTotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
                       </div>
                     </div>
 
@@ -997,7 +1050,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                       {guestOrders.length > 0 ? (
                         <div className="text-xs text-gray-600 space-y-1">
                           <div>Latest: Order #{guestOrders[0].id} ({guestOrders[0].status})</div>
-                          <div className="font-mono font-bold text-dark-900">${guestOrders[0].total.toFixed(2)}</div>
+                          <div className="font-mono font-bold text-dark-900">{guestOrders[0].total.toLocaleString()} ETB</div>
                         </div>
                       ) : (
                         <div className="text-xs text-gray-400 font-light">No dining orders placed yet.</div>
@@ -1127,18 +1180,18 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                       {roomCategories && roomCategories.length > 0 ? (
                         roomCategories.map((cat) => (
                           <option key={cat.id || cat.name} value={cat.name}>
-                            {cat.name} (${cat.baseRate}/nt)
+                            {cat.name} ({Number(cat.baseRate).toLocaleString()} ETB/nt)
                           </option>
                         ))
                       ) : (
                         <>
-                          <option value="Single Classic">Single Classic ($180/nt)</option>
-                          <option value="Single Deluxe">Single Deluxe ($220/nt)</option>
-                          <option value="Double Deluxe">Double Deluxe ($280/nt)</option>
-                          <option value="Double Executive">Double Executive ($340/nt)</option>
-                          <option value="Luxury Suite">Luxury Suite ($520/nt)</option>
-                          <option value="Penthouse Panoramic">Penthouse Panoramic ($850/nt)</option>
-                          <option value="Presidential Penthouse">Presidential Penthouse ($1200/nt)</option>
+                          <option value="Single Classic">Single Classic (1,500 ETB/nt)</option>
+                          <option value="Single Deluxe">Single Deluxe (2,200 ETB/nt)</option>
+                          <option value="Double Deluxe">Double Deluxe (3,500 ETB/nt)</option>
+                          <option value="Double Executive">Double Executive (4,800 ETB/nt)</option>
+                          <option value="Luxury Suite">Luxury Suite (6,800 ETB/nt)</option>
+                          <option value="Penthouse Panoramic">Penthouse Panoramic (8,500 ETB/nt)</option>
+                          <option value="Presidential Penthouse">Presidential Penthouse (10,000 ETB/nt)</option>
                         </>
                       )}
                     </select>
@@ -1255,7 +1308,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
 
                       <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
                         <span className="font-mono text-base font-bold text-dark-900">
-                          ${dish.price.toFixed(2)}
+                          {dish.price.toLocaleString()} ETB
                         </span>
 
                         {isAvailable ? (
@@ -1302,7 +1355,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                         <div key={item.id} className="flex items-center justify-between text-xs">
                           <div className="truncate max-w-[140px]">
                             <div className="font-semibold text-dark-900 truncate">{item.name}</div>
-                            <div className="font-mono text-gray-500">${item.price.toFixed(2)} each</div>
+                            <div className="font-mono text-gray-500">{item.price.toLocaleString()} ETB each</div>
                           </div>
 
                           <div className="flex items-center gap-2">
@@ -1342,11 +1395,11 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                     <div className="pt-3 border-t border-gray-100 space-y-1 text-xs">
                       <div className="flex justify-between text-gray-600">
                         <span>Dishes Subtotal:</span>
-                        <span className="font-mono">${cartTotal.toFixed(2)}</span>
+                        <span className="font-mono">{cartTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
                       </div>
                       <div className="flex justify-between font-bold text-sm text-dark-900 pt-1">
                         <span>Posted upon Delivery:</span>
-                        <span className="font-mono text-gold-700">${cartTotal.toFixed(2)}</span>
+                        <span className="font-mono text-gold-700">{cartTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
                       </div>
                     </div>
 
@@ -1439,14 +1492,14 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                         {ord.items.map((i, idx) => (
                           <div key={idx} className="flex justify-between">
                             <span>{i.qty}x {i.name}</span>
-                            <span className="font-mono text-gray-500">${(i.price * i.qty).toFixed(2)}</span>
+                            <span className="font-mono text-gray-500">{(i.price * i.qty).toLocaleString()} ETB</span>
                           </div>
                         ))}
                       </div>
 
                       <div className="flex justify-between items-center text-xs font-mono font-bold text-dark-900 pt-2 border-t border-gray-100">
                         <span>{isDelivered ? '✓ Charged to Folio:' : 'Total (Pending Delivery):'}</span>
-                        <span className={isDelivered ? 'text-emerald-700' : 'text-gold-700'}>${ord.total.toFixed(2)}</span>
+                        <span className={isDelivered ? 'text-emerald-700' : 'text-gold-700'}>{ord.total.toLocaleString()} ETB</span>
                       </div>
                     </div>
                   );
@@ -1471,12 +1524,12 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
             {/* Quick Request Buttons */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[
-                { title: 'Extra Pillows & Egyptian Linens', desc: 'Hypoallergenic feather pillows + 600-thread count sheets', dept: 'Housekeeping' },
-                { title: 'Turn-Down Service', desc: 'Evening turn-down with artisanal chocolates and room scenting', dept: 'Housekeeping' },
-                { title: 'Valet Retrieval', desc: 'Bring vehicle to private hotel courtyard entrance', dept: 'Front Desk' },
-                { title: 'Airport Limousine Transfer', desc: 'Private Mercedes S-Class chauffeured airport transfer', dept: 'Concierge', charge: 95 },
+                { title: 'Room Cleaning & Full Linen Turnover', desc: 'Deep suite turnover, fresh Egyptian cotton linens & bathroom sanitization', dept: 'Housekeeping', isHkTurnover: true },
+                { title: 'Fresh Towel & Luxury Spa Restock', desc: 'Replenish plush towels, organic amenities & bathrobes', dept: 'Housekeeping', isHkTurnover: true },
+                { title: 'Turn-Down Evening Ritual', desc: 'Evening turn-down with artisanal chocolates and lavender room mist', dept: 'Housekeeping' },
+                { title: 'Valet Car Retrieval', desc: 'Bring vehicle to private hotel courtyard entrance', dept: 'Front Desk' },
+                { title: 'Airport Limousine Transfer', desc: 'Private Mercedes S-Class chauffeured airport transfer', dept: 'Concierge', charge: 1800 },
                 { title: 'Luggage & Bellman Assistance', desc: 'Luggage transfer or packing assistance', dept: 'Front Desk' },
-                { title: 'Late Checkout Request (2:00 PM)', desc: 'Subject to availability; complimentary for Horizon elite', dept: 'Front Desk' },
               ].map((svc, idx) => (
                 <div key={idx} className="bg-white p-5 rounded-xl border border-gray-100 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
                   <div>
@@ -1484,12 +1537,12 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                     <p className="text-xs text-gray-500 mb-3 leading-relaxed font-light">{svc.desc}</p>
                     <div className="flex items-center justify-between text-[10px] text-gray-400">
                       <span>Dept: {svc.dept}</span>
-                      {svc.charge ? <span className="font-mono font-bold text-gold-700">${svc.charge}</span> : <span className="text-emerald-600 font-semibold">Complimentary</span>}
+                      {svc.charge ? <span className="font-mono font-bold text-gold-700">{svc.charge.toLocaleString()} ETB</span> : <span className="text-emerald-600 font-semibold">Complimentary</span>}
                     </div>
                   </div>
 
                   <button
-                    onClick={() => handleRequestService(svc.title, svc.desc, svc.charge || 0, svc.dept)}
+                    onClick={() => handleRequestService(svc.title, svc.desc, svc.charge || 0, svc.dept, svc.isHkTurnover)}
                     className="mt-4 w-full py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-xs"
                   >
                     Request Service
@@ -1615,9 +1668,9 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                 <div className="flex justify-between pt-1">
                   <div>
                     <span className="font-semibold text-dark-900 block">Suite Accommodation</span>
-                    <span className="text-[10px] text-gray-500">{folio.nights} nights @ ${folio.roomRate.toFixed(2)}/nt</span>
+                    <span className="text-[10px] text-gray-500">{folio.nights} nights @ {folio.roomRate.toLocaleString()} ETB/nt</span>
                   </div>
-                  <span className="font-mono font-bold text-dark-900">${folio.roomTotal.toFixed(2)}</span>
+                  <span className="font-mono font-bold text-dark-900">{folio.roomTotal.toLocaleString()} ETB</span>
                 </div>
 
                 <div className="flex justify-between pt-2">
@@ -1625,7 +1678,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                     <span className="font-semibold text-dark-900 block">In-Room Culinary Dining</span>
                     <span className="text-[10px] text-gray-500">{folio.foodOrders?.length || 0} kitchen order(s) delivered</span>
                   </div>
-                  <span className="font-mono font-bold text-gold-700">+${folio.foodTotal.toFixed(2)}</span>
+                  <span className="font-mono font-bold text-gold-700">+{folio.foodTotal.toLocaleString()} ETB</span>
                 </div>
 
                 <div className="flex justify-between pt-2">
@@ -1633,17 +1686,17 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                     <span className="font-semibold text-dark-900 block">Concierge & White-Glove Services</span>
                     <span className="text-[10px] text-gray-500">{folio.serviceRequests?.length || 0} service request(s)</span>
                   </div>
-                  <span className="font-mono font-bold text-blue-700">+${(folio.serviceTotal || 0).toFixed(2)}</span>
+                  <span className="font-mono font-bold text-blue-700">+{(folio.serviceTotal || 0).toLocaleString()} ETB</span>
                 </div>
 
                 <div className="flex justify-between pt-2 text-gray-600">
                   <span>Hospitality & Luxury Tax (12%):</span>
-                  <span className="font-mono font-medium">${folio.taxes.toFixed(2)}</span>
+                  <span className="font-mono font-medium">{folio.taxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
                 </div>
 
                 <div className="flex justify-between pt-2.5 text-sm font-bold text-dark-900">
                   <span>Total Amount Due:</span>
-                  <span className="font-mono text-base text-gold-700">${folio.grandTotal.toFixed(2)}</span>
+                  <span className="font-mono text-base text-gold-700">{folio.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
                 </div>
               </div>
             </div>
@@ -1688,7 +1741,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                 className="mt-0.5 rounded text-gold-600 focus:ring-gold-500"
               />
               <span className="leading-tight">
-                I authorize final payment of <strong>${folio.grandTotal.toFixed(2)}</strong> for room folio charges and confirm that my digital NFC keycard will be deactivated upon checkout.
+                I authorize final payment of <strong>{folio.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</strong> for room folio charges and confirm that my digital NFC keycard will be deactivated upon checkout.
               </span>
             </label>
 
@@ -1708,7 +1761,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                 className="flex-1 py-2.5 bg-gold-500 hover:bg-gold-600 disabled:opacity-50 text-white rounded-xl text-xs font-semibold uppercase tracking-wider transition-all shadow-md cursor-pointer text-center flex items-center justify-center gap-1.5"
               >
                 <LogOut size={14} />
-                <span>{isCheckingOut ? 'Processing...' : `Confirm Check-Out ($${folio.grandTotal.toFixed(2)})`}</span>
+                <span>{isCheckingOut ? 'Processing...' : `Confirm Check-Out (${folio.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB)`}</span>
               </button>
             </div>
           </div>
