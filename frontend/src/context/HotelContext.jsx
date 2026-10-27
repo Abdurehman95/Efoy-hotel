@@ -665,6 +665,33 @@ const INITIAL_USERS = [
   { id: 5, name: 'Lord Alexander Wright', email: 'guest@efoyhotel.com', role: 'guest', phone: '+1 (555) 234-5678', createdAt: '2026-09-12T22:24:05.956Z' },
 ];
 
+// Automatic storage cache migration: clears old mock data so PostgreSQL records take priority
+const APP_DATA_VERSION = 'v2_live_backend_synced';
+if (typeof window !== 'undefined') {
+  try {
+    if (localStorage.getItem('efoy_cache_version') !== APP_DATA_VERSION) {
+      [
+        'efoy_hotel_rooms',
+        'efoy_hotel_room_categories',
+        'efoy_hotel_bookings',
+        'efoy_hotel_menu',
+        'efoy_hotel_orders',
+        'efoy_hotel_hk_tasks',
+        'efoy_hotel_hk_history',
+        'efoy_hotel_service_requests',
+        'efoy_hotel_maintenance_tickets',
+        'efoy_hotel_inventory',
+        'efoy_hotel_staff',
+        'efoy_hotel_logs',
+        'efoy_hotel_users',
+      ].forEach((key) => localStorage.removeItem(key));
+      localStorage.setItem('efoy_cache_version', APP_DATA_VERSION);
+    }
+  } catch (e) {
+    console.warn('Cache purge check warning:', e);
+  }
+}
+
 export const HotelProvider = ({ children }) => {
   const [rooms, setRooms] = useState(() => {
     try {
@@ -854,43 +881,43 @@ export const HotelProvider = ({ children }) => {
         ]);
 
         if (isMounted) {
-          if (roomsRes.status === 'fulfilled' && roomsRes.value?.rooms?.length) {
+          if (roomsRes.status === 'fulfilled' && Array.isArray(roomsRes.value?.rooms)) {
             setRooms(roomsRes.value.rooms);
           }
-          if (catsRes.status === 'fulfilled' && catsRes.value?.categories?.length) {
+          if (catsRes.status === 'fulfilled' && Array.isArray(catsRes.value?.categories)) {
             setRoomCategories(catsRes.value.categories);
           }
-          if (bookingsRes.status === 'fulfilled' && bookingsRes.value?.bookings?.length) {
+          if (bookingsRes.status === 'fulfilled' && Array.isArray(bookingsRes.value?.bookings)) {
             setBookings(bookingsRes.value.bookings);
           }
-          if (menuRes.status === 'fulfilled' && menuRes.value?.menu?.length) {
+          if (menuRes.status === 'fulfilled' && Array.isArray(menuRes.value?.menu)) {
             setMenuItems(menuRes.value.menu);
           }
-          if (ordersRes.status === 'fulfilled' && ordersRes.value?.orders?.length) {
+          if (ordersRes.status === 'fulfilled' && Array.isArray(ordersRes.value?.orders)) {
             setOrders(ordersRes.value.orders);
           }
-          if (hkTasksRes.status === 'fulfilled' && hkTasksRes.value?.tasks?.length) {
+          if (hkTasksRes.status === 'fulfilled' && Array.isArray(hkTasksRes.value?.tasks)) {
             setHousekeepingTasks(hkTasksRes.value.tasks);
           }
-          if (hkHistRes.status === 'fulfilled' && hkHistRes.value?.history?.length) {
+          if (hkHistRes.status === 'fulfilled' && Array.isArray(hkHistRes.value?.history)) {
             setHousekeepingHistory(hkHistRes.value.history);
           }
-          if (servicesRes.status === 'fulfilled' && servicesRes.value?.requests?.length) {
+          if (servicesRes.status === 'fulfilled' && Array.isArray(servicesRes.value?.requests)) {
             setServiceRequests(servicesRes.value.requests);
           }
-          if (maintRes.status === 'fulfilled' && maintRes.value?.tickets?.length) {
+          if (maintRes.status === 'fulfilled' && Array.isArray(maintRes.value?.tickets)) {
             setMaintenanceTickets(maintRes.value.tickets);
           }
-          if (invRes.status === 'fulfilled' && invRes.value?.items?.length) {
+          if (invRes.status === 'fulfilled' && Array.isArray(invRes.value?.items)) {
             setInventoryItems(invRes.value.items);
           }
-          if (staffRes.status === 'fulfilled' && staffRes.value?.staff?.length) {
+          if (staffRes.status === 'fulfilled' && Array.isArray(staffRes.value?.staff)) {
             setStaffList(staffRes.value.staff);
           }
-          if (logsRes.status === 'fulfilled' && logsRes.value?.logs?.length) {
+          if (logsRes.status === 'fulfilled' && Array.isArray(logsRes.value?.logs)) {
             setActivityLogs(logsRes.value.logs);
           }
-          if (usersRes.status === 'fulfilled' && usersRes.value?.users?.length) {
+          if (usersRes.status === 'fulfilled' && Array.isArray(usersRes.value?.users)) {
             setUsersList(usersRes.value.users);
           }
         }
@@ -1139,7 +1166,7 @@ export const HotelProvider = ({ children }) => {
   };
 
   // 1. Housekeeping: Certify clean room (One-click or inspection completion)
-  const cleanRoom = (roomNumber, cleanerName = 'Maria Santos') => {
+  const cleanRoom = (roomNumber, cleanerName = 'Housekeeping Attendant') => {
     setRooms((prev) =>
       prev.map((r) =>
         r.roomNumber === roomNumber
