@@ -30,7 +30,10 @@ import {
   Compass
 } from 'lucide-react';
 import PrintableInvoice from '../shared/PrintableInvoice';
+import Pagination from '../shared/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { useHotel } from '../../context/HotelContext';
+import { getUserDisplayName, getUserInitials, getUserRoleLabel } from '../../utils/userUtils';
 
 const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
   const {
@@ -145,7 +148,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
   const guestOrders = orders.filter((o) => {
     if (assignedRoomNumber && o.roomNumber === assignedRoomNumber) {
       if (!guestName) return true;
-      return !o.guestName || o.guestName.toLowerCase() === guestName || (isDemoGuest && o.guestName.toLowerCase() === 'lord alexander wright');
+      return !o.guestName || o.guestName.toLowerCase() === guestName;
     }
     if (guestName && o.guestName) {
       return o.guestName.toLowerCase() === guestName;
@@ -157,7 +160,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
   const guestServiceRequests = serviceRequests.filter((s) => {
     if (assignedRoomNumber && s.roomNumber === assignedRoomNumber) {
       if (!guestName) return true;
-      return !s.guestName || s.guestName.toLowerCase() === guestName || (isDemoGuest && s.guestName.toLowerCase() === 'lord alexander wright');
+      return !s.guestName || s.guestName.toLowerCase() === guestName;
     }
     if (guestName && s.guestName) {
       return s.guestName.toLowerCase() === guestName;
@@ -330,6 +333,12 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
     return dish.category === foodCategory;
   });
 
+  // Pagination for Guest Dashboard (default: 5)
+  const bookingsPagination = usePagination(myBookings, 5);
+  const menuPagination = usePagination(filteredMenu, 5);
+  const ordersPagination = usePagination(guestOrders, 5);
+  const servicesPagination = usePagination(guestServiceRequests, 5);
+
   const navMenuItems = [
     { name: 'My Stay & Key', icon: Key },
     { name: 'Book a Room', icon: Bed },
@@ -429,6 +438,26 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                   </button>
                 );
               })}
+            </div>
+
+            {/* Mobile User Profile */}
+            <div className="p-4 border-t border-dark-800 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-dark-800 text-gold-500 border border-gold-500/30 font-semibold text-xs flex items-center justify-center">
+                  {getUserInitials(user)}
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-white">{getUserDisplayName(user)}</div>
+                  <div className="text-[10px] text-gold-400 font-light">{getUserRoleLabel(user?.role || 'guest')}</div>
+                </div>
+              </div>
+              <button
+                onClick={onLogout}
+                title="Log out"
+                className="p-1.5 text-gray-400 hover:text-red-400 rounded transition-colors cursor-pointer"
+              >
+                <LogOut size={16} />
+              </button>
             </div>
           </div>
         </div>
@@ -576,14 +605,14 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
         <div className="p-4 border-t border-dark-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-dark-800 text-gold-500 border border-gold-500/30 font-semibold text-xs flex items-center justify-center">
-              {getInitials(user?.name || userBooking?.guestName || 'Valued Guest')}
+              {getUserInitials(user)}
             </div>
             <div className="truncate max-w-[120px]">
               <div className="text-xs font-semibold text-white truncate">
-                {user?.name || userBooking?.guestName || 'Valued Guest'}
+                {getUserDisplayName(user)}
               </div>
               <div className="text-[10px] text-gold-400 truncate">
-                {user?.email || 'Horizon Elite'}
+                {getUserRoleLabel(user?.role || 'guest')}
               </div>
             </div>
           </div>
@@ -611,7 +640,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
             </button>
             <div className="truncate">
               <span className="text-xs text-gray-500 hidden sm:inline">Welcome to Efoy Hotel, </span>
-              <span className="text-xs font-bold text-dark-900">{user?.name || userBooking?.guestName || 'Valued Guest'}</span>
+              <span className="text-xs font-bold text-dark-900">{getUserDisplayName(user)}</span>
             </div>
           </div>
 
@@ -637,6 +666,28 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
               <Bed size={14} />
               <span className="hidden sm:inline">Reserve Suite</span>
             </button>
+
+            {/* Authenticated User Header Pill */}
+            <div className="flex items-center gap-2 pl-2 border-l border-gray-200">
+              <div className="w-7 h-7 rounded-full bg-dark-900 text-gold-500 font-semibold text-xs flex items-center justify-center border border-gold-500/30 shrink-0">
+                {getUserInitials(user)}
+              </div>
+              <div className="hidden sm:block text-left leading-tight">
+                <div className="text-xs font-semibold text-dark-900 truncate max-w-[120px]">
+                  {getUserDisplayName(user)}
+                </div>
+                <div className="text-[10px] text-gray-500">
+                  {getUserRoleLabel(user?.role || 'guest')}
+                </div>
+              </div>
+              <button
+                onClick={onLogout}
+                title="Log out"
+                className="p-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
           </div>
         </header>
 
@@ -732,7 +783,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                     <span>My Past Stays & Folios</span>
                   </h3>
                   <div className="space-y-2.5">
-                    {myBookings.map((b) => (
+                    {bookingsPagination.paginatedItems.map((b) => (
                       <div
                         key={b.id}
                         className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
@@ -779,6 +830,16 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                       </div>
                     ))}
                   </div>
+                  <Pagination
+                    currentPage={bookingsPagination.currentPage}
+                    totalPages={bookingsPagination.totalPages}
+                    pageSize={bookingsPagination.pageSize}
+                    totalItems={bookingsPagination.totalItems}
+                    onPageChange={bookingsPagination.setCurrentPage}
+                    onPageSizeChange={bookingsPagination.setPageSize}
+                    pageSizeOptions={[5, 10, 15, 20]}
+                    itemLabel="reservations"
+                  />
                 </div>
               )}
             </div>
@@ -1095,7 +1156,8 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
             </div>
 
             <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-xs">
-              <form onSubmit={handleBookRoomSubmit} className="space-y-4">
+              <form onSubmit={handleBookRoomSubmit} autoComplete="off" className="space-y-4">
+                <input type="text" name="prevent_autofill" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
@@ -1277,8 +1339,9 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
               {/* Menu Catalog (2 cols) */}
-              <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {filteredMenu.map((dish) => {
+              <div className="lg:col-span-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {menuPagination.paginatedItems.map((dish) => {
                   const isAvailable = dish.inStock !== false;
 
                   return (
@@ -1328,6 +1391,17 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                     </div>
                   );
                 })}
+                </div>
+                <Pagination
+                  currentPage={menuPagination.currentPage}
+                  totalPages={menuPagination.totalPages}
+                  pageSize={menuPagination.pageSize}
+                  totalItems={menuPagination.totalItems}
+                  onPageChange={menuPagination.setCurrentPage}
+                  onPageSizeChange={menuPagination.setPageSize}
+                  pageSizeOptions={[5, 10, 15, 20]}
+                  itemLabel="dishes"
+                />
               </div>
 
               {/* In-Room Dining Tray (Cart) */}
@@ -1441,7 +1515,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
               </div>
             ) : (
               <div className="space-y-4">
-                {guestOrders.map((ord) => {
+                {ordersPagination.paginatedItems.map((ord) => {
                   const s = (ord.status || 'Pending').toLowerCase();
                   const isDelivered = s === 'delivered';
                   const isReady = s === 'ready';
@@ -1504,6 +1578,16 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                     </div>
                   );
                 })}
+                <Pagination
+                  currentPage={ordersPagination.currentPage}
+                  totalPages={ordersPagination.totalPages}
+                  pageSize={ordersPagination.pageSize}
+                  totalItems={ordersPagination.totalItems}
+                  onPageChange={ordersPagination.setCurrentPage}
+                  onPageSizeChange={ordersPagination.setPageSize}
+                  pageSizeOptions={[5, 10, 15, 20]}
+                  itemLabel="orders"
+                />
               </div>
             )}
           </div>
@@ -1563,7 +1647,7 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {guestServiceRequests.map((req) => (
+                  {servicesPagination.paginatedItems.map((req) => (
                     <div
                       key={req.id}
                       className="p-3.5 bg-gray-50/70 rounded-xl border border-gray-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
@@ -1600,6 +1684,16 @@ const GuestDashboard = ({ user, onLogout, onBackToSite }) => {
                       </div>
                     </div>
                   ))}
+                  <Pagination
+                    currentPage={servicesPagination.currentPage}
+                    totalPages={servicesPagination.totalPages}
+                    pageSize={servicesPagination.pageSize}
+                    totalItems={servicesPagination.totalItems}
+                    onPageChange={servicesPagination.setCurrentPage}
+                    onPageSizeChange={servicesPagination.setPageSize}
+                    pageSizeOptions={[5, 10, 15, 20]}
+                    itemLabel="service requests"
+                  />
                 </div>
               )}
             </div>
