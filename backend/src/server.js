@@ -25,7 +25,7 @@ server.listen(PORT, async () => {
     const res = await pool.query('SELECT NOW()');
     console.log(`✅ PostgreSQL Connected successfully. Server time: ${res.rows[0].now}`);
   } catch (err) {
-    console.warn(`⚠️ PostgreSQL connection attempt: ${err.message}`);
+    console.warn(`⚠️ PostgreSQL connection attempt: ${err.message || err}`);
     console.warn(`💡 Tip: Run 'npm run migrate' to initialize the database or verify credentials in backend/.env`);
   }
 });

@@ -93,6 +93,27 @@ async function runMigration() {
       console.log('✅ Room categories seeded.');
     }
 
+    // Step 3.55: Seed all standard hotel rooms
+    console.log('🌱 Ensuring standard rooms are seeded...');
+    await appClient.query(`
+      INSERT INTO rooms (room_number, type, floor, capacity, rate, features, occupancy_status, housekeeping_status, maintenance_status)
+      VALUES 
+        ('101', 'Single Classic', 'Floor 1 (West Wing)', '1 Person', 1500, 'Single Bed • City View • Espresso Machine', 'VACANT', 'CLEAN', 'AVAILABLE'),
+        ('102', 'Single Deluxe', 'Floor 1 (West Wing)', '1 Person', 2200, 'Queen Bed • Garden Courtyard • Rain Shower', 'VACANT', 'CLEAN', 'AVAILABLE'),
+        ('201', 'Double Deluxe', 'Floor 2 (East Wing)', '2 Adults', 3500, 'King Bed • Balcony • Marble Bath', 'VACANT', 'CLEAN', 'AVAILABLE'),
+        ('202', 'Double Deluxe', 'Floor 2 (East Wing)', '2 Adults', 3600, 'Two Queen Beds • Bay View • Work Desk', 'VACANT', 'CLEAN', 'AVAILABLE'),
+        ('301', 'Double Executive', 'Floor 3 (East Wing)', '2 Adults, 1 Child', 4800, 'King Bed • Oceanfront • Lounge Area', 'VACANT', 'CLEAN', 'AVAILABLE'),
+        ('302', 'Double Executive', 'Floor 3 (East Wing)', '2 Adults, 1 Child', 5000, 'King Bed • Skyline View • B&O Audio', 'VACANT', 'CLEAN', 'AVAILABLE'),
+        ('401', 'Luxury Suite', 'Floor 4 (North Panorama)', '4 Persons', 6800, 'Master King + Twin • Fireplace • Private Butler', 'VACANT', 'CLEAN', 'AVAILABLE'),
+        ('402', 'Luxury Suite', 'Floor 4 (North Panorama)', '4 Persons', 7200, '2 King Beds • Terrace & Jacuzzi • Wine Cellar', 'VACANT', 'CLEAN', 'AVAILABLE'),
+        ('501', 'Penthouse Panoramic', 'Floor 5 (Penthouse Level)', '6 Persons', 8500, '3 En-Suite Bedrooms • 360° Terrace • Chef Kitchen', 'VACANT', 'CLEAN', 'AVAILABLE'),
+        ('502', 'Presidential Penthouse', 'Floor 5 (Penthouse Level)', '6 Persons', 10000, 'Full Floor Luxury • Helipad Access • Private Spa', 'VACANT', 'CLEAN', 'AVAILABLE')
+      ON CONFLICT (room_number) DO UPDATE SET 
+        rate = EXCLUDED.rate,
+        type = EXCLUDED.type;
+    `);
+    console.log('✅ Standard rooms verified and seeded.');
+
     // Step 3.6: Seed inventory_items if empty
     const invCheck = await appClient.query('SELECT COUNT(*) FROM inventory_items');
     if (parseInt(invCheck.rows[0].count, 10) === 0) {
