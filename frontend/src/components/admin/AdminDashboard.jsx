@@ -33,6 +33,9 @@ import {
 import { Chart, registerables } from 'chart.js';
 import { useHotel } from '../../context/HotelContext';
 import ConfirmModal from '../shared/ConfirmModal';
+import Pagination from '../shared/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { getUserDisplayName, getUserInitials, getUserRoleLabel } from '../../utils/userUtils';
 
 Chart.register(...registerables);
 
@@ -159,7 +162,11 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     email: '',
     phone: '',
     role: 'guest',
+    department: 'Guest Services',
+    shift: 'Day Shift (08:00 - 16:30)',
+    status: 'Active Duty',
     password: '',
+    confirmPassword: '',
   });
   const [showUserPassword, setShowUserPassword] = useState(false);
 
@@ -228,15 +235,22 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
   });
 
   const filteredUsers = (usersList || []).filter((u) => {
-    const matchesRole =
-      userRoleFilter === 'All' || u.role?.toLowerCase() === userRoleFilter.toLowerCase();
+    const roleLower = (u.role || '').toLowerCase();
+    let matchesRole = true;
+    if (userRoleFilter === 'staff') {
+      matchesRole = ['admin', 'receptionist', 'kitchen', 'housekeeping'].includes(roleLower);
+    } else if (userRoleFilter !== 'All') {
+      matchesRole = roleLower === userRoleFilter.toLowerCase();
+    }
     if (!matchesRole) return false;
     if (!q) return true;
     return (
       u.name?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q) ||
       (u.phone && u.phone.toLowerCase().includes(q)) ||
-      u.role?.toLowerCase().includes(q)
+      (u.department && u.department.toLowerCase().includes(q)) ||
+      (u.shift && u.shift.toLowerCase().includes(q)) ||
+      roleLower.includes(q)
     );
   });
 
@@ -270,6 +284,16 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     );
   });
 
+  // Universal Pagination instances (default: 5 items per page with 5, 10, 15, 20 dropdown options)
+  const bookingsPagination = usePagination(filteredBookings, 5);
+  const roomsPagination = usePagination(filteredRooms, 5);
+  const categoriesPagination = usePagination(filteredRoomCategories, 5);
+  const menuPagination = usePagination(filteredMenuItems, 5);
+  const inventoryPagination = usePagination(filteredInventoryItems, 5);
+  const staffPagination = usePagination(filteredStaff, 5);
+  const usersPagination = usePagination(filteredUsers, 5);
+  const logsPagination = usePagination(filteredActivityLogs, 5);
+
   // Nav Menu items
   const navMenuItems = [
     { name: 'Dashboard', icon: LayoutDashboard },
@@ -279,8 +303,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     { name: 'Room Categories', icon: Layers },
     { name: 'Menu Management', icon: UtensilsCrossed },
     { name: 'Culinary Inventory', icon: Package },
-    { name: 'Staff Management', icon: Users },
-    { name: 'User Accounts', icon: ShieldCheck },
+    { name: 'User & Staff Management', icon: Users },
     { name: 'Activity Logs', icon: Clock },
     { name: 'Settings', icon: Settings },
   ];
@@ -509,7 +532,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     setSelectedItemForEdit(null);
   };
 
-  // Handle User Account Form
+  // Handle User Account Form with Password Confirmation
   const handleSaveUser = async (e) => {
     e.preventDefault();
     if (modalType === 'addUser') {
@@ -517,11 +540,22 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
         showToast('⚠️ Full name, email, and password are required.');
         return;
       }
+      if (userForm.password.trim().length < 6) {
+        showToast('⚠️ Password must be at least 6 characters.');
+        return;
+      }
+      if (userForm.password.trim() !== userForm.confirmPassword?.trim()) {
+        showToast('⚠️ Passwords do not match. Please verify password confirmation.');
+        return;
+      }
       const res = await addUser({
         name: userForm.name.trim(),
         email: userForm.email.trim(),
         phone: userForm.phone?.trim() || null,
         role: userForm.role || 'guest',
+        department: userForm.department || (userForm.role === 'guest' ? 'Guest Services' : userForm.role === 'receptionist' ? 'Front Desk' : userForm.role === 'kitchen' ? 'Kitchen & Dining' : userForm.role === 'housekeeping' ? 'Housekeeping' : 'Management'),
+        shift: userForm.shift || 'Day Shift (08:00 - 16:30)',
+        status: userForm.status || 'Active Duty',
         password: userForm.password.trim(),
       });
       if (res?.success) {
@@ -532,11 +566,24 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
         showToast(res?.message || 'Failed to create user account');
       }
     } else if (modalType === 'editUser' && selectedItemForEdit) {
+      if (userForm.password?.trim()) {
+        if (userForm.password.trim().length < 6) {
+          showToast('⚠️ New password must be at least 6 characters.');
+          return;
+        }
+        if (userForm.password.trim() !== userForm.confirmPassword?.trim()) {
+          showToast('⚠️ Passwords do not match. Please verify password confirmation.');
+          return;
+        }
+      }
       const payload = {
         name: userForm.name.trim(),
         email: userForm.email.trim(),
         phone: userForm.phone?.trim() || null,
         role: userForm.role || 'guest',
+        department: userForm.department,
+        shift: userForm.shift,
+        status: userForm.status,
       };
       if (userForm.password?.trim()) {
         payload.password = userForm.password.trim();
@@ -694,7 +741,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
 
             <div className="p-4 border-t border-dark-800 flex items-center justify-between text-xs">
               <div className="text-white font-semibold text-xs truncate max-w-[140px]">
-                {user?.name || 'Alexander Sterling'}
+                {getUserDisplayName(user)}
               </div>
               <button
                 onClick={onLogout}
@@ -848,13 +895,15 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
 
             <div className="flex items-center gap-2 sm:gap-3 pl-2 border-l border-gray-200">
               <div className="w-8 h-8 rounded-full bg-dark-900 text-gold-500 font-serif font-semibold text-xs flex items-center justify-center border border-gold-500/30 shrink-0">
-                AS
+                {getUserInitials(user)}
               </div>
               <div className="hidden sm:block text-left leading-tight">
-                <div className="text-xs font-semibold text-dark-900 truncate max-w-[120px]">
-                  {user?.name || 'Alexander Sterling'}
+                <div className="text-xs font-semibold text-dark-900 truncate max-w-[130px]">
+                  {getUserDisplayName(user)}
                 </div>
-                <div className="text-[10px] text-gray-500">General Manager</div>
+                <div className="text-[10px] text-gray-500">
+                  {getUserRoleLabel(user?.role || 'admin')}
+                </div>
               </div>
 
               <button
@@ -893,20 +942,23 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => {
-                    setStaffForm({
+                    setUserForm({
                       name: '',
                       email: '',
+                      phone: '',
+                      role: 'receptionist',
                       department: 'Front Desk',
-                      role: 'Receptionist',
                       shift: 'Morning (07:00 - 15:30)',
                       status: 'Active Duty',
+                      password: '',
+                      confirmPassword: '',
                     });
-                    setModalType('addStaff');
+                    setModalType('addUser');
                   }}
                   className="bg-dark-900 hover:bg-dark-800 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                 >
                   <Plus size={14} />
-                  <span>+ Staff</span>
+                  <span>+ Staff / User</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1169,7 +1221,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                       </td>
                     </tr>
                   ) : (
-                    filteredBookings.map((b) => (
+                    bookingsPagination.paginatedItems.map((b) => (
                       <tr key={b.id} className="hover:bg-amber-50/20">
                         <td className="py-3 px-4 font-mono font-bold text-dark-900">{b.id}</td>
                         <td className="py-3 px-4">
@@ -1206,6 +1258,15 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   )}
                 </tbody>
               </table>
+              <Pagination
+                currentPage={bookingsPagination.currentPage}
+                totalPages={bookingsPagination.totalPages}
+                pageSize={bookingsPagination.pageSize}
+                totalItems={bookingsPagination.totalItems}
+                onPageChange={bookingsPagination.setCurrentPage}
+                onPageSizeChange={bookingsPagination.setPageSize}
+                itemLabel="reservations"
+              />
             </div>
           </div>
         )}
@@ -1271,7 +1332,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                       </td>
                     </tr>
                   ) : (
-                    filteredRooms.map((r) => (
+                    roomsPagination.paginatedItems.map((r) => (
                       <tr key={r.roomNumber} className="hover:bg-amber-50/20">
                         <td className="py-3 px-4 font-serif font-bold text-dark-900">
                           Room {r.roomNumber}
@@ -1361,6 +1422,15 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   )}
                 </tbody>
               </table>
+              <Pagination
+                currentPage={roomsPagination.currentPage}
+                totalPages={roomsPagination.totalPages}
+                pageSize={roomsPagination.pageSize}
+                totalItems={roomsPagination.totalItems}
+                onPageChange={roomsPagination.setCurrentPage}
+                onPageSizeChange={roomsPagination.setPageSize}
+                itemLabel="rooms"
+              />
             </div>
           </div>
         )}
@@ -1409,89 +1479,100 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {filteredRoomCategories.map((cat) => {
-                  const assignedRoomsCount = rooms.filter(
-                    (r) => r.type?.toLowerCase() === cat.name?.toLowerCase()
-                  ).length;
-                  return (
-                    <div
-                      key={cat.id}
-                      className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
-                    >
-                      <div className="relative h-40 bg-dark-900 overflow-hidden">
-                        <img
-                          src={cat.imageUrl || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&q=80'}
-                          alt={cat.name}
-                          className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-500"
-                        />
-                        <div className="absolute top-3 right-3 bg-dark-900/80 backdrop-blur-xs text-gold-400 font-serif font-bold text-xs px-2.5 py-1 rounded-full border border-gold-500/30">
-                          ${cat.baseRate} / night
-                        </div>
-                        <div className="absolute bottom-2 left-3 bg-dark-900/75 backdrop-blur-xs text-white text-[10px] px-2 py-0.5 rounded font-medium">
-                          {assignedRoomsCount} {assignedRoomsCount === 1 ? 'Suite Assigned' : 'Suites Assigned'}
-                        </div>
-                      </div>
-
-                      <div className="p-5 flex-1 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-start justify-between gap-2 mb-1.5">
-                            <h3 className="font-serif font-bold text-base text-dark-900">{cat.name}</h3>
-                            <span className="text-[10px] bg-gold-50 text-gold-800 border border-gold-200/60 px-2 py-0.5 rounded font-medium shrink-0">
-                              {cat.capacity || '2 Persons'}
-                            </span>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {categoriesPagination.paginatedItems.map((cat) => {
+                    const assignedRoomsCount = rooms.filter(
+                      (r) => r.type?.toLowerCase() === cat.name?.toLowerCase()
+                    ).length;
+                    return (
+                      <div
+                        key={cat.id}
+                        className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                      >
+                        <div className="relative h-40 bg-dark-900 overflow-hidden">
+                          <img
+                            src={cat.imageUrl || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&q=80'}
+                            alt={cat.name}
+                            className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute top-3 right-3 bg-dark-900/80 backdrop-blur-xs text-gold-400 font-serif font-bold text-xs px-2.5 py-1 rounded-full border border-gold-500/30">
+                            ${cat.baseRate} / night
                           </div>
-                          <p className="text-xs text-gray-500 line-clamp-2 mb-3">
-                            {cat.description || 'Forbes five-star certified luxury suite accommodations.'}
-                          </p>
-                          <div className="text-[11px] text-gray-700 bg-gray-50 p-2.5 rounded-lg border border-gray-100 mb-4">
-                            <span className="font-semibold text-dark-900">Amenities: </span>
-                            {cat.features || 'Standard Forbes 5-Star Amenities'}
+                          <div className="absolute bottom-2 left-3 bg-dark-900/75 backdrop-blur-xs text-white text-[10px] px-2 py-0.5 rounded font-medium">
+                            {assignedRoomsCount} {assignedRoomsCount === 1 ? 'Suite Assigned' : 'Suites Assigned'}
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                          <span className="text-[10px] text-gray-400 font-mono">ID: #{cat.id}</span>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => {
-                                setSelectedItemForEdit(cat);
-                                setCategoryForm({
-                                  name: cat.name || '',
-                                  baseRate: cat.baseRate || 250,
-                                  capacity: cat.capacity || '2 Persons',
-                                  features: cat.features || '',
-                                  description: cat.description || '',
-                                  imageUrl: cat.imageUrl || '',
-                                });
-                                setModalType('editCategory');
-                              }}
-                              className="p-1.5 hover:bg-gray-100 text-gray-600 hover:text-dark-900 rounded cursor-pointer transition-colors"
-                              title="Edit Category"
-                            >
-                              <Edit2 size={13} />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setDeleteConfirmTarget({
-                                  type: 'category',
-                                  id: cat.id,
-                                  name: cat.name,
-                                  title: 'Delete Room Category',
-                                  message: `Are you sure you want to delete the "${cat.name}" category? Existing rooms will retain their configuration.`,
-                                });
-                              }}
-                              className="p-1.5 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded cursor-pointer transition-colors"
-                              title="Delete Category"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                        <div className="p-5 flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-start justify-between gap-2 mb-1.5">
+                              <h3 className="font-serif font-bold text-base text-dark-900">{cat.name}</h3>
+                              <span className="text-[10px] bg-gold-50 text-gold-800 border border-gold-200/60 px-2 py-0.5 rounded font-medium shrink-0">
+                                {cat.capacity || '2 Persons'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 line-clamp-2 mb-3">
+                              {cat.description || 'Forbes five-star certified luxury suite accommodations.'}
+                            </p>
+                            <div className="text-[11px] text-gray-700 bg-gray-50 p-2.5 rounded-lg border border-gray-100 mb-4">
+                              <span className="font-semibold text-dark-900">Amenities: </span>
+                              {cat.features || 'Standard Forbes 5-Star Amenities'}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                            <span className="text-[10px] text-gray-400 font-mono">ID: #{cat.id}</span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => {
+                                  setSelectedItemForEdit(cat);
+                                  setCategoryForm({
+                                    name: cat.name || '',
+                                    baseRate: cat.baseRate || 250,
+                                    capacity: cat.capacity || '2 Persons',
+                                    features: cat.features || '',
+                                    description: cat.description || '',
+                                    imageUrl: cat.imageUrl || '',
+                                  });
+                                  setModalType('editCategory');
+                                }}
+                                className="p-1.5 hover:bg-gray-100 text-gray-600 hover:text-dark-900 rounded cursor-pointer transition-colors"
+                                title="Edit Category"
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setDeleteConfirmTarget({
+                                    type: 'category',
+                                    id: cat.id,
+                                    name: cat.name,
+                                    title: 'Delete Room Category',
+                                    message: `Are you sure you want to delete the "${cat.name}" category? Existing rooms will retain their configuration.`,
+                                  });
+                                }}
+                                className="p-1.5 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded cursor-pointer transition-colors"
+                                title="Delete Category"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+                <Pagination
+                  currentPage={categoriesPagination.currentPage}
+                  totalPages={categoriesPagination.totalPages}
+                  pageSize={categoriesPagination.pageSize}
+                  totalItems={categoriesPagination.totalItems}
+                  onPageChange={categoriesPagination.setCurrentPage}
+                  onPageSizeChange={categoriesPagination.setPageSize}
+                  itemLabel="categories"
+                />
               </div>
             )}
           </div>
@@ -1540,80 +1621,91 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredMenuItems.map((dish) => (
-                  <div
-                    key={dish.id}
-                    className="bg-white rounded-xl border border-gray-100 p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-bold uppercase text-gold-700 bg-amber-50 px-2 py-0.5 rounded border border-gold-200/60">
-                          {dish.category}
-                        </span>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                            dish.inStock
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-rose-50 text-rose-700 border-rose-200'
-                          }`}
-                        >
-                          {dish.inStock ? 'Available' : 'Out of Stock'}
-                        </span>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {menuPagination.paginatedItems.map((dish) => (
+                    <div
+                      key={dish.id}
+                      className="bg-white rounded-xl border border-gray-100 p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[10px] font-bold uppercase text-gold-700 bg-amber-50 px-2 py-0.5 rounded border border-gold-200/60">
+                            {dish.category}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              dish.inStock
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                            }`}
+                          >
+                            {dish.inStock ? 'Available' : 'Out of Stock'}
+                          </span>
+                        </div>
+
+                        <h3 className="font-serif font-bold text-base text-dark-900 mb-1">{dish.name}</h3>
+                        <p className="text-xs text-gray-500 mb-3 leading-relaxed">{dish.description}</p>
+                        <div className="flex justify-between text-xs font-mono font-bold mb-4">
+                          <span className="text-gray-500 font-normal">⏱ {dish.prepTime || '15 mins'}</span>
+                          <span className="text-gold-700 text-sm">{Number(dish.price || 0).toLocaleString()} ETB</span>
+                        </div>
                       </div>
 
-                      <h3 className="font-serif font-bold text-base text-dark-900 mb-1">{dish.name}</h3>
-                      <p className="text-xs text-gray-500 mb-3 leading-relaxed">{dish.description}</p>
-                      <div className="flex justify-between text-xs font-mono font-bold mb-4">
-                        <span className="text-gray-500 font-normal">⏱ {dish.prepTime || '15 mins'}</span>
-                        <span className="text-gold-700 text-sm">{Number(dish.price || 0).toLocaleString()} ETB</span>
+                      <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+                        <button
+                          onClick={() => toggleDishStock(dish.id)}
+                          className="text-xs font-semibold text-gray-600 hover:text-dark-900 underline cursor-pointer"
+                        >
+                          {dish.inStock ? 'Mark Out of Stock' : 'Mark Available'}
+                        </button>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              setSelectedItemForEdit(dish);
+                              setFoodForm({
+                                name: dish.name,
+                                category: dish.category,
+                                price: dish.price,
+                                prepTime: dish.prepTime || '15-20 mins',
+                                description: dish.description || '',
+                              });
+                              setModalType('editFood');
+                            }}
+                            className="p-1.5 hover:bg-gray-100 text-gray-600 rounded cursor-pointer transition-colors"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setDeleteConfirmTarget({
+                                type: 'dish',
+                                id: dish.id,
+                                name: dish.name,
+                                title: 'Delete Menu Item',
+                                message: `Are you sure you want to delete "${dish.name}" from the in-room dining catalog?`,
+                              });
+                            }}
+                            className="p-1.5 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded cursor-pointer transition-colors"
+                            title="Delete Dish"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </div>
                     </div>
-
-                    <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
-                      <button
-                        onClick={() => toggleDishStock(dish.id)}
-                        className="text-xs font-semibold text-gray-600 hover:text-dark-900 underline cursor-pointer"
-                      >
-                        {dish.inStock ? 'Mark Out of Stock' : 'Mark Available'}
-                      </button>
-
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => {
-                            setSelectedItemForEdit(dish);
-                            setFoodForm({
-                              name: dish.name,
-                              category: dish.category,
-                              price: dish.price,
-                              prepTime: dish.prepTime || '15-20 mins',
-                              description: dish.description || '',
-                            });
-                            setModalType('editFood');
-                          }}
-                          className="p-1.5 hover:bg-gray-100 text-gray-600 rounded cursor-pointer transition-colors"
-                        >
-                          <Edit2 size={13} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setDeleteConfirmTarget({
-                              type: 'dish',
-                              id: dish.id,
-                              name: dish.name,
-                              title: 'Delete Menu Item',
-                              message: `Are you sure you want to delete "${dish.name}" from the in-room dining catalog?`,
-                            });
-                          }}
-                          className="p-1.5 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded cursor-pointer transition-colors"
-                          title="Delete Dish"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <Pagination
+                  currentPage={menuPagination.currentPage}
+                  totalPages={menuPagination.totalPages}
+                  pageSize={menuPagination.pageSize}
+                  totalItems={menuPagination.totalItems}
+                  onPageChange={menuPagination.setCurrentPage}
+                  onPageSizeChange={menuPagination.setPageSize}
+                  itemLabel="dishes"
+                />
               </div>
             )}
           </div>
@@ -1698,7 +1790,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                       </td>
                     </tr>
                   ) : (
-                    filteredInventoryItems.map((item) => {
+                    inventoryPagination.paginatedItems.map((item) => {
                       const isLow = item.quantity <= (item.minStock || 5) && item.quantity > 0;
                       const isOut = item.quantity <= 0;
                       const linkedDish = menuItems.find((d) => d.id === item.linkedDishId);
@@ -1816,157 +1908,37 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   )}
                 </tbody>
               </table>
+              <Pagination
+                currentPage={inventoryPagination.currentPage}
+                totalPages={inventoryPagination.totalPages}
+                pageSize={inventoryPagination.pageSize}
+                totalItems={inventoryPagination.totalItems}
+                onPageChange={inventoryPagination.setCurrentPage}
+                onPageSizeChange={inventoryPagination.setPageSize}
+                itemLabel="stock items"
+              />
             </div>
           </div>
         )}
 
-        {/* TAB 6: STAFF MANAGEMENT (RECEPTIONISTS, CHEFS, CLEANERS) */}
-        {activeTab === 'Staff Management' && (
-          <div className="p-4 sm:px-6 lg:px-8 py-6 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 className="font-serif text-2xl font-bold text-dark-900">
-                  Staff Personnel Directory
-                </h1>
-                <p className="text-xs text-gray-500 mt-1">
-                  Add, edit, or remove Receptionists, Chefs, Cleaners, and Management staff.
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setStaffForm({
-                    name: '',
-                    email: '',
-                    department: 'Front Desk',
-                    role: 'Receptionist',
-                    shift: 'Morning (07:00 - 15:30)',
-                    status: 'Active Duty',
-                  });
-                  setModalType('addStaff');
-                }}
-                className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-              >
-                <Plus size={14} />
-                <span>+ Add Staff Member</span>
-              </button>
-            </div>
-
-            <div className="bg-white rounded-xl border border-gray-200/80 shadow-2xs overflow-hidden">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#fbfbfb] border-b border-gray-200 text-gray-500 uppercase text-[10px] tracking-wider font-semibold">
-                  <tr>
-                    <th className="py-3 px-4">Staff Name & Contact</th>
-                    <th className="py-3 px-4">Department</th>
-                    <th className="py-3 px-4">Role</th>
-                    <th className="py-3 px-4">Shift</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredStaff.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-gray-500 text-xs">
-                        No staff members match your search query.
-                        {searchQuery && (
-                          <button
-                            onClick={() => setSearchQuery('')}
-                            className="ml-2 text-gold-600 underline font-medium cursor-pointer"
-                          >
-                            Clear search
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredStaff.map((staff) => (
-                      <tr key={staff.id} className="hover:bg-amber-50/20">
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-dark-900">{staff.name}</div>
-                          <div className="text-[11px] text-gray-500">{staff.email}</div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-gold-700 border border-gold-200/60">
-                            {staff.department}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 font-medium text-gray-800">{staff.role}</td>
-                        <td className="py-3 px-4 text-gray-600">{staff.shift}</td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              staff.status === 'Active Duty'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-gray-100 text-gray-600 border border-gray-200'
-                            }`}
-                          >
-                            {staff.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={() => {
-                                setSelectedItemForEdit(staff);
-                                setStaffForm({
-                                  name: staff.name,
-                                  email: staff.email,
-                                  department: staff.department,
-                                  role: staff.role,
-                                  shift: staff.shift || 'Morning (07:00 - 15:30)',
-                                  status: staff.status || 'Active Duty',
-                                });
-                                setModalType('editStaff');
-                              }}
-                              className="p-1.5 hover:bg-gray-100 text-gray-600 rounded cursor-pointer transition-colors"
-                              title="Edit Staff"
-                            >
-                              <Edit2 size={13} />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setDeleteConfirmTarget({
-                                  type: 'staff',
-                                  id: staff.id,
-                                  name: staff.name,
-                                  title: 'Remove Staff Member',
-                                  message: `Are you sure you want to remove ${staff.name} (${staff.role}) from the staff directory?`,
-                                });
-                              }}
-                              className="p-1.5 hover:bg-rose-50 text-rose-600 rounded cursor-pointer transition-colors"
-                              title="Delete Staff"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* TAB: USER ACCOUNTS (Admin PostgreSQL User Table Management) */}
-        {activeTab === 'User Accounts' && (
+        {/* TAB: UNIFIED USER & STAFF MANAGEMENT (PostgreSQL Relational Storage) */}
+        {(activeTab === 'User & Staff Management' || activeTab === 'User Accounts' || activeTab === 'Staff Management') && (
           <div className="p-4 sm:px-6 lg:px-8 py-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-gold-600 bg-gold-50 px-2 py-0.5 rounded border border-gold-200">
-                    PostgreSQL Authentication
+                    PostgreSQL Authentication & Directory
                   </span>
                   <span className="text-[10px] font-mono text-gray-400">
-                    Table: users ({usersList?.length || 0} accounts)
+                    Database Accounts: {usersList?.length || 0}
                   </span>
                 </div>
                 <h1 className="font-serif text-2xl font-bold text-dark-900">
-                  User Accounts & Authentication Management
+                  User & Staff Accounts Management
                 </h1>
                 <p className="text-xs text-gray-500 mt-1 font-light">
-                  Manage registered guest accounts, staff credentials, and administrative roles directly in the relational database.
+                  Unified directory for registered guests, operational staff credentials, and administrative permissions directly linked to PostgreSQL database.
                 </p>
               </div>
               <button
@@ -1976,7 +1948,11 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     email: '',
                     phone: '',
                     role: 'guest',
+                    department: 'Guest Services',
+                    shift: 'Day Shift (08:00 - 16:30)',
+                    status: 'Active Duty',
                     password: '',
+                    confirmPassword: '',
                   });
                   setShowUserPassword(false);
                   setModalType('addUser');
@@ -1984,7 +1960,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               >
                 <Plus size={14} />
-                <span>+ Create New User</span>
+                <span>+ Create User / Staff</span>
               </button>
             </div>
 
@@ -2034,12 +2010,13 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
             {/* Role Filter Pills */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
               {[
-                { label: 'All Users', value: 'All', count: usersList?.length || 0 },
+                { label: 'All Accounts', value: 'All', count: usersList?.length || 0 },
+                { label: 'Hotel Staff', value: 'staff', count: usersList?.filter((u) => ['admin', 'receptionist', 'kitchen', 'housekeeping'].includes(u.role)).length || 0 },
                 { label: 'Guests', value: 'guest', count: usersList?.filter((u) => u.role === 'guest').length || 0 },
-                { label: 'Admins', value: 'admin', count: usersList?.filter((u) => u.role === 'admin').length || 0 },
-                { label: 'Receptionists', value: 'receptionist', count: usersList?.filter((u) => u.role === 'receptionist').length || 0 },
+                { label: 'Front Desk', value: 'receptionist', count: usersList?.filter((u) => u.role === 'receptionist').length || 0 },
                 { label: 'Kitchen Brigade', value: 'kitchen', count: usersList?.filter((u) => u.role === 'kitchen').length || 0 },
                 { label: 'Housekeeping', value: 'housekeeping', count: usersList?.filter((u) => u.role === 'housekeeping').length || 0 },
+                { label: 'Admins', value: 'admin', count: usersList?.filter((u) => u.role === 'admin').length || 0 },
               ].map((pill) => (
                 <button
                   key={pill.value}
@@ -2068,10 +2045,11 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-[#fbfbfb] border-b border-gray-200 text-gray-500 uppercase text-[10px] tracking-wider font-semibold">
                     <tr>
-                      <th className="py-3 px-4">User & Email</th>
+                      <th className="py-3 px-4">Account & Email</th>
                       <th className="py-3 px-4">Assigned Role</th>
-                      <th className="py-3 px-4">Phone / Contact</th>
-                      <th className="py-3 px-4">Account ID</th>
+                      <th className="py-3 px-4">Department</th>
+                      <th className="py-3 px-4">Shift / Schedule</th>
+                      <th className="py-3 px-4">Contact Phone</th>
                       <th className="py-3 px-4">Registered Date</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
@@ -2079,7 +2057,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   <tbody className="divide-y divide-gray-100">
                     {filteredUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-gray-500 text-xs">
+                        <td colSpan={7} className="py-8 text-center text-gray-500 text-xs">
                           No user accounts match your filter criteria.
                           {searchQuery && (
                             <button
@@ -2092,7 +2070,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                         </td>
                       </tr>
                     ) : (
-                      filteredUsers.map((u) => {
+                      usersPagination.paginatedItems.map((u) => {
                         const isSelf = user?.email?.toLowerCase() === u.email?.toLowerCase();
                         const roleColors = {
                           admin: 'bg-gold-50 text-gold-700 border-gold-200',
@@ -2103,9 +2081,9 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                         };
                         const roleBadges = {
                           admin: '👑 Administrator',
-                          receptionist: '🔔 Front Desk Reception',
-                          kitchen: '👨‍🍳 Kitchen Culinary',
-                          housekeeping: '🧹 Housekeeping Lead',
+                          receptionist: '🔔 Front Desk',
+                          kitchen: '👨‍🍳 Kitchen F&B',
+                          housekeeping: '🧹 Housekeeping',
                           guest: '👤 Guest / Privilege',
                         };
 
@@ -2113,8 +2091,8 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                           <tr key={u.id} className="hover:bg-amber-50/20 transition-colors">
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-dark-900 text-gold-500 border border-gold-500/20 font-semibold text-xs flex items-center justify-center shrink-0 uppercase">
-                                  {u.name ? u.name.slice(0, 2) : 'US'}
+                                <div className="w-8 h-8 rounded-full bg-dark-900 text-gold-500 border border-gold-500/20 font-semibold text-xs flex items-center justify-center shrink-0 uppercase font-mono">
+                                  {getUserInitials(u)}
                                 </div>
                                 <div>
                                   <div className="font-bold text-dark-900 flex items-center gap-1.5">
@@ -2138,11 +2116,14 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                                 {roleBadges[u.role] || u.role}
                               </span>
                             </td>
+                            <td className="py-3 px-4 text-gray-700 text-[11px] font-medium">
+                              {u.department || (u.role === 'guest' ? 'Guest Services' : 'Operations')}
+                            </td>
+                            <td className="py-3 px-4 text-gray-500 text-[11px]">
+                              {u.shift || 'Standard'}
+                            </td>
                             <td className="py-3 px-4 text-gray-600 font-mono text-[11px]">
                               {u.phone || '—'}
-                            </td>
-                            <td className="py-3 px-4 text-gray-400 font-mono text-[11px]">
-                              #{u.id}
                             </td>
                             <td className="py-3 px-4 text-gray-500 text-[11px] font-light">
                               {u.createdAt ? new Date(u.createdAt).toLocaleDateString(undefined, {
@@ -2161,7 +2142,11 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                                       email: u.email || '',
                                       phone: u.phone || '',
                                       role: u.role || 'guest',
+                                      department: u.department || (u.role === 'guest' ? 'Guest Services' : u.role === 'receptionist' ? 'Front Desk' : u.role === 'kitchen' ? 'Kitchen & Dining' : u.role === 'housekeeping' ? 'Housekeeping' : 'Management'),
+                                      shift: u.shift || 'Day Shift (08:00 - 16:30)',
+                                      status: u.status || 'Active Duty',
                                       password: '',
+                                      confirmPassword: '',
                                     });
                                     setShowUserPassword(false);
                                     setModalType('editUser');
@@ -2200,6 +2185,15 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     )}
                   </tbody>
                 </table>
+                <Pagination
+                  currentPage={usersPagination.currentPage}
+                  totalPages={usersPagination.totalPages}
+                  pageSize={usersPagination.pageSize}
+                  totalItems={usersPagination.totalItems}
+                  onPageChange={usersPagination.setCurrentPage}
+                  onPageSizeChange={usersPagination.setPageSize}
+                  itemLabel="users"
+                />
               </div>
             </div>
           </div>
@@ -2231,7 +2225,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   )}
                 </div>
               ) : (
-                filteredActivityLogs.map((log) => (
+                logsPagination.paginatedItems.map((log) => (
                   <div key={log.id} className="p-4 flex items-start justify-between gap-4 hover:bg-amber-50/20 transition-colors">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
@@ -2246,6 +2240,15 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   </div>
                 ))
               )}
+              <Pagination
+                currentPage={logsPagination.currentPage}
+                totalPages={logsPagination.totalPages}
+                pageSize={logsPagination.pageSize}
+                totalItems={logsPagination.totalItems}
+                onPageChange={logsPagination.setCurrentPage}
+                onPageSizeChange={logsPagination.setPageSize}
+                itemLabel="logs"
+              />
             </div>
           </div>
         )}
@@ -2737,7 +2740,9 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
               </button>
             </div>
 
-            <form onSubmit={handleSaveUser} className="space-y-3.5">
+            <form onSubmit={handleSaveUser} autoComplete="off" className="space-y-3.5">
+              <input type="text" name="prevent_autofill" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+              <input type="password" name="prevent_password_autofill" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                   Full Name *
@@ -2773,14 +2778,64 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   </label>
                   <select
                     value={userForm.role}
-                    onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}
+                    onChange={(e) => {
+                      const newRole = e.target.value;
+                      const deptMap = {
+                        guest: 'Guest Services',
+                        receptionist: 'Front Desk',
+                        kitchen: 'Kitchen & Dining',
+                        housekeeping: 'Housekeeping',
+                        admin: 'Executive Management',
+                      };
+                      setUserForm({
+                        ...userForm,
+                        role: newRole,
+                        department: deptMap[newRole] || userForm.department,
+                      });
+                    }}
                     className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 bg-white"
                   >
                     <option value="guest">Guest / Member</option>
-                    <option value="receptionist">Receptionist</option>
-                    <option value="kitchen">Kitchen Staff</option>
-                    <option value="housekeeping">Housekeeping</option>
-                    <option value="admin">Administrator</option>
+                    <option value="receptionist">Receptionist (Front Desk)</option>
+                    <option value="kitchen">Kitchen Staff (Culinary)</option>
+                    <option value="housekeeping">Housekeeping Specialist</option>
+                    <option value="admin">Administrator (Executive)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                    Department
+                  </label>
+                  <select
+                    value={userForm.department}
+                    onChange={(e) => setUserForm({ ...userForm, department: e.target.value })}
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 bg-white"
+                  >
+                    <option value="Front Desk">Front Desk</option>
+                    <option value="Kitchen & Dining">Kitchen & Dining</option>
+                    <option value="Housekeeping">Housekeeping</option>
+                    <option value="Executive Management">Executive Management</option>
+                    <option value="Guest Services">Guest Services</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                    Shift / Schedule
+                  </label>
+                  <select
+                    value={userForm.shift}
+                    onChange={(e) => setUserForm({ ...userForm, shift: e.target.value })}
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 bg-white"
+                  >
+                    <option value="Morning (07:00 - 15:30)">Morning (07:00 - 15:30)</option>
+                    <option value="Day Shift (08:00 - 16:30)">Day Shift (08:00 - 16:30)</option>
+                    <option value="Evening (15:00 - 23:30)">Evening (15:00 - 23:30)</option>
+                    <option value="Night (23:00 - 07:30)">Night (23:00 - 07:30)</option>
+                    <option value="Flexible Rotation">Flexible Rotation</option>
                   </select>
                 </div>
 
@@ -2806,6 +2861,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   <input
                     type={showUserPassword ? 'text' : 'password'}
                     required={modalType === 'addUser'}
+                    autoComplete="new-password"
                     placeholder={modalType === 'addUser' ? 'Min 6 characters' : 'Leave blank to preserve current password'}
                     value={userForm.password}
                     onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
@@ -2825,6 +2881,43 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                   </p>
                 )}
               </div>
+
+              {/* Confirm Password Field */}
+              {(modalType === 'addUser' || (modalType === 'editUser' && userForm.password)) && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                    Confirm Password *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showUserPassword ? 'text' : 'password'}
+                      required={modalType === 'addUser'}
+                      autoComplete="new-password"
+                      placeholder="Repeat password"
+                      value={userForm.confirmPassword}
+                      onChange={(e) => setUserForm({ ...userForm, confirmPassword: e.target.value })}
+                      className={`w-full text-xs pl-3 pr-10 py-2 border rounded-lg focus:outline-none transition-all ${
+                        userForm.confirmPassword && userForm.password !== userForm.confirmPassword
+                          ? 'border-rose-400 focus:border-rose-500'
+                          : 'border-gray-200 focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20'
+                      }`}
+                    />
+                  </div>
+                  {userForm.confirmPassword && (
+                    <div className="mt-1 text-[11px] flex items-center gap-1 font-medium">
+                      {userForm.password === userForm.confirmPassword ? (
+                        <span className="text-emerald-600 flex items-center gap-1">
+                          ✓ Passwords match
+                        </span>
+                      ) : (
+                        <span className="text-rose-600 flex items-center gap-1">
+                          ⚠️ Passwords do not match
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
                 <button
