@@ -47,14 +47,6 @@ const DEMO_FALLBACK_ROLES = {
   },
 };
 
-const QUICK_ROLES = [
-  { label: 'Guest', email: 'guest@efoyhotel.com', pass: '123456', role: 'guest' },
-  { label: 'Admin', email: 'admin@efoyhotel.com', pass: '123456', role: 'admin' },
-  { label: 'Front Desk', email: 'reception@efoyhotel.com', pass: '123456', role: 'receptionist' },
-  { label: 'Kitchen', email: 'kitchen@efoyhotel.com', pass: '123456', role: 'kitchen' },
-  { label: 'Housekeeping', email: 'housekeeping@efoyhotel.com', pass: '123456', role: 'housekeeping' },
-];
-
 const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) => {
   const [mode, setMode] = useState(initialMode);
   const [formData, setFormData] = useState({
@@ -62,6 +54,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
     email: '',
     phone: '',
     password: '',
+    confirmPassword: '',
     rememberMe: true,
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -123,6 +116,17 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
       let authUser = null;
 
       if (mode === 'signup') {
+        if (!formData.password || formData.password.length < 6) {
+          setLoading(false);
+          setErrorMessage('Password must be at least 6 characters.');
+          return;
+        }
+        if (formData.password !== formData.confirmPassword) {
+          setLoading(false);
+          setErrorMessage('Passwords do not match. Please verify your password confirmation.');
+          return;
+        }
+
         const name = formData.name.trim() || 'Valued Guest';
 
         try {
@@ -241,17 +245,6 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
     setInfoMessage(
       'Password reset instructions have been dispatched to your registered email address.'
     );
-  };
-
-  const handleQuickFill = (roleObj) => {
-    setMode('login');
-    setFormData((prev) => ({
-      ...prev,
-      email: roleObj.email,
-      password: roleObj.pass,
-    }));
-    setErrorMessage('');
-    setInfoMessage(`Loaded credentials for ${roleObj.label}. Click 'Sign In' or proceed.`);
   };
 
   const handleSocialGoogle = () => {
@@ -481,7 +474,11 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+              {/* Invisible decoy inputs to block Chromium aggressive heuristic credential fill */}
+              <input type="text" name="prevent_autofill" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+              <input type="password" name="prevent_password_autofill" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+
               {/* Full Name (Sign Up only) */}
               {mode === 'signup' && (
                 <div>
@@ -492,6 +489,8 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
                     <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
+                      name="guest_account_name"
+                      autoComplete="off"
                       required
                       placeholder="e.g. Elena Rostova"
                       value={formData.name}
@@ -511,6 +510,8 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
                   <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="email"
+                    name="guest_account_email"
+                    autoComplete="off"
                     required
                     placeholder="abeni@efoyhotel.com"
                     value={formData.email}
@@ -543,7 +544,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                    Password
+                    Password {mode === 'signup' && '*'}
                   </label>
                   {mode === 'login' && (
                     <button
@@ -559,6 +560,8 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
                   <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    name="guest_account_secret"
+                    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                     required
                     placeholder="••••••••••••"
                     value={formData.password}
@@ -575,6 +578,45 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
                   </button>
                 </div>
               </div>
+
+              {/* Confirm Password (Sign Up only) */}
+              {mode === 'signup' && (
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Confirm Password *
+                  </label>
+                  <div className="relative">
+                    <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="guest_confirm_secret"
+                      autoComplete="new-password"
+                      required
+                      placeholder="••••••••••••"
+                      value={formData.confirmPassword}
+                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                      className={`w-full pl-10 pr-3.5 py-3 bg-white border rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none transition-all shadow-2xs ${
+                        formData.confirmPassword && formData.password !== formData.confirmPassword
+                          ? 'border-rose-400 focus:border-rose-500'
+                          : 'border-slate-200 focus:border-gold-500'
+                      }`}
+                    />
+                  </div>
+                  {formData.confirmPassword && (
+                    <div className="mt-1 text-[11px] flex items-center gap-1 font-medium">
+                      {formData.password === formData.confirmPassword ? (
+                        <span className="text-emerald-600 flex items-center gap-1">
+                          <CheckCircle2 size={12} /> Passwords match
+                        </span>
+                      ) : (
+                        <span className="text-rose-600 flex items-center gap-1">
+                          <AlertCircle size={12} /> Passwords do not match
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Remember Me Checkbox */}
               <div className="flex items-center justify-between pt-1">
@@ -643,25 +685,6 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
                   <Building2 size={15} className="text-slate-600" />
                   <span>Corporate SSO</span>
                 </button>
-              </div>
-
-              {/* Quick Demo Credentials Assistant */}
-              <div className="pt-2">
-                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-2 text-center">
-                  Quick Demo Role Access
-                </div>
-                <div className="flex flex-wrap justify-center gap-1.5">
-                  {QUICK_ROLES.map((r) => (
-                    <button
-                      key={r.label}
-                      type="button"
-                      onClick={() => handleQuickFill(r)}
-                      className="px-2.5 py-1 bg-slate-100 hover:bg-gold-50 hover:text-gold-800 hover:border-gold-300 border border-slate-200 rounded-lg text-[10px] font-semibold text-slate-600 transition-colors cursor-pointer"
-                    >
-                      {r.label}
-                    </button>
-                  ))}
-                </div>
               </div>
             </form>
           )}
