@@ -3,8 +3,9 @@ import { emitPmsEvent } from '../socket.js';
 
 export const getRooms = async (req, res, next) => {
   try {
-    const result = await query(
-      `SELECT 
+    const { page, limit } = req.query;
+
+    let sql = `SELECT 
         room_number AS "roomNumber",
         type,
         floor,
@@ -22,15 +23,34 @@ export const getRooms = async (req, res, next) => {
           ELSE 'CLEAN' 
         END) AS "housekeepingStatus",
         COALESCE(maintenance_status, 'AVAILABLE') AS "maintenanceStatus",
-        guest_id AS "guestId"
+        guest_id AS "guestId",
+        COUNT(*) OVER() AS total_count
       FROM rooms
-      ORDER BY room_number ASC`
-    );
+      ORDER BY room_number ASC`;
+
+    const params = [];
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = limit ? parseInt(limit, 10) : null;
+
+    if (limitNum && limitNum > 0) {
+      params.push(limitNum);
+      sql += ` LIMIT $${params.length}`;
+      params.push((pageNum - 1) * limitNum);
+      sql += ` OFFSET $${params.length}`;
+    }
+
+    const result = await query(sql, params);
+    const total = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0;
+    const rooms = result.rows.map(({ total_count, ...r }) => r);
 
     return res.status(200).json({
       success: true,
-      count: result.rowCount,
-      rooms: result.rows,
+      count: rooms.length,
+      total,
+      page: pageNum,
+      limit: limitNum || total,
+      totalPages: limitNum ? Math.ceil(total / limitNum) : 1,
+      rooms,
     });
   } catch (error) {
     next(error);

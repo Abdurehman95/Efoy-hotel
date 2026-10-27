@@ -3,7 +3,7 @@ import { emitPmsEvent } from '../socket.js';
 
 export const getBookings = async (req, res, next) => {
   try {
-    const { status, search, roomNumber } = req.query;
+    const { status, search, roomNumber, page, limit } = req.query;
 
     let sql = `
       SELECT 
@@ -23,7 +23,8 @@ export const getBookings = async (req, res, next) => {
         b.payment_method AS "paymentMethod",
         b.created_at AS "createdAt",
         s.id AS "stayId",
-        s.digital_key_code AS "digitalKeyCode"
+        s.digital_key_code AS "digitalKeyCode",
+        COUNT(*) OVER() AS total_count
       FROM bookings b
       LEFT JOIN stays s ON b.id = s.booking_id AND s.status = 'ACTIVE'
       WHERE 1=1
@@ -47,12 +48,28 @@ export const getBookings = async (req, res, next) => {
 
     sql += ` ORDER BY b.created_at DESC`;
 
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = limit ? parseInt(limit, 10) : null;
+
+    if (limitNum && limitNum > 0) {
+      params.push(limitNum);
+      sql += ` LIMIT $${params.length}`;
+      params.push((pageNum - 1) * limitNum);
+      sql += ` OFFSET $${params.length}`;
+    }
+
     const result = await query(sql, params);
+    const total = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0;
+    const bookings = result.rows.map(({ total_count, ...b }) => b);
 
     return res.status(200).json({
       success: true,
-      count: result.rowCount,
-      bookings: result.rows,
+      count: bookings.length,
+      total,
+      page: pageNum,
+      limit: limitNum || total,
+      totalPages: limitNum ? Math.ceil(total / limitNum) : 1,
+      bookings,
     });
   } catch (error) {
     next(error);
