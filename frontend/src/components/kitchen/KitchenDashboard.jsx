@@ -25,6 +25,9 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useHotel } from '../../context/HotelContext';
+import Pagination from '../shared/Pagination';
+import { usePagination } from '../../hooks/usePagination';
+import { getUserDisplayName, getUserInitials, getUserRoleLabel } from '../../utils/userUtils';
 
 const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
   const {
@@ -67,6 +70,12 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
   const lowStockIngredients = (inventoryItems || []).filter(
     (item) => item.quantity <= item.minStock
   );
+
+  // Pagination for Kitchen Tabs (default: 5)
+  const ordersPagination = usePagination(orders, 5);
+  const menuPagination = usePagination(menuItems, 5);
+  const inventoryPagination = usePagination(inventoryItems || [], 5);
+  const deliveredPagination = usePagination(deliveredOrders, 5);
 
   const navMenuItems = [
     { name: 'Live KDS Board', icon: Layers, count: pendingOrders.length + cookingOrders.length + readyOrders.length },
@@ -140,7 +149,8 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
               </button>
             </div>
 
-            <form onSubmit={handleAddIngredient} className="space-y-3.5 text-xs">
+            <form onSubmit={handleAddIngredient} autoComplete="off" className="space-y-3.5 text-xs">
+              <input type="text" name="prevent_autofill" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
               <div>
                 <label className="block text-[11px] font-semibold text-gray-700 uppercase mb-1">
                   Ingredient Name *
@@ -298,6 +308,26 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
                 );
               })}
             </div>
+
+            {/* User Profile */}
+            <div className="p-4 border-t border-dark-800 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-dark-800 text-gold-500 border border-gold-500/30 font-semibold text-xs flex items-center justify-center">
+                  {getUserInitials(user)}
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-white">{getUserDisplayName(user)}</div>
+                  <div className="text-[10px] text-gray-400 font-light">{getUserRoleLabel(user?.role || 'kitchen')}</div>
+                </div>
+              </div>
+              <button
+                onClick={onLogout}
+                title="Log out"
+                className="p-1.5 text-gray-400 hover:text-red-400 rounded transition-colors cursor-pointer"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -398,11 +428,11 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
         <div className="p-4 border-t border-dark-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-dark-800 text-gold-500 border border-gold-500/30 font-semibold text-xs flex items-center justify-center">
-              MB
+              {getUserInitials(user)}
             </div>
             <div>
-              <div className="text-xs font-semibold text-white">{user?.name || 'Chef Marco Bellini'}</div>
-              <div className="text-[10px] text-gray-400 font-light">Executive Head Chef</div>
+              <div className="text-xs font-semibold text-white">{getUserDisplayName(user)}</div>
+              <div className="text-[10px] text-gray-400 font-light">{getUserRoleLabel(user?.role || 'kitchen')}</div>
             </div>
           </div>
           <button
@@ -455,6 +485,28 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
               <CreditCard size={13} className="text-gold-600" />
               <span className="hidden xs:inline">Folio Sync:</span>
               <span className="text-emerald-700 font-bold">On Delivery</span>
+            </div>
+
+            {/* Authenticated User Header Pill */}
+            <div className="flex items-center gap-2 pl-2 border-l border-gray-200">
+              <div className="w-7 h-7 rounded-full bg-dark-900 text-gold-500 font-semibold text-xs flex items-center justify-center border border-gold-500/30 shrink-0">
+                {getUserInitials(user)}
+              </div>
+              <div className="hidden sm:block text-left leading-tight">
+                <div className="text-xs font-semibold text-dark-900 truncate max-w-[130px]">
+                  {getUserDisplayName(user)}
+                </div>
+                <div className="text-[10px] text-gray-500">
+                  {getUserRoleLabel(user?.role || 'kitchen')}
+                </div>
+              </div>
+              <button
+                onClick={onLogout}
+                title="Log out"
+                className="p-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+              >
+                <LogOut size={16} />
+              </button>
             </div>
           </div>
         </header>
@@ -755,7 +807,7 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {orders.map((ord) => (
+                    {ordersPagination.paginatedItems.map((ord) => (
                       <tr key={ord.id} className="hover:bg-amber-50/20 transition-colors">
                         <td className="py-3 px-4 font-mono font-bold text-dark-900">{ord.id}</td>
                         <td className="py-3 px-4">
@@ -805,6 +857,15 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                currentPage={ordersPagination.currentPage}
+                totalPages={ordersPagination.totalPages}
+                pageSize={ordersPagination.pageSize}
+                totalItems={ordersPagination.totalItems}
+                onPageChange={ordersPagination.setCurrentPage}
+                onPageSizeChange={ordersPagination.setPageSize}
+                itemLabel="orders"
+              />
             </div>
           </div>
         )}
@@ -822,7 +883,7 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {menuItems.map((dish) => (
+              {menuPagination.paginatedItems.map((dish) => (
                 <div
                   key={dish.id}
                   className="bg-white rounded-xl border border-gray-100 p-4 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
@@ -867,6 +928,15 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
                 </div>
               ))}
             </div>
+            <Pagination
+              currentPage={menuPagination.currentPage}
+              totalPages={menuPagination.totalPages}
+              pageSize={menuPagination.pageSize}
+              totalItems={menuPagination.totalItems}
+              onPageChange={menuPagination.setCurrentPage}
+              onPageSizeChange={menuPagination.setPageSize}
+              itemLabel="menu items"
+            />
           </div>
         )}
 
@@ -922,7 +992,7 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {(inventoryItems || []).map((item) => {
+                    {inventoryPagination.paginatedItems.map((item) => {
                       const isLow = item.quantity <= item.minStock;
                       const isZero = item.quantity <= 0;
 
@@ -978,6 +1048,15 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                currentPage={inventoryPagination.currentPage}
+                totalPages={inventoryPagination.totalPages}
+                pageSize={inventoryPagination.pageSize}
+                totalItems={inventoryPagination.totalItems}
+                onPageChange={inventoryPagination.setCurrentPage}
+                onPageSizeChange={inventoryPagination.setPageSize}
+                itemLabel="inventory items"
+              />
             </div>
           </div>
         )}
@@ -1008,7 +1087,7 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {deliveredOrders.map((ord) => (
+                    {deliveredPagination.paginatedItems.map((ord) => (
                       <tr key={ord.id} className="hover:bg-amber-50/20 transition-colors">
                         <td className="py-3 px-4 font-mono font-bold text-dark-900">{ord.id}</td>
                         <td className="py-3 px-4 font-bold text-dark-900">Room {ord.roomNumber}</td>
@@ -1029,6 +1108,15 @@ const KitchenDashboard = ({ user, onLogout, onBackToSite }) => {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                currentPage={deliveredPagination.currentPage}
+                totalPages={deliveredPagination.totalPages}
+                pageSize={deliveredPagination.pageSize}
+                totalItems={deliveredPagination.totalItems}
+                onPageChange={deliveredPagination.setCurrentPage}
+                onPageSizeChange={deliveredPagination.setPageSize}
+                itemLabel="delivered orders"
+              />
             </div>
           </div>
         )}
