@@ -3,7 +3,7 @@ import { emitPmsEvent } from '../socket.js';
 
 export const getTickets = async (req, res, next) => {
   try {
-    const { status, roomNumber } = req.query;
+    const { status, roomNumber, page, limit } = req.query;
 
     let sql = `
       SELECT 
@@ -22,7 +22,8 @@ export const getTickets = async (req, res, next) => {
         m.actual_cost::FLOAT AS "actualCost",
         TO_CHAR(m.created_at, 'Mon DD, HH12:MI AM') AS "createdAt",
         r.type AS "roomType",
-        r.floor
+        r.floor,
+        COUNT(*) OVER() AS total_count
       FROM maintenance_tickets m
       LEFT JOIN rooms r ON m.room_number = r.room_number
       WHERE 1=1
@@ -41,12 +42,28 @@ export const getTickets = async (req, res, next) => {
 
     sql += ` ORDER BY (m.status IN ('REPORTED', 'IN_PROGRESS')) DESC, m.created_at DESC`;
 
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = limit ? parseInt(limit, 10) : null;
+
+    if (limitNum && limitNum > 0) {
+      params.push(limitNum);
+      sql += ` LIMIT $${params.length}`;
+      params.push((pageNum - 1) * limitNum);
+      sql += ` OFFSET $${params.length}`;
+    }
+
     const result = await query(sql, params);
+    const total = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0;
+    const tickets = result.rows.map(({ total_count, ...t }) => t);
 
     return res.status(200).json({
       success: true,
-      count: result.rowCount,
-      tickets: result.rows,
+      count: tickets.length,
+      total,
+      page: pageNum,
+      limit: limitNum || total,
+      totalPages: limitNum ? Math.ceil(total / limitNum) : 1,
+      tickets,
     });
   } catch (error) {
     next(error);

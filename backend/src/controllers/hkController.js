@@ -3,7 +3,7 @@ import { emitPmsEvent } from '../socket.js';
 
 export const getTasks = async (req, res, next) => {
   try {
-    const { status, roomNumber } = req.query;
+    const { status, roomNumber, page, limit } = req.query;
 
     let sql = `
       SELECT 
@@ -19,7 +19,8 @@ export const getTasks = async (req, res, next) => {
         r.type AS "roomType",
         r.floor,
         r.occupancy_status AS "occupancyStatus",
-        r.maintenance_status AS "maintenanceStatus"
+        r.maintenance_status AS "maintenanceStatus",
+        COUNT(*) OVER() AS total_count
       FROM housekeeping_tasks ht
       LEFT JOIN rooms r ON ht.room_number = r.room_number
       WHERE 1=1
@@ -38,12 +39,28 @@ export const getTasks = async (req, res, next) => {
 
     sql += ` ORDER BY (ht.status != 'CLEAN') DESC, ht.created_at DESC`;
 
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = limit ? parseInt(limit, 10) : null;
+
+    if (limitNum && limitNum > 0) {
+      params.push(limitNum);
+      sql += ` LIMIT $${params.length}`;
+      params.push((pageNum - 1) * limitNum);
+      sql += ` OFFSET $${params.length}`;
+    }
+
     const result = await query(sql, params);
+    const total = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0;
+    const tasks = result.rows.map(({ total_count, ...t }) => t);
 
     return res.status(200).json({
       success: true,
-      count: result.rowCount,
-      tasks: result.rows,
+      count: tasks.length,
+      total,
+      page: pageNum,
+      limit: limitNum || total,
+      totalPages: limitNum ? Math.ceil(total / limitNum) : 1,
+      tasks,
     });
   } catch (error) {
     next(error);
@@ -226,8 +243,9 @@ export const updateTaskStatus = async (req, res, next) => {
 
 export const getHistory = async (req, res, next) => {
   try {
-    const result = await query(
-      `SELECT 
+    const { page, limit } = req.query;
+
+    let sql = `SELECT 
         id,
         room_number AS "roomNumber",
         type,
@@ -236,15 +254,34 @@ export const getHistory = async (req, res, next) => {
         TO_CHAR(completed_at, 'Mon DD, HH12:MI AM') AS "completedAt",
         duration,
         inspected_by AS "inspectedBy",
-        status
+        status,
+        COUNT(*) OVER() AS total_count
       FROM housekeeping_history
-      ORDER BY completed_at DESC`
-    );
+      ORDER BY completed_at DESC`;
+
+    const params = [];
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = limit ? parseInt(limit, 10) : null;
+
+    if (limitNum && limitNum > 0) {
+      params.push(limitNum);
+      sql += ` LIMIT $${params.length}`;
+      params.push((pageNum - 1) * limitNum);
+      sql += ` OFFSET $${params.length}`;
+    }
+
+    const result = await query(sql, params);
+    const total = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0;
+    const history = result.rows.map(({ total_count, ...h }) => h);
 
     return res.status(200).json({
       success: true,
-      count: result.rowCount,
-      history: result.rows,
+      count: history.length,
+      total,
+      page: pageNum,
+      limit: limitNum || total,
+      totalPages: limitNum ? Math.ceil(total / limitNum) : 1,
+      history,
     });
   } catch (error) {
     next(error);
