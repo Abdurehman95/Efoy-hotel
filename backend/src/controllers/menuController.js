@@ -3,7 +3,7 @@ import { emitPmsEvent } from '../socket.js';
 
 export const getMenu = async (req, res, next) => {
   try {
-    const { category } = req.query;
+    const { category, page, limit } = req.query;
 
     let sql = `
       SELECT 
@@ -15,7 +15,8 @@ export const getMenu = async (req, res, next) => {
         in_stock AS "inStock",
         description,
         calories,
-        image_url AS "image"
+        image_url AS "image",
+        COUNT(*) OVER() AS total_count
       FROM menu_items
     `;
     const params = [];
@@ -27,12 +28,28 @@ export const getMenu = async (req, res, next) => {
 
     sql += ` ORDER BY id ASC`;
 
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = limit ? parseInt(limit, 10) : null;
+
+    if (limitNum && limitNum > 0) {
+      params.push(limitNum);
+      sql += ` LIMIT $${params.length}`;
+      params.push((pageNum - 1) * limitNum);
+      sql += ` OFFSET $${params.length}`;
+    }
+
     const result = await query(sql, params);
+    const total = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0;
+    const menu = result.rows.map(({ total_count, ...m }) => m);
 
     return res.status(200).json({
       success: true,
-      count: result.rowCount,
-      menu: result.rows,
+      count: menu.length,
+      total,
+      page: pageNum,
+      limit: limitNum || total,
+      totalPages: limitNum ? Math.ceil(total / limitNum) : 1,
+      menu,
     });
   } catch (error) {
     next(error);
