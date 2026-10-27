@@ -1,0 +1,524 @@
+{
+  "info": {
+    "_postman_id": "efoy-hotel-pms-api-collection",
+    "name": "Efoy Hotel & Suites PMS API",
+    "description": "Comprehensive Postman collection for Efoy Hotel PMS API (Express + PostgreSQL). Includes Auth, Rooms, Bookings, Folios, Dining, Housekeeping, Services, and Analytics.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "01. Health Check",
+      "item": [
+        {
+          "name": "Check Backend Health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Verifies that the backend server is running and healthy."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Authentication",
+      "item": [
+        {
+          "name": "Register New Guest",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) {",
+                  "    pm.collectionVariables.set('token', res.token);",
+                  "    console.log('Token automatically saved to collection variable!');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Abebe Bikila\",\n  \"email\": \"abebe@example.com\",\n  \"password\": \"password123\",\n  \"phone\": \"+251 91 123 4567\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login (Admin / Staff)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) {",
+                  "    pm.collectionVariables.set('token', res.token);",
+                  "    console.log('Admin token automatically saved to collection variable!');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@efoyhotel.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Authenticated User (Me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Rooms & Categories",
+      "item": [
+        {
+          "name": "Get All Rooms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms"]
+            }
+          }
+        },
+        {
+          "name": "Get Available Rooms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/available",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms", "available"]
+            }
+          }
+        },
+        {
+          "name": "Get Room Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms", "categories"]
+            }
+          }
+        },
+        {
+          "name": "Get Room Details (Room 101)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/101",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms", "101"]
+            }
+          }
+        },
+        {
+          "name": "Update Room Cleanliness Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CLEAN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/rooms/101/cleanliness",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms", "101", "cleanliness"]
+            }
+          }
+        },
+        {
+          "name": "Update Room Maintenance Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"AVAILABLE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/rooms/101/maintenance",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms", "101", "maintenance"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Bookings & Folios",
+      "item": [
+        {
+          "name": "Get All Bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            }
+          }
+        },
+        {
+          "name": "Create New Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guestName\": \"Sara Tesfaye\",\n  \"email\": \"sara@example.com\",\n  \"phone\": \"+251 92 233 4455\",\n  \"roomNumber\": \"101\",\n  \"roomType\": \"Single Classic\",\n  \"checkIn\": \"2026-10-10\",\n  \"checkOut\": \"2026-10-13\",\n  \"nights\": 3,\n  \"roomRate\": 1500,\n  \"status\": \"CONFIRMED\",\n  \"notes\": \"VIP arrival requested\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            }
+          }
+        },
+        {
+          "name": "Get Live Folio by Room Number",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/folio/101",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "folio", "101"]
+            }
+          }
+        },
+        {
+          "name": "Check-in Guest to Room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomNumber\": \"101\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/BK-1001/check-in",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "BK-1001", "check-in"]
+            }
+          }
+        },
+        {
+          "name": "Checkout Guest & Settle Folio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"Credit Card\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/checkout/101",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "checkout", "101"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Dining & Kitchen KDS",
+      "item": [
+        {
+          "name": "Get Culinary Menu Items",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/menu",
+              "host": ["{{baseUrl}}"],
+              "path": ["menu"]
+            }
+          }
+        },
+        {
+          "name": "Get Kitchen Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Create Room Service Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomNumber\": \"101\",\n  \"guestName\": \"Sara Tesfaye\",\n  \"items\": [\n    {\n      \"id\": 1,\n      \"name\": \"Truffle Wagyu Burger\",\n      \"price\": 1200,\n      \"qty\": 1\n    },\n    {\n      \"id\": 4,\n      \"name\": \"Valrhona Molten Fondant\",\n      \"price\": 480,\n      \"qty\": 1\n    }\n  ],\n  \"notes\": \"Extra napkins please\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Update Order Status (Kitchen KDS)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Cooking\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/ORD-001/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "ORD-001", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Housekeeping & Concierge",
+      "item": [
+        {
+          "name": "Get Housekeeping Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/housekeeping/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["housekeeping", "tasks"]
+            }
+          }
+        },
+        {
+          "name": "Create Housekeeping Turnover Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomNumber\": \"101\",\n  \"priority\": \"HIGH\",\n  \"notes\": \"Guest turnover requested\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/housekeeping/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["housekeeping", "tasks"]
+            }
+          }
+        },
+        {
+          "name": "Get Concierge Service Requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/service-requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["service-requests"]
+            }
+          }
+        },
+        {
+          "name": "Create Concierge Service Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomNumber\": \"101\",\n  \"guestName\": \"Sara Tesfaye\",\n  \"serviceType\": \"Airport Limousine Transfer\",\n  \"details\": \"Flight ET702 at Bole Airport\",\n  \"chargeAmount\": 1800,\n  \"department\": \"Concierge\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/service-requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["service-requests"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Analytics, Staff & Logs",
+      "item": [
+        {
+          "name": "Get Analytics Overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/overview",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "overview"]
+            }
+          }
+        },
+        {
+          "name": "Get Staff Directory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/staff",
+              "host": ["{{baseUrl}}"],
+              "path": ["staff"]
+            }
+          }
+        },
+        {
+          "name": "Get Inventory Items",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/inventory",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory"]
+            }
+          }
+        },
+        {
+          "name": "Get Activity Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/logs",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
