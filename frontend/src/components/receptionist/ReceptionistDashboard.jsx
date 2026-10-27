@@ -40,6 +40,9 @@ import {
 } from 'lucide-react';
 import { useHotel } from '../../context/HotelContext';
 import PrintableInvoice from '../shared/PrintableInvoice';
+import Pagination from '../shared/Pagination';
+import { usePagination } from '../../hooks/usePagination';
+import { getUserDisplayName, getUserInitials, getUserRoleLabel } from '../../utils/userUtils';
 
 const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
   const {
@@ -259,6 +262,14 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
     if (bookingFilter === 'Cancelled') return b.status === 'CANCELLED' || b.status === 'NO_SHOW';
     return true;
   });
+
+  // Pagination for Receptionist Tabs (default: 5 items per page)
+  const bookingsPagination = usePagination(filteredBookings, 5);
+  const roomsPagination = usePagination(filteredRooms, 5);
+  const billingGuests = bookings.filter((b) => b.status === 'In-House' || b.status === 'CHECKED_IN' || b.status === 'Departing Today');
+  const billingPagination = usePagination(billingGuests, 5);
+  const servicesPagination = usePagination(serviceRequests, 5);
+  const invoicesPagination = usePagination(bookings, 5);
 
   const navMenuItems = [
     { name: 'Overview', icon: Home, count: arrivalsToday.length + inHouseGuests.length },
@@ -792,12 +803,12 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
         {/* User profile & logout */}
         <div className="p-4 border-t border-dark-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-dark-800 text-gold-500 border border-gold-500/30 font-semibold text-xs flex items-center justify-center">
-              FD
+            <div className="w-8 h-8 rounded-full bg-dark-800 text-gold-500 border border-gold-500/30 font-semibold text-xs flex items-center justify-center font-mono uppercase">
+              {getUserInitials(user)}
             </div>
             <div>
-              <div className="text-xs font-semibold text-white">{user?.name || 'Julian Vance'}</div>
-              <div className="text-[10px] text-gray-400 font-light">Front Desk Officer</div>
+              <div className="text-xs font-semibold text-white">{getUserDisplayName(user)}</div>
+              <div className="text-[10px] text-gray-400 font-light">{getUserRoleLabel(user?.role || 'receptionist')}</div>
             </div>
           </div>
           <button
@@ -973,7 +984,7 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {filteredBookings.map((booking) => {
+                    {bookingsPagination.paginatedItems.map((booking) => {
                       const folio = getGuestFolio(booking.roomNumber);
                       const room = rooms.find((r) => r.roomNumber === booking.roomNumber);
                       const roomHk = room?.housekeepingStatus || room?.cleanliness?.toUpperCase() || 'CLEAN';
@@ -1135,6 +1146,15 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                currentPage={bookingsPagination.currentPage}
+                totalPages={bookingsPagination.totalPages}
+                pageSize={bookingsPagination.pageSize}
+                totalItems={bookingsPagination.totalItems}
+                onPageChange={bookingsPagination.setCurrentPage}
+                onPageSizeChange={bookingsPagination.setPageSize}
+                itemLabel="reservations"
+              />
             </div>
           </div>
         )}
@@ -1172,7 +1192,7 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
 
             {/* Room Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredRooms.map((room) => {
+              {roomsPagination.paginatedItems.map((room) => {
                 const assignedGuest = bookings.find((b) => b.roomNumber === room.roomNumber && (b.status === 'In-House' || b.status === 'CHECKED_IN'));
                 const occ = (room.occupancyStatus || room.occupancy?.toUpperCase() || 'VACANT');
                 const hk = (room.housekeepingStatus || room.cleanliness?.toUpperCase() || 'CLEAN');
@@ -1357,6 +1377,15 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
                 );
               })}
             </div>
+            <Pagination
+              currentPage={roomsPagination.currentPage}
+              totalPages={roomsPagination.totalPages}
+              pageSize={roomsPagination.pageSize}
+              totalItems={roomsPagination.totalItems}
+              onPageChange={roomsPagination.setCurrentPage}
+              onPageSizeChange={roomsPagination.setPageSize}
+              itemLabel="rooms"
+            />
           </div>
         )}
 
@@ -1373,7 +1402,7 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
             </div>
 
             <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-xs">
-              <form onSubmit={handleWalkInSubmit} className="space-y-4">
+              <form onSubmit={handleWalkInSubmit} autoComplete="off" className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
@@ -1512,10 +1541,8 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {bookings
-                .filter((b) => b.status === 'In-House' || b.status === 'CHECKED_IN' || b.status === 'Departing Today')
-                .map((b) => {
-                  const folio = getGuestFolio(b.roomNumber);
+              {billingPagination.paginatedItems.map((b) => {
+                const folio = getGuestFolio(b.roomNumber);
                   return (
                     <div
                       key={b.id}
@@ -1608,6 +1635,15 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
                   );
                 })}
             </div>
+            <Pagination
+              currentPage={billingPagination.currentPage}
+              totalPages={billingPagination.totalPages}
+              pageSize={billingPagination.pageSize}
+              totalItems={billingPagination.totalItems}
+              onPageChange={billingPagination.setCurrentPage}
+              onPageSizeChange={billingPagination.setPageSize}
+              itemLabel="active folios"
+            />
           </div>
         )}
 
@@ -1646,7 +1682,7 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {serviceRequests.map((req) => (
+              {servicesPagination.paginatedItems.map((req) => (
                 <div
                   key={req.id}
                   className="bg-white p-5 rounded-xl border border-gray-100 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
@@ -1687,7 +1723,7 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
                     {req.status === 'REQUESTED' && (
                       <button
                         onClick={() => {
-                          updateServiceRequestStatus(req.id, 'ACCEPTED', 'Julian Vance');
+                          updateServiceRequestStatus(req.id, 'ACCEPTED', getUserDisplayName(user));
                           showToast(`Request #${req.id} ACCEPTED.`);
                         }}
                         className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-medium cursor-pointer"
@@ -1727,6 +1763,15 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
                 </div>
               ))}
             </div>
+            <Pagination
+              currentPage={servicesPagination.currentPage}
+              totalPages={servicesPagination.totalPages}
+              pageSize={servicesPagination.pageSize}
+              totalItems={servicesPagination.totalItems}
+              onPageChange={servicesPagination.setCurrentPage}
+              onPageSizeChange={servicesPagination.setPageSize}
+              itemLabel="service requests"
+            />
           </div>
         )}
 
@@ -1757,7 +1802,7 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {bookings.map((b) => {
+                    {invoicesPagination.paginatedItems.map((b) => {
                       const folio = getGuestFolio(b.roomNumber);
                       return (
                         <tr key={b.id} className="hover:bg-amber-50/20 transition-colors">
@@ -1786,6 +1831,15 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                currentPage={invoicesPagination.currentPage}
+                totalPages={invoicesPagination.totalPages}
+                pageSize={invoicesPagination.pageSize}
+                totalItems={invoicesPagination.totalItems}
+                onPageChange={invoicesPagination.setCurrentPage}
+                onPageSizeChange={invoicesPagination.setPageSize}
+                itemLabel="invoices"
+              />
             </div>
           </div>
         )}
@@ -1950,7 +2004,7 @@ const ReceptionistDashboard = ({ user, onLogout, onBackToSite }) => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Lord Alexander Wright"
+                  placeholder="e.g. Abebe Bekele"
                   value={walkInData.name}
                   onChange={(e) => setWalkInData({ ...walkInData, name: e.target.value })}
                   className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500"
