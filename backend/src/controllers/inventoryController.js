@@ -3,7 +3,7 @@ import { emitPmsEvent } from '../socket.js';
 
 export const getInventory = async (req, res, next) => {
   try {
-    const { category, status } = req.query;
+    const { category, status, page, limit } = req.query;
 
     let sql = `
       SELECT 
@@ -18,7 +18,8 @@ export const getInventory = async (req, res, next) => {
         i.linked_menu_item_id AS "linkedMenuItemId",
         m.name AS "linkedMenuItemName",
         m.in_stock AS "linkedMenuItemInStock",
-        TO_CHAR(i.updated_at, 'Mon DD, HH12:MI AM') AS "updatedAt"
+        TO_CHAR(i.updated_at, 'Mon DD, HH12:MI AM') AS "updatedAt",
+        COUNT(*) OVER() AS total_count
       FROM inventory_items i
       LEFT JOIN menu_items m ON i.linked_menu_item_id = m.id
       WHERE 1=1
@@ -37,12 +38,28 @@ export const getInventory = async (req, res, next) => {
 
     sql += ` ORDER BY (i.status = 'OUT_OF_STOCK') DESC, (i.status = 'LOW_STOCK') DESC, i.name ASC`;
 
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = limit ? parseInt(limit, 10) : null;
+
+    if (limitNum && limitNum > 0) {
+      params.push(limitNum);
+      sql += ` LIMIT $${params.length}`;
+      params.push((pageNum - 1) * limitNum);
+      sql += ` OFFSET $${params.length}`;
+    }
+
     const result = await query(sql, params);
+    const total = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0;
+    const items = result.rows.map(({ total_count, ...it }) => it);
 
     return res.status(200).json({
       success: true,
-      count: result.rowCount,
-      items: result.rows,
+      count: items.length,
+      total,
+      page: pageNum,
+      limit: limitNum || total,
+      totalPages: limitNum ? Math.ceil(total / limitNum) : 1,
+      items,
     });
   } catch (error) {
     next(error);

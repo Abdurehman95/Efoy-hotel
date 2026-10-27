@@ -2,7 +2,7 @@ import { query } from '../config/db.js';
 
 export const getStaff = async (req, res, next) => {
   try {
-    const { department, status } = req.query;
+    const { department, status, page, limit } = req.query;
 
     let sql = `
       SELECT 
@@ -13,7 +13,8 @@ export const getStaff = async (req, res, next) => {
         department,
         shift,
         status,
-        avatar_bg AS "avatarBg"
+        avatar_bg AS "avatarBg",
+        COUNT(*) OVER() AS total_count
       FROM staff
       WHERE 1=1
     `;
@@ -31,12 +32,28 @@ export const getStaff = async (req, res, next) => {
 
     sql += ` ORDER BY id ASC`;
 
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = limit ? parseInt(limit, 10) : null;
+
+    if (limitNum && limitNum > 0) {
+      params.push(limitNum);
+      sql += ` LIMIT $${params.length}`;
+      params.push((pageNum - 1) * limitNum);
+      sql += ` OFFSET $${params.length}`;
+    }
+
     const result = await query(sql, params);
+    const total = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0;
+    const staff = result.rows.map(({ total_count, ...s }) => s);
 
     return res.status(200).json({
       success: true,
-      count: result.rowCount,
-      staff: result.rows,
+      count: staff.length,
+      total,
+      page: pageNum,
+      limit: limitNum || total,
+      totalPages: limitNum ? Math.ceil(total / limitNum) : 1,
+      staff,
     });
   } catch (error) {
     next(error);

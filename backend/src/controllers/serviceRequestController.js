@@ -3,7 +3,7 @@ import { emitPmsEvent } from '../socket.js';
 
 export const getRequests = async (req, res, next) => {
   try {
-    const { department, status, roomNumber } = req.query;
+    const { department, status, roomNumber, page, limit } = req.query;
 
     let sql = `
       SELECT 
@@ -19,7 +19,8 @@ export const getRequests = async (req, res, next) => {
         sr.assigned_to AS "assignedTo",
         sr.charge_amount::FLOAT AS "chargeAmount",
         TO_CHAR(sr.created_at, 'Mon DD, HH12:MI AM') AS "createdAt",
-        TO_CHAR(sr.updated_at, 'Mon DD, HH12:MI AM') AS "updatedAt"
+        TO_CHAR(sr.updated_at, 'Mon DD, HH12:MI AM') AS "updatedAt",
+        COUNT(*) OVER() AS total_count
       FROM service_requests sr
       WHERE 1=1
     `;
@@ -42,12 +43,28 @@ export const getRequests = async (req, res, next) => {
 
     sql += ` ORDER BY (sr.status != 'COMPLETED') DESC, sr.created_at DESC`;
 
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = limit ? parseInt(limit, 10) : null;
+
+    if (limitNum && limitNum > 0) {
+      params.push(limitNum);
+      sql += ` LIMIT $${params.length}`;
+      params.push((pageNum - 1) * limitNum);
+      sql += ` OFFSET $${params.length}`;
+    }
+
     const result = await query(sql, params);
+    const total = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0;
+    const requests = result.rows.map(({ total_count, ...r }) => r);
 
     return res.status(200).json({
       success: true,
-      count: result.rowCount,
-      requests: result.rows,
+      count: requests.length,
+      total,
+      page: pageNum,
+      limit: limitNum || total,
+      totalPages: limitNum ? Math.ceil(total / limitNum) : 1,
+      requests,
     });
   } catch (error) {
     next(error);

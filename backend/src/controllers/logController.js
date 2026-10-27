@@ -2,7 +2,7 @@ import { query } from '../config/db.js';
 
 export const getLogs = async (req, res, next) => {
   try {
-    const { limit = 50, category } = req.query;
+    const { limit, page, category } = req.query;
 
     let sql = `
       SELECT 
@@ -12,7 +12,8 @@ export const getLogs = async (req, res, next) => {
         description,
         tag,
         TO_CHAR(created_at, 'Mon DD, HH12:MI AM') AS "time",
-        created_at AS "createdAt"
+        created_at AS "createdAt",
+        COUNT(*) OVER() AS total_count
       FROM activity_logs
       WHERE 1=1
     `;
@@ -23,15 +24,30 @@ export const getLogs = async (req, res, next) => {
       sql += ` AND category = $${params.length}`;
     }
 
-    params.push(parseInt(limit, 10));
-    sql += ` ORDER BY created_at DESC LIMIT $${params.length}`;
+    sql += ` ORDER BY created_at DESC`;
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = limit ? parseInt(limit, 10) : null;
+
+    if (limitNum && limitNum > 0) {
+      params.push(limitNum);
+      sql += ` LIMIT $${params.length}`;
+      params.push((pageNum - 1) * limitNum);
+      sql += ` OFFSET $${params.length}`;
+    }
 
     const result = await query(sql, params);
+    const total = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0;
+    const logs = result.rows.map(({ total_count, ...l }) => l);
 
     return res.status(200).json({
       success: true,
-      count: result.rowCount,
-      logs: result.rows,
+      count: logs.length,
+      total,
+      page: pageNum,
+      limit: limitNum || total,
+      totalPages: limitNum ? Math.ceil(total / limitNum) : 1,
+      logs,
     });
   } catch (error) {
     next(error);
