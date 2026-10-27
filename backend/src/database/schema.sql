@@ -9,9 +9,16 @@ CREATE TABLE IF NOT EXISTS users (
     role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'receptionist', 'kitchen', 'housekeeping', 'guest')),
     phone VARCHAR(50),
     avatar_url VARCHAR(255),
+    department VARCHAR(100) DEFAULT 'General',
+    shift VARCHAR(100) DEFAULT 'Day Shift (08:00 - 16:30)',
+    status VARCHAR(50) DEFAULT 'Active Duty',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS department VARCHAR(100) DEFAULT 'General';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS shift VARCHAR(100) DEFAULT 'Day Shift (08:00 - 16:30)';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Active Duty';
 
 -- 1.5 ROOM CATEGORIES
 CREATE TABLE IF NOT EXISTS room_categories (
