@@ -3,7 +3,7 @@ import { hashPassword } from '../utils/password.js';
 
 export const getUsers = async (req, res, next) => {
   try {
-    const { role, q } = req.query;
+    const { role, q, page, limit } = req.query;
 
     let sql = `
       SELECT 
@@ -12,9 +12,13 @@ export const getUsers = async (req, res, next) => {
         email,
         role,
         phone,
+        department,
+        shift,
+        status,
         avatar_url AS "avatarUrl",
         created_at AS "createdAt",
-        updated_at AS "updatedAt"
+        updated_at AS "updatedAt",
+        COUNT(*) OVER() AS total_count
       FROM users
       WHERE 1=1
     `;
@@ -27,17 +31,33 @@ export const getUsers = async (req, res, next) => {
 
     if (q && q.trim()) {
       params.push(`%${q.trim().toLowerCase()}%`);
-      sql += ` AND (LOWER(name) LIKE $${params.length} OR LOWER(email) LIKE $${params.length} OR LOWER(COALESCE(phone, '')) LIKE $${params.length})`;
+      sql += ` AND (LOWER(name) LIKE $${params.length} OR LOWER(email) LIKE $${params.length} OR LOWER(COALESCE(phone, '')) LIKE $${params.length} OR LOWER(COALESCE(department, '')) LIKE $${params.length})`;
     }
 
     sql += ` ORDER BY created_at DESC, id DESC`;
 
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = limit ? parseInt(limit, 10) : null;
+
+    if (limitNum && limitNum > 0) {
+      params.push(limitNum);
+      sql += ` LIMIT $${params.length}`;
+      params.push((pageNum - 1) * limitNum);
+      sql += ` OFFSET $${params.length}`;
+    }
+
     const result = await query(sql, params);
+    const total = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0;
+    const users = result.rows.map(({ total_count, ...u }) => u);
 
     return res.status(200).json({
       success: true,
-      count: result.rowCount,
-      users: result.rows,
+      count: users.length,
+      total,
+      page: pageNum,
+      limit: limitNum || total,
+      totalPages: limitNum ? Math.ceil(total / limitNum) : 1,
+      users,
     });
   } catch (error) {
     next(error);
@@ -46,7 +66,7 @@ export const getUsers = async (req, res, next) => {
 
 export const createUser = async (req, res, next) => {
   try {
-    const { name, email, password, role = 'guest', phone } = req.body;
+    const { name, email, password, role = 'guest', phone, department, shift, status } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -77,19 +97,36 @@ export const createUser = async (req, res, next) => {
 
     const hashedPassword = await hashPassword(password);
 
+    const defaultDept = role.toLowerCase() === 'guest' ? 'Guest Services' :
+      role.toLowerCase() === 'receptionist' ? 'Front Desk' :
+      role.toLowerCase() === 'kitchen' ? 'Kitchen & Dining' :
+      role.toLowerCase() === 'housekeeping' ? 'Housekeeping' : 'Management';
+
     const result = await query(
-      `INSERT INTO users (name, email, password_hash, role, phone)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO users (name, email, password_hash, role, phone, department, shift, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING 
         id,
         name,
         email,
         role,
         phone,
+        department,
+        shift,
+        status,
         avatar_url AS "avatarUrl",
         created_at AS "createdAt",
         updated_at AS "updatedAt"`,
-      [name.trim(), email.trim().toLowerCase(), hashedPassword, role.toLowerCase(), phone || null]
+      [
+        name.trim(),
+        email.trim().toLowerCase(),
+        hashedPassword,
+        role.toLowerCase(),
+        phone || null,
+        department || defaultDept,
+        shift || 'Day Shift (08:00 - 16:30)',
+        status || 'Active Duty'
+      ]
     );
 
     const createdUser = result.rows[0];
@@ -117,7 +154,7 @@ export const createUser = async (req, res, next) => {
 export const updateUser = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, email, role, phone, password } = req.body;
+    const { name, email, role, phone, password, department, shift, status } = req.body;
 
     const existingUser = await query('SELECT * FROM users WHERE id = $1', [id]);
     if (existingUser.rows.length === 0) {
@@ -159,14 +196,20 @@ export const updateUser = async (req, res, next) => {
         password_hash = $3,
         role = COALESCE($4, role),
         phone = COALESCE($5, phone),
+        department = COALESCE($6, department),
+        shift = COALESCE($7, shift),
+        status = COALESCE($8, status),
         updated_at = CURRENT_TIMESTAMP
-       WHERE id = $6
+       WHERE id = $9
        RETURNING 
         id,
         name,
         email,
         role,
         phone,
+        department,
+        shift,
+        status,
         avatar_url AS "avatarUrl",
         created_at AS "createdAt",
         updated_at AS "updatedAt"`,
@@ -176,6 +219,9 @@ export const updateUser = async (req, res, next) => {
         passwordHash,
         updatedRole,
         phone !== undefined ? phone : null,
+        department !== undefined ? department : null,
+        shift !== undefined ? shift : null,
+        status !== undefined ? status : null,
         id,
       ]
     );
