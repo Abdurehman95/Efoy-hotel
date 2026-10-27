@@ -24,6 +24,9 @@ import {
   Plus
 } from 'lucide-react';
 import { useHotel } from '../../context/HotelContext';
+import Pagination from '../shared/Pagination';
+import { usePagination } from '../../hooks/usePagination';
+import { getUserDisplayName, getUserInitials, getUserRoleLabel } from '../../utils/userUtils';
 
 const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
   const {
@@ -60,7 +63,7 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
     setTimeout(() => setToastMessage(''), 3500);
   };
 
-  const cleanerName = user?.name || 'Maria Santos';
+  const cleanerName = getUserDisplayName(user);
 
   // Metrics
   const dirtyRooms = rooms.filter(
@@ -127,6 +130,14 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
     return true;
   });
 
+  const filteredFloorRooms = rooms.filter((r) => floorFilter === 'All Floors' || r.floor?.includes(floorFilter.replace('Floor ', '')));
+
+  // Pagination for Housekeeping Tabs (default: 5)
+  const queuePagination = usePagination(filteredQueue, 5);
+  const roomsPagination = usePagination(filteredFloorRooms, 5);
+  const maintPagination = usePagination(maintenanceTickets, 5);
+  const historyPagination = usePagination(housekeepingHistory, 5);
+
   const navMenuItems = [
     { name: 'Turnover Queue', icon: AlertTriangle, count: dirtyRooms.length + cleaningRooms.length + inspectionRooms.length },
     { name: 'All Rooms Status', icon: DoorClosed, count: rooms.length },
@@ -164,7 +175,8 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
               </button>
             </div>
 
-            <form onSubmit={handleReportMaintenance} className="space-y-3.5 text-xs">
+            <form onSubmit={handleReportMaintenance} autoComplete="off" className="space-y-3.5 text-xs">
+              <input type="text" name="prevent_autofill" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
               <div>
                 <label className="block text-[11px] font-semibold text-gray-700 uppercase mb-1">
                   Room Allocation
@@ -334,6 +346,26 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
                 );
               })}
             </div>
+
+            {/* User Profile */}
+            <div className="p-4 border-t border-dark-800 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-dark-800 text-gold-500 border border-gold-500/30 font-semibold text-xs flex items-center justify-center">
+                  {getUserInitials(user)}
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-white">{getUserDisplayName(user)}</div>
+                  <div className="text-[10px] text-gray-400 font-light">{getUserRoleLabel(user?.role || 'housekeeping')}</div>
+                </div>
+              </div>
+              <button
+                onClick={onLogout}
+                title="Log out"
+                className="p-1.5 text-gray-400 hover:text-red-400 rounded transition-colors cursor-pointer"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -430,11 +462,11 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
         <div className="p-4 border-t border-dark-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-dark-800 text-gold-500 border border-gold-500/30 font-semibold text-xs flex items-center justify-center">
-              HK
+              {getUserInitials(user)}
             </div>
             <div>
-              <div className="text-xs font-semibold text-white">{cleanerName}</div>
-              <div className="text-[10px] text-gray-400">Executive Housekeeper</div>
+              <div className="text-xs font-semibold text-white">{getUserDisplayName(user)}</div>
+              <div className="text-[10px] text-gray-400">{getUserRoleLabel(user?.role || 'housekeeping')}</div>
             </div>
           </div>
           <button
@@ -484,6 +516,28 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
             <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-600 font-medium">
               <Clock size={14} className="text-gold-500" />
               <span>Shift Active</span>
+            </div>
+
+            {/* Authenticated User Header Pill */}
+            <div className="flex items-center gap-2 pl-2 border-l border-gray-200">
+              <div className="w-7 h-7 rounded-full bg-dark-900 text-gold-500 font-semibold text-xs flex items-center justify-center border border-gold-500/30 shrink-0">
+                {getUserInitials(user)}
+              </div>
+              <div className="hidden sm:block text-left leading-tight">
+                <div className="text-xs font-semibold text-dark-900 truncate max-w-[130px]">
+                  {getUserDisplayName(user)}
+                </div>
+                <div className="text-[10px] text-gray-500">
+                  {getUserRoleLabel(user?.role || 'housekeeping')}
+                </div>
+              </div>
+              <button
+                onClick={onLogout}
+                title="Log out"
+                className="p-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+              >
+                <LogOut size={16} />
+              </button>
             </div>
           </div>
         </header>
@@ -590,7 +644,7 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
 
             {/* QUEUE TASKS LIST */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredQueue.map((task) => {
+              {queuePagination.paginatedItems.map((task) => {
                 const currentStatus = (task.status || 'DIRTY').toUpperCase();
                 const roomObj = rooms.find((r) => r.roomNumber === task.roomNumber);
 
@@ -710,6 +764,15 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
                 );
               })}
             </div>
+            <Pagination
+              currentPage={queuePagination.currentPage}
+              totalPages={queuePagination.totalPages}
+              pageSize={queuePagination.pageSize}
+              totalItems={queuePagination.totalItems}
+              onPageChange={queuePagination.setCurrentPage}
+              onPageSizeChange={queuePagination.setPageSize}
+              itemLabel="turnover tasks"
+            />
           </div>
         )}
 
@@ -744,9 +807,7 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {rooms
-                .filter((r) => floorFilter === 'All Floors' || r.floor?.includes(floorFilter.replace('Floor ', '')))
-                .map((room) => {
+              {roomsPagination.paginatedItems.map((room) => {
                   const occ = (room.occupancyStatus || room.occupancy?.toUpperCase() || 'VACANT');
                   const hk = (room.housekeepingStatus || room.cleanliness?.toUpperCase() || 'CLEAN');
                   const maint = (room.maintenanceStatus || 'AVAILABLE').toUpperCase();
@@ -811,6 +872,15 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
                   );
                 })}
             </div>
+            <Pagination
+              currentPage={roomsPagination.currentPage}
+              totalPages={roomsPagination.totalPages}
+              pageSize={roomsPagination.pageSize}
+              totalItems={roomsPagination.totalItems}
+              onPageChange={roomsPagination.setCurrentPage}
+              onPageSizeChange={roomsPagination.setPageSize}
+              itemLabel="rooms"
+            />
           </div>
         )}
 
@@ -837,7 +907,7 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {maintenanceTickets.map((ticket) => (
+              {maintPagination.paginatedItems.map((ticket) => (
                 <div
                   key={ticket.id}
                   className="bg-white p-5 rounded-xl border border-rose-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
@@ -885,6 +955,15 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
                 </div>
               ))}
             </div>
+            <Pagination
+              currentPage={maintPagination.currentPage}
+              totalPages={maintPagination.totalPages}
+              pageSize={maintPagination.pageSize}
+              totalItems={maintPagination.totalItems}
+              onPageChange={maintPagination.setCurrentPage}
+              onPageSizeChange={maintPagination.setPageSize}
+              itemLabel="maintenance tickets"
+            />
           </div>
         )}
 
@@ -914,7 +993,7 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {housekeepingHistory.map((item) => (
+                    {historyPagination.paginatedItems.map((item) => (
                       <tr key={item.id} className="hover:bg-amber-50/20 transition-colors">
                         <td className="py-3 px-4 font-mono font-bold text-dark-900">{item.id}</td>
                         <td className="py-3 px-4">
@@ -934,6 +1013,15 @@ const HousekeepingDashboard = ({ user, onLogout, onBackToSite }) => {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                currentPage={historyPagination.currentPage}
+                totalPages={historyPagination.totalPages}
+                pageSize={historyPagination.pageSize}
+                totalItems={historyPagination.totalItems}
+                onPageChange={historyPagination.setCurrentPage}
+                onPageSizeChange={historyPagination.setPageSize}
+                itemLabel="cleaning logs"
+              />
             </div>
           </div>
         )}
