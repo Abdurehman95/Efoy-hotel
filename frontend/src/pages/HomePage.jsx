@@ -17,6 +17,28 @@ import {
 import BookingBar from '../components/BookingBar';
 import AboutSection from '../components/AboutSection';
 import Footer from '../components/Footer';
+import InteractiveAccordionCards from '../components/InteractiveAccordionCards';
+
+const PRIVILEGES_DATA = [
+  {
+    icon: Sparkles,
+    title: 'Travertine Vitality Spa',
+    desc: 'Heated 34°C geothermal hydrotherapy pools, Finnish eucalyptus steam baths, and botanical treatments tailored for deep restorative wellness.',
+    actionText: 'Learn more',
+  },
+  {
+    icon: Compass,
+    title: 'Private Mercedes Chauffeur',
+    desc: 'Guaranteed Bole International Airport VIP tarmac pickups and bespoke Addis Ababa city excursions in our private fleet of S-Class sedans.',
+    actionText: 'Learn more',
+  },
+  {
+    icon: HeartHandshake,
+    title: "Les Clefs d'Or Concierge",
+    desc: 'Around-the-clock coordination of private aviation charters, exclusive diplomatic dinners, art gallery viewings, and bespoke gift curations.',
+    actionText: 'Learn more',
+  },
+];
 
 const HomePage = ({ onNavigate }) => {
   return (
@@ -327,61 +349,13 @@ const HomePage = ({ onNavigate }) => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div 
-              onClick={() => onNavigate('services')}
-              className="p-8 bg-[#fdfdfd] border border-gray-200/80 rounded-xs hover:border-gold-500/60 hover:shadow-lg transition-all duration-300 cursor-pointer group"
-            >
-              <div className="w-12 h-12 rounded-full bg-gold-50 flex items-center justify-center mb-6 group-hover:bg-gold-500 transition-colors">
-                <Sparkles className="w-6 h-6 text-gold-600 group-hover:text-white transition-colors" />
-              </div>
-              <h3 className="font-serif text-xl text-dark-900 mb-3 group-hover:text-gold-600 transition-colors">
-                Travertine Vitality Spa
-              </h3>
-              <p className="text-xs text-gray-500 font-light leading-relaxed mb-6">
-                Heated 34°C geothermal hydrotherapy pools, Finnish eucalyptus steam baths, and botanical treatments tailored for deep restorative wellness.
-              </p>
-              <span className="text-xs text-gold-600 font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
-                Learn more <ArrowRight size={13} />
-              </span>
-            </div>
-
-            <div 
-              onClick={() => onNavigate('services')}
-              className="p-8 bg-[#fdfdfd] border border-gray-200/80 rounded-xs hover:border-gold-500/60 hover:shadow-lg transition-all duration-300 cursor-pointer group"
-            >
-              <div className="w-12 h-12 rounded-full bg-gold-50 flex items-center justify-center mb-6 group-hover:bg-gold-500 transition-colors">
-                <Compass className="w-6 h-6 text-gold-600 group-hover:text-white transition-colors" />
-              </div>
-              <h3 className="font-serif text-xl text-dark-900 mb-3 group-hover:text-gold-600 transition-colors">
-                Private Mercedes Chauffeur
-              </h3>
-              <p className="text-xs text-gray-500 font-light leading-relaxed mb-6">
-                Guaranteed Bole International Airport VIP tarmac pickups and bespoke Addis Ababa city excursions in our private fleet of S-Class sedans.
-              </p>
-              <span className="text-xs text-gold-600 font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
-                Learn more <ArrowRight size={13} />
-              </span>
-            </div>
-
-            <div 
-              onClick={() => onNavigate('services')}
-              className="p-8 bg-[#fdfdfd] border border-gray-200/80 rounded-xs hover:border-gold-500/60 hover:shadow-lg transition-all duration-300 cursor-pointer group"
-            >
-              <div className="w-12 h-12 rounded-full bg-gold-50 flex items-center justify-center mb-6 group-hover:bg-gold-500 transition-colors">
-                <HeartHandshake className="w-6 h-6 text-gold-600 group-hover:text-white transition-colors" />
-              </div>
-              <h3 className="font-serif text-xl text-dark-900 mb-3 group-hover:text-gold-600 transition-colors">
-                Les Clefs d'Or Concierge
-              </h3>
-              <p className="text-xs text-gray-500 font-light leading-relaxed mb-6">
-                Around-the-clock coordination of private aviation charters, exclusive diplomatic dinners, art gallery viewings, and bespoke gift curations.
-              </p>
-              <span className="text-xs text-gold-600 font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
-                Learn more <ArrowRight size={13} />
-              </span>
-            </div>
-          </div>
+          <InteractiveAccordionCards
+            items={PRIVILEGES_DATA}
+            variant="service"
+            initialActiveIndex={0}
+            onItemClick={() => onNavigate('services')}
+            containerHeight="h-[360px] sm:h-[390px]"
+          />
         </div>
       </section>
 

@@ -10,6 +10,7 @@ import {
   Utensils
 } from 'lucide-react';
 import { useHotel } from '../context/HotelContext';
+import InteractiveAccordionCards from './InteractiveAccordionCards';
 
 // Menu dishes mapped to food1 - food6
 const DISHES_DATA = [
@@ -470,39 +471,13 @@ const DiningSection = () => {
             </p>
           </div>
 
-          {/* 3 Full-Bleed Showcase Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {SHARED_BOARDS.map((board, idx) => (
-              <div
-                key={idx}
-                className="group relative h-72 sm:h-80 rounded-2xl overflow-hidden shadow-lg cursor-pointer transition-all duration-500 hover:shadow-2xl hover:-translate-y-1"
-                onClick={() => handleAddToCart(board.title)}
-              >
-                {/* Background Image */}
-                <img
-                  src={board.image}
-                  alt={board.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                />
-                
-                {/* Gradient Overlays for High Legibility */}
-                <div className="absolute inset-0 bg-gradient-to-t from-dark-900/90 via-dark-900/30 to-transparent"></div>
-
-                {/* Content Anchored to Bottom */}
-                <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6 text-white">
-                  <span className="text-[9px] font-bold tracking-[0.2em] uppercase text-gold-400 block mb-1.5">
-                    {board.tag}
-                  </span>
-                  <h4 className="font-serif text-lg sm:text-xl font-bold leading-snug mb-1 text-white group-hover:text-gold-200 transition-colors">
-                    {board.title}
-                  </h4>
-                  <p className="text-xs text-white/75 font-light leading-relaxed">
-                    {board.desc}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* 3 Interactive Showcase Cards (Figma Reference Expanding Card Animation) */}
+          <InteractiveAccordionCards
+            items={SHARED_BOARDS}
+            initialActiveIndex={0}
+            onItemClick={(board) => handleAddToCart(board.title)}
+            containerHeight="h-[360px] sm:h-[400px] lg:h-[430px]"
+          />
         </div>
 
       </div>

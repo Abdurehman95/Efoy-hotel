@@ -13,8 +13,13 @@
   --font-sans: 'Inter', sans-serif;
   --font-serif: 'CleanAmpersand', 'Playfair Display', serif;
   
+  --color-gold-100: #f7f1e3;
+  --color-gold-200: #eee3c6;
+  --color-gold-300: #e2ce9f;
+  --color-gold-400: #d7b974;
   --color-gold-500: #cba258;
   --color-gold-600: #b8904a;
+  --color-gold-700: #967338;
   --color-dark-900: #0a0a0a;
   --color-dark-800: #1a1a1a;
 }
@@ -33,3 +38,13 @@
     @apply font-serif;
   }
 }
+
+/* Reduced motion preference support for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
