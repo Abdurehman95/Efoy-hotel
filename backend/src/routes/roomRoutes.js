@@ -15,11 +15,21 @@ import {
 } from '../controllers/roomController.js';
 import { authenticate, optionalAuth } from '../middleware/authMiddleware.js';
 import { authorize } from '../middleware/roleMiddleware.js';
+import { roomSearchLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
-router.get('/', optionalAuth, getRooms);
-router.get('/available', optionalAuth, getAvailableRooms);
+// Middleware to apply roomSearchLimiter if search or filter query parameters are present
+const searchRateLimitMiddleware = (req, res, next) => {
+  if (req.query.search || req.query.category || req.query.type || req.query.checkIn || req.query.checkOut || req.query.guests) {
+    return roomSearchLimiter(req, res, next);
+  }
+  next();
+};
+
+router.get('/', searchRateLimitMiddleware, optionalAuth, getRooms);
+// Room availability API: Maximum 30 requests per IP address every 15 minutes
+router.get('/available', roomSearchLimiter, optionalAuth, getAvailableRooms);
 
 // Room Categories (must precede /:roomNumber)
 router.get('/categories', optionalAuth, getRoomCategories);
