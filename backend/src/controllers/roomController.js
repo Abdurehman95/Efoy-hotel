@@ -177,6 +177,8 @@ export const createRoom = async (req, res, next) => {
       ]
     );
 
+    emitPmsEvent('PMS_ROOM_CREATED', result.rows[0]);
+
     return res.status(201).json({
       success: true,
       message: `Room ${roomNumber} created successfully.`,
@@ -426,6 +428,18 @@ export const deleteRoom = async (req, res, next) => {
       });
     }
 
+    emitPmsEvent('PMS_ROOM_DELETED', { roomNumber });
+
+    // Audit log
+    await query(
+      `INSERT INTO activity_logs (title, category, description, tag)
+       VALUES ($1, 'Admin', $2, 'Inventory')`,
+      [
+        `Room Deleted: Room ${roomNumber}`,
+        `Administrator permanently removed Room ${roomNumber} from property inventory.`,
+      ]
+    );
+
     return res.status(200).json({
       success: true,
       message: `Room ${roomNumber} removed from inventory.`,
@@ -558,6 +572,8 @@ export const createRoomCategory = async (req, res, next) => {
       [name.trim(), parseFloat(baseRate), capacity.trim(), description || '', features || '', imageUrl || '']
     );
 
+    emitPmsEvent('PMS_ROOM_CATEGORY_CREATED', result.rows[0]);
+
     return res.status(201).json({
       success: true,
       message: `Room category "${name}" created.`,
@@ -592,6 +608,8 @@ export const updateRoomCategory = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Room category not found.' });
     }
 
+    emitPmsEvent('PMS_ROOM_CATEGORY_UPDATED', result.rows[0]);
+
     return res.status(200).json({
       success: true,
       message: 'Room category updated.',
@@ -609,6 +627,9 @@ export const deleteRoomCategory = async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Room category not found.' });
     }
+
+    emitPmsEvent('PMS_ROOM_CATEGORY_DELETED', { id: parseInt(id, 10), name: result.rows[0].name });
+
     return res.status(200).json({ success: true, message: `Category "${result.rows[0].name}" removed.` });
   } catch (error) {
     next(error);

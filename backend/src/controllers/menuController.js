@@ -98,6 +98,8 @@ export const createMenuItem = async (req, res, next) => {
       [`New Menu Item: ${name}`, `Added ${name} to ${category} section at $${price}.`]
     );
 
+    emitPmsEvent('PMS_MENU_ITEM_CREATED', result.rows[0]);
+
     return res.status(201).json({
       success: true,
       message: `${name} added to menu catalog.`,
@@ -152,6 +154,8 @@ export const updateMenuItem = async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: `Menu item ${id} not found.` });
     }
+
+    emitPmsEvent('PMS_MENU_ITEM_UPDATED', result.rows[0]);
 
     return res.status(200).json({
       success: true,
@@ -223,9 +227,22 @@ export const deleteMenuItem = async (req, res, next) => {
       return res.status(404).json({ success: false, message: `Menu item ${id} not found.` });
     }
 
+    const deletedName = result.rows[0].name;
+
+    emitPmsEvent('PMS_MENU_ITEM_DELETED', { id: parseInt(id, 10), name: deletedName });
+
+    await query(
+      `INSERT INTO activity_logs (title, category, description, tag)
+       VALUES ($1, 'Kitchen', $2, 'Menu')`,
+      [
+        `Menu Item Deleted: ${deletedName}`,
+        `Administrator removed "${deletedName}" from in-room dining catalog.`,
+      ]
+    );
+
     return res.status(200).json({
       success: true,
-      message: `${result.rows[0].name} deleted from menu catalog.`,
+      message: `${deletedName} deleted from menu catalog.`,
     });
   } catch (error) {
     next(error);
