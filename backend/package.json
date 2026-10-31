@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "migrate": "node src/database/migrate.js",
-    "test:api": "node test/api-smoke.js"
+    "test:api": "node test/api-smoke.js",
+    "test:ratelimit": "node test/rate-limiter.test.js"
   },
   "keywords": [
     "hotel-pms",
@@ -23,6 +24,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-rate-limit": "^8.7.2",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",

@@ -18,9 +18,13 @@ import serviceRequestRoutes from './routes/serviceRequestRoutes.js';
 import maintenanceRoutes from './routes/maintenanceRoutes.js';
 import inventoryRoutes from './routes/inventoryRoutes.js';
 
+import { generalLimiter } from './middleware/rateLimiter.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
+
+// Trust reverse proxies (Vite dev proxy, Nginx, cloud load balancers)
+app.set('trust proxy', 1);
 
 // Security & Logging Middleware
 app.use(helmet({ crossOriginResourcePolicy: false }));
@@ -40,7 +44,7 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health Check
+// Health Check (Bypasses rate limiting)
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
@@ -49,6 +53,9 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// General API Rate Limiting (100 req / 15 min per IP)
+app.use('/api', generalLimiter);
 
 // API Routes
 app.use('/api/auth', authRoutes);
