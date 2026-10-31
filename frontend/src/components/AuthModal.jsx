@@ -52,6 +52,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    countryCode: '+251',
     phone: '',
     password: '',
     confirmPassword: '',
@@ -134,7 +135,9 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
             name,
             email,
             password,
-            phone: formData.phone || null,
+            phone: formData.phone?.trim()
+              ? (formData.phone.trim().startsWith('+') ? formData.phone.trim() : `${formData.countryCode} ${formData.phone.trim()}`)
+              : null,
           });
           if (res?.token) {
             setToken(res.token);
@@ -345,19 +348,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
           </div>
         </div>
 
-        {/* Bottom Testimonial Quotation Card */}
-        <div className="bg-[#181e26]/90 border border-white/10 rounded-2xl p-5 backdrop-blur-md shadow-2xl relative z-10">
-          <div className="w-8 h-8 rounded-full bg-gold-500/20 text-gold-400 flex items-center justify-center font-serif text-base mb-2">
-            <Quote size={14} className="fill-gold-400 text-gold-400" />
-          </div>
-          <p className="italic font-serif text-slate-200 text-xs sm:text-[13px] leading-relaxed mb-4 font-light">
-            "The most exquisite sanctuary in the horn of Africa. Every stay redefines the meaning of bespoke Ethiopian warmth and luxury."
-          </p>
-          <div className="flex items-center justify-between text-xs pt-3 border-t border-white/10">
-            <span className="font-bold text-white tracking-wide">Ambassador Guest Review</span>
-            <span className="text-gold-400 font-medium">World Luxury Hotel Awards 2024</span>
-          </div>
-        </div>
+
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
@@ -375,10 +366,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
             <span>Back to Main Site</span>
           </button>
 
-          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
-            <span>Guest Concierge Online</span>
-          </div>
+
         </div>
 
         {/* Center Container: Brand Emblem + Sign In Form */}
@@ -402,11 +390,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
             <h2 className="font-serif text-2xl sm:text-3xl text-slate-900 font-normal tracking-tight mt-4 mb-1">
               {mode === 'login' ? 'Sign In' : 'Create Account'}
             </h2>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed font-light">
-              {mode === 'login'
-                ? 'Enter your credentials to access your personalized hotel console and guest services.'
-                : 'Join the Efoy Privilege Club to unlock tailored suites, express mobile check-in & culinary billing.'}
-            </p>
+
           </div>
 
           {/* Segmented Tab Switcher */}
@@ -501,21 +485,23 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
                 </div>
               )}
 
-              {/* Email Address */}
+              {/* Email */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Email Address
+                  Email
                 </label>
                 <div className="relative">
                   <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="email"
-                    name="guest_account_email"
-                    autoComplete="off"
+                    name="guest_account_email_nofill"
+                    autoComplete="new-password"
                     required
-                    placeholder="abeni@efoyhotel.com"
+                    placeholder="email@example.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onFocus={(e) => e.target.removeAttribute('readonly')}
+                    readOnly
                     className="w-full pl-10 pr-3.5 py-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 transition-all shadow-2xs"
                   />
                 </div>
@@ -527,15 +513,39 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Phone Number <span className="text-slate-400 font-normal">(Optional)</span>
                   </label>
-                  <div className="relative">
-                    <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="tel"
-                      placeholder="+251 (911) 234-567"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full pl-10 pr-3.5 py-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 transition-all shadow-2xs"
-                    />
+                  <div className="flex gap-2">
+                    <div className="relative shrink-0">
+                      <select
+                        value={formData.countryCode}
+                        onChange={(e) => setFormData({ ...formData, countryCode: e.target.value })}
+                        className="appearance-none w-[90px] pl-3 pr-6 py-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 transition-all shadow-2xs cursor-pointer"
+                      >
+                        <option value="+251">🇪🇹 +251</option>
+                        <option value="+1">🇺🇸 +1</option>
+                        <option value="+44">🇬🇧 +44</option>
+                        <option value="+971">🇦🇪 +971</option>
+                        <option value="+966">🇸🇦 +966</option>
+                        <option value="+254">🇰🇪 +254</option>
+                        <option value="+234">🇳🇬 +234</option>
+                        <option value="+91">🇮🇳 +91</option>
+                        <option value="+86">🇨🇳 +86</option>
+                        <option value="+49">🇩🇪 +49</option>
+                        <option value="+33">🇫🇷 +33</option>
+                        <option value="+39">🇮🇹 +39</option>
+                        <option value="+90">🇹🇷 +90</option>
+                      </select>
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[10px]">▼</span>
+                    </div>
+                    <div className="relative flex-1">
+                      <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="tel"
+                        placeholder="911 234 567"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className="w-full pl-10 pr-3.5 py-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 transition-all shadow-2xs"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
@@ -560,12 +570,14 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
                   <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    name="guest_account_secret"
-                    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                    name="guest_account_secret_nofill"
+                    autoComplete="new-password"
                     required
                     placeholder="••••••••••••"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onFocus={(e) => e.target.removeAttribute('readonly')}
+                    readOnly
                     className="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 transition-all shadow-2xs"
                   />
                   <button
@@ -643,8 +655,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
                   <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <span>{mode === 'login' ? 'Sign In to Portal' : 'Create Account'}</span>
-                    <ArrowRight size={15} />
+                    <span>{mode === 'login' ? 'Sign In' : 'Create Account'}</span>
                   </>
                 )}
               </button>

@@ -29,7 +29,7 @@ const Navbar = ({
 
   const navLinks = [
     { id: 'home', label: 'Home', href: '#' },
-    { id: 'rooms', label: 'Rooms & Suites', href: '#rooms' },
+    { id: 'rooms', label: 'Rooms', href: '#rooms' },
     { id: 'dining', label: 'Dining', href: '#dining' },
     { id: 'services', label: 'Services', href: '#services' },
     { id: 'contact', label: 'Contact', href: '#contact' },

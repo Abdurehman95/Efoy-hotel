@@ -16,30 +16,12 @@ const DiningPage = ({ onNavigate }) => {
       >
         <div className="absolute inset-0 bg-gradient-to-b from-dark-900/85 via-dark-900/65 to-dark-900/90 z-10" />
 
-        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 text-white w-full">
-          {/* Breadcrumb Navigation */}
-          <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-gold-400 mb-4 font-mono">
-            <a 
-              href="#" 
-              onClick={(e) => { e.preventDefault(); onNavigate('home'); }} 
-              className="hover:underline text-slate-300 hover:text-white transition-colors"
-            >
-              Home
-            </a>
-            <span>/</span>
-            <span className="text-gold-300 font-semibold">Haute Gastronomy & Lounges</span>
-          </div>
-
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-gold-300 text-xs font-medium mb-4 shadow-sm">
-            <Utensils size={13} className="text-gold-400" />
-            <span>Michelin-Trained Executive Culinary Team</span>
-          </div>
-
-          <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl text-white font-normal leading-tight tracking-tight mb-4 max-w-3xl">
+        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 text-white w-full text-center">
+          <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl text-white font-normal leading-tight tracking-tight mb-4 max-w-3xl mx-auto">
             Culinary Artistry & Artisanal Cellars
           </h1>
 
-          <p className="text-sm sm:text-base md:text-lg text-slate-200 font-light max-w-2xl leading-relaxed">
+          <p className="text-sm sm:text-base md:text-lg text-slate-200 font-light max-w-2xl leading-relaxed mx-auto">
             Led by Executive Head Chef Marco Bellini, our dining program harmonizes indigenous Ethiopian botanicals and highland spices with modern French haute cuisine techniques.
           </p>
         </div>
