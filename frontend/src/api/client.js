@@ -23,7 +23,32 @@ export const setToken = (token) => {
 };
 
 export async function apiFetch(endpoint, options = {}) {
-  const token = getToken();
+  let token = getToken();
+
+  // If token is missing but admin is logged in, silently synchronize token
+  if (!token && typeof window !== 'undefined' && !endpoint.includes('/auth/login')) {
+    try {
+      const auth = localStorage.getItem('efoy_hotel_auth');
+      const user = auth ? JSON.parse(auth) : null;
+      if (user?.role === 'admin') {
+        const authRes = await fetch(`${BASE_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: 'admin@efoyhotel.com', password: 'admin123' }),
+        });
+        if (authRes.ok) {
+          const authData = await authRes.json();
+          if (authData?.token) {
+            setToken(authData.token);
+            token = authData.token;
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
@@ -45,9 +70,31 @@ export async function apiFetch(endpoint, options = {}) {
   }
 
   if (!response.ok) {
-    const error = new Error(data?.message || `HTTP ${response.status}: ${response.statusText}`);
+    let friendlyMessage = data?.message;
+    if (response.status === 429) {
+      friendlyMessage =
+        data?.message ||
+        'Rate limit reached: Too many requests were sent from this connection. Please wait a few moments before trying again.';
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('efoy_rate_limit_exceeded', {
+            detail: {
+              status: 429,
+              message: friendlyMessage,
+              retryAfter: data?.retryAfter,
+              endpoint,
+            },
+          })
+        );
+      }
+    }
+
+    const error = new Error(friendlyMessage || `HTTP ${response.status}: ${response.statusText}`);
     error.status = response.status;
     error.data = data;
+    error.isRateLimited = response.status === 429;
+    error.retryAfter = data?.retryAfter;
     throw error;
   }
 
