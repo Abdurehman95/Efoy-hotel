@@ -666,7 +666,8 @@ const INITIAL_USERS = [
 ];
 
 // Automatic storage cache migration: clears old mock data so PostgreSQL records take priority
-const APP_DATA_VERSION = 'v2_live_backend_synced';
+// Automatic storage cache migration: clears old mock data so PostgreSQL records take priority
+const APP_DATA_VERSION = 'v5_database_realtime_purged';
 if (typeof window !== 'undefined') {
   try {
     if (localStorage.getItem('efoy_cache_version') !== APP_DATA_VERSION) {
@@ -693,157 +694,21 @@ if (typeof window !== 'undefined') {
 }
 
 export const HotelProvider = ({ children }) => {
-  const [rooms, setRooms] = useState(() => {
-    try {
-      const saved = localStorage.getItem('efoy_hotel_rooms');
-      return saved ? JSON.parse(saved) : INITIAL_ROOMS;
-    } catch {
-      return INITIAL_ROOMS;
-    }
-  });
-
-  const [roomCategories, setRoomCategories] = useState(() => {
-    try {
-      const saved = localStorage.getItem('efoy_hotel_room_categories');
-      return saved ? JSON.parse(saved) : INITIAL_ROOM_CATEGORIES;
-    } catch {
-      return INITIAL_ROOM_CATEGORIES;
-    }
-  });
-
-  const [bookings, setBookings] = useState(() => {
-    try {
-      const saved = localStorage.getItem('efoy_hotel_bookings');
-      return saved ? JSON.parse(saved) : INITIAL_BOOKINGS;
-    } catch {
-      return INITIAL_BOOKINGS;
-    }
-  });
-
-  const [menuItems, setMenuItems] = useState(() => {
-    try {
-      const saved = localStorage.getItem('efoy_hotel_menu');
-      return saved ? JSON.parse(saved) : INITIAL_MENU;
-    } catch {
-      return INITIAL_MENU;
-    }
-  });
-
-  const [orders, setOrders] = useState(() => {
-    try {
-      const saved = localStorage.getItem('efoy_hotel_orders');
-      return saved ? JSON.parse(saved) : INITIAL_ORDERS;
-    } catch {
-      return INITIAL_ORDERS;
-    }
-  });
-
-  const [housekeepingTasks, setHousekeepingTasks] = useState(() => {
-    try {
-      const saved = localStorage.getItem('efoy_hotel_hk_tasks');
-      return saved ? JSON.parse(saved) : INITIAL_HOUSEKEEPING_TASKS;
-    } catch {
-      return INITIAL_HOUSEKEEPING_TASKS;
-    }
-  });
-
-  const [housekeepingHistory, setHousekeepingHistory] = useState(() => {
-    try {
-      const saved = localStorage.getItem('efoy_hotel_hk_history');
-      return saved ? JSON.parse(saved) : INITIAL_HOUSEKEEPING_HISTORY;
-    } catch {
-      return INITIAL_HOUSEKEEPING_HISTORY;
-    }
-  });
-
-  const [serviceRequests, setServiceRequests] = useState(() => {
-    try {
-      const saved = localStorage.getItem('efoy_hotel_service_requests');
-      return saved ? JSON.parse(saved) : INITIAL_SERVICE_REQUESTS;
-    } catch {
-      return INITIAL_SERVICE_REQUESTS;
-    }
-  });
-
-  const [maintenanceTickets, setMaintenanceTickets] = useState(() => {
-    try {
-      const saved = localStorage.getItem('efoy_hotel_maintenance_tickets');
-      return saved ? JSON.parse(saved) : INITIAL_MAINTENANCE_TICKETS;
-    } catch {
-      return INITIAL_MAINTENANCE_TICKETS;
-    }
-  });
-
-  const [inventoryItems, setInventoryItems] = useState(() => {
-    try {
-      const saved = localStorage.getItem('efoy_hotel_inventory');
-      return saved ? JSON.parse(saved) : INITIAL_INVENTORY;
-    } catch {
-      return INITIAL_INVENTORY;
-    }
-  });
-
-  const [staffList, setStaffList] = useState(() => {
-    try {
-      const saved = localStorage.getItem('efoy_hotel_staff');
-      return saved ? JSON.parse(saved) : INITIAL_STAFF;
-    } catch {
-      return INITIAL_STAFF;
-    }
-  });
-
-  const [activityLogs, setActivityLogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('efoy_hotel_logs');
-      return saved ? JSON.parse(saved) : INITIAL_LOGS;
-    } catch {
-      return INITIAL_LOGS;
-    }
-  });
-
-  const [usersList, setUsersList] = useState(() => {
-    try {
-      const saved = localStorage.getItem('efoy_hotel_users');
-      return saved ? JSON.parse(saved) : INITIAL_USERS;
-    } catch {
-      return INITIAL_USERS;
-    }
-  });
-
-  // Persist to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('efoy_hotel_rooms', JSON.stringify(rooms));
-      localStorage.setItem('efoy_hotel_room_categories', JSON.stringify(roomCategories));
-      localStorage.setItem('efoy_hotel_bookings', JSON.stringify(bookings));
-      localStorage.setItem('efoy_hotel_menu', JSON.stringify(menuItems));
-      localStorage.setItem('efoy_hotel_orders', JSON.stringify(orders));
-      localStorage.setItem('efoy_hotel_hk_tasks', JSON.stringify(housekeepingTasks));
-      localStorage.setItem('efoy_hotel_hk_history', JSON.stringify(housekeepingHistory));
-      localStorage.setItem('efoy_hotel_service_requests', JSON.stringify(serviceRequests));
-      localStorage.setItem('efoy_hotel_maintenance_tickets', JSON.stringify(maintenanceTickets));
-      localStorage.setItem('efoy_hotel_inventory', JSON.stringify(inventoryItems));
-      localStorage.setItem('efoy_hotel_staff', JSON.stringify(staffList));
-      localStorage.setItem('efoy_hotel_logs', JSON.stringify(activityLogs));
-      localStorage.setItem('efoy_hotel_users', JSON.stringify(usersList));
-    } catch (e) {
-      console.error('Failed to sync hotel state to storage', e);
-    }
-  }, [
-    rooms,
-    roomCategories,
-    bookings,
-    menuItems,
-    orders,
-    housekeepingTasks,
-    housekeepingHistory,
-    serviceRequests,
-    maintenanceTickets,
-    inventoryItems,
-    staffList,
-    activityLogs,
-    usersList,
-  ]);
+  // Pure real-time database state - initialized empty, populated directly from PostgreSQL
+  const [rooms, setRooms] = useState([]);
+  const [roomCategories, setRoomCategories] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [menuItems, setMenuItems] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [housekeepingTasks, setHousekeepingTasks] = useState([]);
+  const [housekeepingHistory, setHousekeepingHistory] = useState([]);
+  const [serviceRequests, setServiceRequests] = useState([]);
+  const [maintenanceTickets, setMaintenanceTickets] = useState([]);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [staffList, setStaffList] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [usersList, setUsersList] = useState([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   // Fetch live PostgreSQL backend data on mount
   useEffect(() => {
@@ -920,6 +785,7 @@ export const HotelProvider = ({ children }) => {
           if (usersRes.status === 'fulfilled' && Array.isArray(usersRes.value?.users)) {
             setUsersList(usersRes.value.users);
           }
+          setIsDataLoaded(true);
         }
       } catch (err) {
         console.warn('Backend sync error:', err.message);
@@ -1141,6 +1007,72 @@ export const HotelProvider = ({ children }) => {
     socket.on('PMS_INVENTORY_UPDATED', (item) => {
       if (!item?.id) return;
       setInventoryItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, ...item } : i)));
+    });
+
+    // 15. Real-Time Rooms Synchronization
+    socket.on('PMS_ROOM_CREATED', (newRoom) => {
+      if (!newRoom?.roomNumber) return;
+      setRooms((prev) => {
+        const exists = prev.some((r) => r.roomNumber === newRoom.roomNumber);
+        if (exists) return prev.map((r) => (r.roomNumber === newRoom.roomNumber ? newRoom : r));
+        return [...prev, newRoom];
+      });
+    });
+
+    socket.on('PMS_ROOM_UPDATED', (updatedRoom) => {
+      if (!updatedRoom?.roomNumber) return;
+      setRooms((prev) =>
+        prev.map((r) => (r.roomNumber === updatedRoom.roomNumber ? { ...r, ...updatedRoom } : r))
+      );
+    });
+
+    socket.on('PMS_ROOM_DELETED', ({ roomNumber }) => {
+      if (!roomNumber) return;
+      setRooms((prev) => prev.filter((r) => r.roomNumber !== roomNumber));
+    });
+
+    // 16. Real-Time Room Categories Synchronization
+    socket.on('PMS_ROOM_CATEGORY_CREATED', (newCat) => {
+      if (!newCat?.id) return;
+      setRoomCategories((prev) => {
+        const exists = prev.some((c) => c.id === newCat.id);
+        if (exists) return prev.map((c) => (c.id === newCat.id ? newCat : c));
+        return [...prev, newCat];
+      });
+    });
+
+    socket.on('PMS_ROOM_CATEGORY_UPDATED', (updatedCat) => {
+      if (!updatedCat?.id) return;
+      setRoomCategories((prev) =>
+        prev.map((c) => (c.id === updatedCat.id ? { ...c, ...updatedCat } : c))
+      );
+    });
+
+    socket.on('PMS_ROOM_CATEGORY_DELETED', ({ id }) => {
+      if (!id) return;
+      setRoomCategories((prev) => prev.filter((c) => c.id !== id));
+    });
+
+    // 17. Real-Time Menu Items Synchronization
+    socket.on('PMS_MENU_ITEM_CREATED', (newItem) => {
+      if (!newItem?.id) return;
+      setMenuItems((prev) => {
+        const exists = prev.some((m) => m.id === newItem.id);
+        if (exists) return prev.map((m) => (m.id === newItem.id ? newItem : m));
+        return [...prev, newItem];
+      });
+    });
+
+    socket.on('PMS_MENU_ITEM_UPDATED', (updatedItem) => {
+      if (!updatedItem?.id) return;
+      setMenuItems((prev) =>
+        prev.map((m) => (m.id === updatedItem.id ? { ...m, ...updatedItem } : m))
+      );
+    });
+
+    socket.on('PMS_MENU_ITEM_DELETED', ({ id }) => {
+      if (!id) return;
+      setMenuItems((prev) => prev.filter((m) => m.id !== id));
     });
 
     socket.on('disconnect', () => {
@@ -1739,31 +1671,44 @@ export const HotelProvider = ({ children }) => {
     });
   };
 
-  // Menu Items Management
-  const addMenuItem = (item) => {
-    const newItem = { ...item, id: Date.now(), inStock: true };
-    setMenuItems((prev) => [...prev, newItem]);
-    addLog(`Menu Item Added: ${item.name}`, 'Menu', `Added dish priced at ${item.price} ETB.`, 'Admin');
-    menuApi.create(item).catch((err) => {
-      console.warn('menuApi.create sync error:', err.message);
-    });
+  // Menu Items Management (Pure Database Integration)
+  const addMenuItem = async (item) => {
+    try {
+      const res = await menuApi.create(item);
+      const created = res?.item || item;
+      setMenuItems((prev) => [...prev.filter((m) => m.id !== created.id), created]);
+      addLog(`Menu Item Added: ${created.name}`, 'Menu', `Added dish priced at $${created.price}.`, 'Admin');
+      return { success: true, item: created };
+    } catch (err) {
+      console.error('menuApi.create error:', err);
+      return { success: false, message: err.message };
+    }
   };
 
-  const editMenuItem = (item) => {
-    setMenuItems((prev) => prev.map((m) => (m.id === item.id ? item : m)));
-    addLog(`Menu Item Updated: ${item.name}`, 'Menu', `Updated details for ${item.name}.`, 'Admin');
-    menuApi.update(item.id, item).catch((err) => {
-      console.warn('menuApi.update sync error:', err.message);
-    });
+  const editMenuItem = async (item) => {
+    try {
+      const res = await menuApi.update(item.id, item);
+      const updated = res?.item || item;
+      setMenuItems((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      addLog(`Menu Item Updated: ${updated.name}`, 'Menu', `Updated details for ${updated.name}.`, 'Admin');
+      return { success: true, item: updated };
+    } catch (err) {
+      console.error('menuApi.update error:', err);
+      return { success: false, message: err.message };
+    }
   };
 
-  const deleteMenuItem = (id) => {
-    const item = menuItems.find((m) => m.id === id);
-    setMenuItems((prev) => prev.filter((m) => m.id !== id));
-    addLog(`Menu Item Removed: ${item?.name || id}`, 'Menu', `Removed from catalog.`, 'Admin');
-    menuApi.delete(id).catch((err) => {
-      console.warn('menuApi.delete sync error:', err.message);
-    });
+  const deleteMenuItem = async (id) => {
+    try {
+      const item = menuItems.find((m) => m.id === id);
+      const res = await menuApi.delete(id);
+      setMenuItems((prev) => prev.filter((m) => m.id !== id));
+      addLog(`Menu Item Removed: ${item?.name || id}`, 'Menu', `Removed from catalog.`, 'Admin');
+      return { success: true, message: res?.message || 'Dish removed from menu.' };
+    } catch (err) {
+      console.error('menuApi.delete error:', err);
+      return { success: false, message: err.message || 'Failed to remove menu item.' };
+    }
   };
 
   // 9. Concierge / Service Requests (REQUESTED -> ACCEPTED -> IN_PROGRESS -> COMPLETED)
@@ -1955,75 +1900,104 @@ export const HotelProvider = ({ children }) => {
     });
   };
 
-  // 12. Room Categories Management
-  const addRoomCategory = (category) => {
-    const newCat = { ...category, id: Date.now() };
-    setRoomCategories((prev) => [...prev, newCat]);
-    addLog(`Room Category Added: ${category.name}`, 'Rooms', `Added category ${category.name}.`, 'Admin');
-    roomsApi.createCategory(category).catch((err) => {
-      console.warn('roomsApi.createCategory error:', err.message);
-    });
+  // 12. Room Categories Management (Real-time PostgreSQL)
+  const addRoomCategory = async (category) => {
+    try {
+      const res = await roomsApi.createCategory(category);
+      const created = res?.category || category;
+      setRoomCategories((prev) => [...prev.filter((c) => c.id !== created.id), created]);
+      addLog(`Room Category Added: ${created.name}`, 'Rooms', `Added category ${created.name}.`, 'Admin');
+      return { success: true, category: created };
+    } catch (err) {
+      console.error('roomsApi.createCategory error:', err);
+      return { success: false, message: err.message };
+    }
   };
 
-  const editRoomCategory = (id, category) => {
-    setRoomCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...category } : c)));
-    addLog(`Room Category Updated: ${category.name}`, 'Rooms', `Updated category ${category.name}.`, 'Admin');
-    roomsApi.updateCategory(id, category).catch((err) => {
-      console.warn('roomsApi.updateCategory error:', err.message);
-    });
+  const editRoomCategory = async (id, category) => {
+    try {
+      const res = await roomsApi.updateCategory(id, category);
+      const updated = res?.category || { ...category, id };
+      setRoomCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
+      addLog(`Room Category Updated: ${updated.name}`, 'Rooms', `Updated category ${updated.name}.`, 'Admin');
+      return { success: true, category: updated };
+    } catch (err) {
+      console.error('roomsApi.updateCategory error:', err);
+      return { success: false, message: err.message };
+    }
   };
 
-  const deleteRoomCategory = (id) => {
-    setRoomCategories((prev) => prev.filter((c) => c.id !== id));
-    roomsApi.deleteCategory(id).catch((err) => {
-      console.warn('roomsApi.deleteCategory error:', err.message);
-    });
+  const deleteRoomCategory = async (id) => {
+    try {
+      const cat = roomCategories.find((c) => c.id === id);
+      const res = await roomsApi.deleteCategory(id);
+      setRoomCategories((prev) => prev.filter((c) => c.id !== id));
+      addLog(`Room Category Removed: ${cat?.name || id}`, 'Rooms', `Removed category.`, 'Admin');
+      return { success: true, message: res?.message || 'Category removed.' };
+    } catch (err) {
+      console.error('roomsApi.deleteCategory error:', err);
+      return { success: false, message: err.message || 'Failed to remove room category.' };
+    }
   };
 
-  // 13. Rooms Management
-  const updateRoom = (updatedRoom) => {
-    setRooms((prev) =>
-      prev.map((r) =>
-        r.roomNumber === updatedRoom.roomNumber
-          ? {
-              ...r,
-              ...updatedRoom,
-              occupancyStatus: updatedRoom.occupancyStatus || (updatedRoom.occupancy === 'Occupied' ? 'OCCUPIED' : 'VACANT'),
-              housekeepingStatus: updatedRoom.housekeepingStatus || (updatedRoom.cleanliness === 'Dirty' ? 'DIRTY' : 'CLEAN'),
-              maintenanceStatus: updatedRoom.maintenanceStatus || 'AVAILABLE',
-            }
-          : r
-      )
-    );
-    addLog(`Room ${updatedRoom.roomNumber} Modified`, 'Rooms', `Tariff and status specifications updated.`, 'Admin');
-    roomsApi.update(updatedRoom.roomNumber, updatedRoom).catch((err) => {
-      console.warn('roomsApi.update sync error:', err.message);
-    });
+  // 13. Rooms Management (Real-time PostgreSQL)
+  const updateRoom = async (updatedRoom) => {
+    try {
+      const res = await roomsApi.update(updatedRoom.roomNumber, updatedRoom);
+      const updated = res?.room || updatedRoom;
+      setRooms((prev) =>
+        prev.map((r) =>
+          r.roomNumber === updated.roomNumber
+            ? {
+                ...r,
+                ...updated,
+                occupancyStatus: updated.occupancyStatus || (updated.occupancy === 'Occupied' ? 'OCCUPIED' : 'VACANT'),
+                housekeepingStatus: updated.housekeepingStatus || (updated.cleanliness === 'Dirty' ? 'DIRTY' : 'CLEAN'),
+                maintenanceStatus: updated.maintenanceStatus || 'AVAILABLE',
+              }
+            : r
+        )
+      );
+      addLog(`Room ${updated.roomNumber} Modified`, 'Rooms', `Tariff and status specifications updated.`, 'Admin');
+      return { success: true, room: updated };
+    } catch (err) {
+      console.error('roomsApi.update error:', err);
+      return { success: false, message: err.message };
+    }
   };
 
-  const addRoom = (newRoom) => {
-    const fullRoom = {
-      ...newRoom,
-      occupancyStatus: newRoom.occupancyStatus || 'VACANT',
-      housekeepingStatus: newRoom.housekeepingStatus || 'CLEAN',
-      maintenanceStatus: newRoom.maintenanceStatus || 'AVAILABLE',
-      cleanliness: 'Clean',
-      occupancy: 'Available',
-      guestId: null,
-    };
-    setRooms((prev) => [...prev, fullRoom]);
-    addLog(`New Room Added: ${newRoom.roomNumber}`, 'Rooms', `Added Room ${newRoom.roomNumber} (${newRoom.type}).`, 'Admin');
-    roomsApi.create(fullRoom).catch((err) => {
-      console.warn('roomsApi.create sync error:', err.message);
-    });
+  const addRoom = async (newRoom) => {
+    try {
+      const fullRoom = {
+        ...newRoom,
+        occupancyStatus: newRoom.occupancyStatus || 'VACANT',
+        housekeepingStatus: newRoom.housekeepingStatus || 'CLEAN',
+        maintenanceStatus: newRoom.maintenanceStatus || 'AVAILABLE',
+        cleanliness: 'Clean',
+        occupancy: 'Available',
+        guestId: null,
+      };
+      const res = await roomsApi.create(fullRoom);
+      const created = res?.room || fullRoom;
+      setRooms((prev) => [...prev.filter((r) => r.roomNumber !== created.roomNumber), created]);
+      addLog(`New Room Added: ${created.roomNumber}`, 'Rooms', `Added Room ${created.roomNumber} (${created.type}).`, 'Admin');
+      return { success: true, room: created };
+    } catch (err) {
+      console.error('roomsApi.create error:', err);
+      return { success: false, message: err.message };
+    }
   };
 
-  const deleteRoom = (roomNumber) => {
-    setRooms((prev) => prev.filter((r) => r.roomNumber !== roomNumber));
-    addLog(`Room ${roomNumber} Deleted`, 'Rooms', `Removed from property inventory.`, 'Admin');
-    roomsApi.delete(roomNumber).catch((err) => {
-      console.warn('roomsApi.delete sync error:', err.message);
-    });
+  const deleteRoom = async (roomNumber) => {
+    try {
+      const res = await roomsApi.delete(roomNumber);
+      setRooms((prev) => prev.filter((r) => r.roomNumber !== roomNumber));
+      addLog(`Room ${roomNumber} Deleted`, 'Rooms', `Permanently removed from property inventory.`, 'Admin');
+      return { success: true, message: res?.message || `Room ${roomNumber} removed from inventory.` };
+    } catch (err) {
+      console.error('roomsApi.delete error:', err);
+      return { success: false, message: err.message || `Failed to remove room ${roomNumber}.` };
+    }
   };
 
   // 14. Guest Online Booking
@@ -2127,38 +2101,38 @@ export const HotelProvider = ({ children }) => {
     });
   };
 
-  // Reset demo
-  const resetDemoData = () => {
-    setRooms(INITIAL_ROOMS);
-    setRoomCategories(INITIAL_ROOM_CATEGORIES);
-    setBookings(INITIAL_BOOKINGS);
-    setMenuItems(INITIAL_MENU);
-    setOrders(INITIAL_ORDERS);
-    setHousekeepingTasks(INITIAL_HOUSEKEEPING_TASKS);
-    setHousekeepingHistory(INITIAL_HOUSEKEEPING_HISTORY);
-    setServiceRequests(INITIAL_SERVICE_REQUESTS);
-    setMaintenanceTickets(INITIAL_MAINTENANCE_TICKETS);
-    setInventoryItems(INITIAL_INVENTORY);
-    setStaffList(INITIAL_STAFF);
-    setActivityLogs(INITIAL_LOGS);
-
-    localStorage.removeItem('efoy_hotel_rooms');
-    localStorage.removeItem('efoy_hotel_room_categories');
-    localStorage.removeItem('efoy_hotel_bookings');
-    localStorage.removeItem('efoy_hotel_menu');
-    localStorage.removeItem('efoy_hotel_orders');
-    localStorage.removeItem('efoy_hotel_hk_tasks');
-    localStorage.removeItem('efoy_hotel_hk_history');
-    localStorage.removeItem('efoy_hotel_service_requests');
-    localStorage.removeItem('efoy_hotel_maintenance_tickets');
-    localStorage.removeItem('efoy_hotel_inventory');
-    localStorage.removeItem('efoy_hotel_staff');
-    localStorage.removeItem('efoy_hotel_logs');
-
-    settingsApi.resetDemo().catch((err) => {
-      console.warn('settingsApi.resetDemo sync error:', err.message);
-    });
+  // Synchronize live with database
+  const syncWithDatabase = async () => {
+    try {
+      const [roomsRes, catsRes, menuRes, bookingsRes, ordersRes] = await Promise.allSettled([
+        roomsApi.getAll(),
+        roomsApi.getCategories(),
+        menuApi.getAll(),
+        bookingsApi.getAll(),
+        ordersApi.getAll(),
+      ]);
+      if (roomsRes.status === 'fulfilled' && Array.isArray(roomsRes.value?.rooms)) {
+        setRooms(roomsRes.value.rooms);
+      }
+      if (catsRes.status === 'fulfilled' && Array.isArray(catsRes.value?.categories)) {
+        setRoomCategories(catsRes.value.categories);
+      }
+      if (menuRes.status === 'fulfilled' && Array.isArray(menuRes.value?.menu)) {
+        setMenuItems(menuRes.value.menu);
+      }
+      if (bookingsRes.status === 'fulfilled' && Array.isArray(bookingsRes.value?.bookings)) {
+        setBookings(bookingsRes.value.bookings);
+      }
+      if (ordersRes.status === 'fulfilled' && Array.isArray(ordersRes.value?.orders)) {
+        setOrders(ordersRes.value.orders);
+      }
+      return { success: true, message: 'Database successfully synced.' };
+    } catch (e) {
+      return { success: false, message: e.message };
+    }
   };
+
+  const resetDemoData = syncWithDatabase;
 
   const value = {
     rooms,
