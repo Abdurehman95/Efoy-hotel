@@ -77,6 +77,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
   const [toastMessage, setToastMessage] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [rateLimitNotice, setRateLimitNotice] = useState(null);
 
@@ -93,43 +94,48 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
   }, []);
 
   const handleConfirmDelete = async () => {
-    if (!deleteConfirmTarget) return;
-    if (deleteConfirmTarget.type === 'room') {
-      const res = await deleteRoom(deleteConfirmTarget.id);
-      if (res?.success) {
-        showToast(`✅ Room ${deleteConfirmTarget.id} removed from inventory`);
-      } else {
-        showToast(`⚠️ ${res?.message || 'Failed to remove room'}`);
+    if (!deleteConfirmTarget || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      if (deleteConfirmTarget.type === 'room') {
+        const res = await deleteRoom(deleteConfirmTarget.id);
+        if (res?.success) {
+          showToast(`✅ Room ${deleteConfirmTarget.id} removed from inventory`);
+        } else {
+          showToast(`⚠️ ${res?.message || 'Failed to remove room'}`);
+        }
+      } else if (deleteConfirmTarget.type === 'category') {
+        const res = await deleteRoomCategory(deleteConfirmTarget.id);
+        if (res?.success) {
+          showToast(`✅ Category removed from room master`);
+        } else {
+          showToast(`⚠️ ${res?.message || 'Failed to remove category'}`);
+        }
+      } else if (deleteConfirmTarget.type === 'inventory') {
+        deleteInventoryItem(deleteConfirmTarget.id);
+        showToast(`Inventory item removed`);
+      } else if (deleteConfirmTarget.type === 'dish') {
+        const res = await deleteMenuItem(deleteConfirmTarget.id);
+        if (res?.success) {
+          showToast(`✅ "${deleteConfirmTarget.name || 'Dish'}" removed from menu`);
+        } else {
+          showToast(`⚠️ ${res?.message || 'Failed to remove menu item'}`);
+        }
+      } else if (deleteConfirmTarget.type === 'staff') {
+        deleteStaff(deleteConfirmTarget.id);
+        showToast('Staff member removed from directory');
+      } else if (deleteConfirmTarget.type === 'user') {
+        const res = await deleteUser(deleteConfirmTarget.id);
+        if (res?.success) {
+          showToast(`User account removed from database`);
+        } else {
+          showToast(res?.message || 'Failed to remove user account');
+        }
       }
-    } else if (deleteConfirmTarget.type === 'category') {
-      const res = await deleteRoomCategory(deleteConfirmTarget.id);
-      if (res?.success) {
-        showToast(`✅ Category removed from room master`);
-      } else {
-        showToast(`⚠️ ${res?.message || 'Failed to remove category'}`);
-      }
-    } else if (deleteConfirmTarget.type === 'inventory') {
-      deleteInventoryItem(deleteConfirmTarget.id);
-      showToast(`Inventory item removed`);
-    } else if (deleteConfirmTarget.type === 'dish') {
-      const res = await deleteMenuItem(deleteConfirmTarget.id);
-      if (res?.success) {
-        showToast(`✅ "${deleteConfirmTarget.name || 'Dish'}" removed from menu`);
-      } else {
-        showToast(`⚠️ ${res?.message || 'Failed to remove menu item'}`);
-      }
-    } else if (deleteConfirmTarget.type === 'staff') {
-      deleteStaff(deleteConfirmTarget.id);
-      showToast('Staff member removed from directory');
-    } else if (deleteConfirmTarget.type === 'user') {
-      const res = await deleteUser(deleteConfirmTarget.id);
-      if (res?.success) {
-        showToast(`User account removed from database`);
-      } else {
-        showToast(res?.message || 'Failed to remove user account');
-      }
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirmTarget(null);
     }
-    setDeleteConfirmTarget(null);
   };
   const [bookingStatusFilter, setBookingStatusFilter] = useState('All');
 
@@ -1720,6 +1726,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                             <Edit2 size={13} />
                           </button>
                           <button
+                            type="button"
                             onClick={() => {
                               setDeleteConfirmTarget({
                                 type: 'dish',
@@ -1730,9 +1737,10 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                               });
                             }}
                             className="p-1.5 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded cursor-pointer transition-colors"
-                            title="Delete Dish"
+                            title={`Delete ${dish.name}`}
+                            aria-label={`Delete ${dish.name}`}
                           >
-                            <Trash2 size={13} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </div>
@@ -2725,20 +2733,49 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setModalType(null)}
-                  className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors font-light"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-xs font-medium text-white bg-gold-500 hover:bg-gold-600 rounded-lg shadow-xs cursor-pointer transition-colors"
-                >
-                  Save Item
-                </button>
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-gray-100">
+                {modalType === 'editFood' && selectedItemForEdit ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const itemToDelete = selectedItemForEdit;
+                      setModalType(null);
+                      setSelectedItemForEdit(null);
+                      setDeleteConfirmTarget({
+                        type: 'dish',
+                        id: itemToDelete.id,
+                        name: itemToDelete.name,
+                        title: 'Delete Menu Item',
+                        message: `Are you sure you want to delete "${itemToDelete.name}" from the in-room dining catalog?`,
+                      });
+                    }}
+                    className="px-3 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors flex items-center gap-1.5"
+                  >
+                    <Trash2 size={13} />
+                    <span>Delete Dish</span>
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalType(null);
+                      setSelectedItemForEdit(null);
+                    }}
+                    className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors font-light"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 text-xs font-medium text-white bg-gold-500 hover:bg-gold-600 rounded-lg shadow-xs cursor-pointer transition-colors"
+                  >
+                    Save Item
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -3269,14 +3306,15 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
       {/* CONFIRMATION MODAL FOR DELETIONS */}
       <ConfirmModal
         isOpen={Boolean(deleteConfirmTarget)}
-        onClose={() => setDeleteConfirmTarget(null)}
+        onClose={() => !isDeleting && setDeleteConfirmTarget(null)}
         onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
         title={deleteConfirmTarget?.title || 'Confirm Deletion'}
         message={
           deleteConfirmTarget?.message ||
           'Are you sure you want to delete this item? This action cannot be undone.'
         }
-        confirmText="Yes, Delete"
+        confirmText={isDeleting ? 'Deleting...' : 'Yes, Delete'}
         cancelText="Cancel"
         variant="danger"
         icon="trash"

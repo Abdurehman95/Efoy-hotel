@@ -221,7 +221,12 @@ export const toggleStock = async (req, res, next) => {
 export const deleteMenuItem = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const result = await query('DELETE FROM menu_items WHERE id = $1 RETURNING name', [id]);
+    const menuId = parseInt(id, 10);
+    if (isNaN(menuId)) {
+      return res.status(400).json({ success: false, message: `Invalid menu item ID: ${id}` });
+    }
+
+    const result = await query('DELETE FROM menu_items WHERE id = $1 RETURNING name', [menuId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: `Menu item ${id} not found.` });
@@ -229,7 +234,7 @@ export const deleteMenuItem = async (req, res, next) => {
 
     const deletedName = result.rows[0].name;
 
-    emitPmsEvent('PMS_MENU_ITEM_DELETED', { id: parseInt(id, 10), name: deletedName });
+    emitPmsEvent('PMS_MENU_ITEM_DELETED', { id: menuId, name: deletedName });
 
     await query(
       `INSERT INTO activity_logs (title, category, description, tag)

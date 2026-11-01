@@ -1057,8 +1057,8 @@ export const HotelProvider = ({ children }) => {
     socket.on('PMS_MENU_ITEM_CREATED', (newItem) => {
       if (!newItem?.id) return;
       setMenuItems((prev) => {
-        const exists = prev.some((m) => m.id === newItem.id);
-        if (exists) return prev.map((m) => (m.id === newItem.id ? newItem : m));
+        const exists = prev.some((m) => String(m.id) === String(newItem.id));
+        if (exists) return prev.map((m) => (String(m.id) === String(newItem.id) ? newItem : m));
         return [...prev, newItem];
       });
     });
@@ -1066,13 +1066,13 @@ export const HotelProvider = ({ children }) => {
     socket.on('PMS_MENU_ITEM_UPDATED', (updatedItem) => {
       if (!updatedItem?.id) return;
       setMenuItems((prev) =>
-        prev.map((m) => (m.id === updatedItem.id ? { ...m, ...updatedItem } : m))
+        prev.map((m) => (String(m.id) === String(updatedItem.id) ? { ...m, ...updatedItem } : m))
       );
     });
 
     socket.on('PMS_MENU_ITEM_DELETED', ({ id }) => {
       if (!id) return;
-      setMenuItems((prev) => prev.filter((m) => m.id !== id));
+      setMenuItems((prev) => prev.filter((m) => String(m.id) !== String(id)));
     });
 
     socket.on('disconnect', () => {
@@ -1664,7 +1664,7 @@ export const HotelProvider = ({ children }) => {
   // 8. 86 / Out of Stock System
   const toggleDishStock = (dishId) => {
     setMenuItems((prev) =>
-      prev.map((d) => (d.id === dishId ? { ...d, inStock: !d.inStock } : d))
+      prev.map((d) => (String(d.id) === String(dishId) ? { ...d, inStock: !d.inStock } : d))
     );
     menuApi.toggleStock(dishId).catch((err) => {
       console.warn('menuApi.toggleStock sync error:', err.message);
@@ -1676,7 +1676,7 @@ export const HotelProvider = ({ children }) => {
     try {
       const res = await menuApi.create(item);
       const created = res?.item || item;
-      setMenuItems((prev) => [...prev.filter((m) => m.id !== created.id), created]);
+      setMenuItems((prev) => [...prev.filter((m) => String(m.id) !== String(created.id)), created]);
       addLog(`Menu Item Added: ${created.name}`, 'Menu', `Added dish priced at $${created.price}.`, 'Admin');
       return { success: true, item: created };
     } catch (err) {
@@ -1689,7 +1689,7 @@ export const HotelProvider = ({ children }) => {
     try {
       const res = await menuApi.update(item.id, item);
       const updated = res?.item || item;
-      setMenuItems((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      setMenuItems((prev) => prev.map((m) => (String(m.id) === String(updated.id) ? updated : m)));
       addLog(`Menu Item Updated: ${updated.name}`, 'Menu', `Updated details for ${updated.name}.`, 'Admin');
       return { success: true, item: updated };
     } catch (err) {
@@ -1700,13 +1700,17 @@ export const HotelProvider = ({ children }) => {
 
   const deleteMenuItem = async (id) => {
     try {
-      const item = menuItems.find((m) => m.id === id);
+      const item = menuItems.find((m) => String(m.id) === String(id));
       const res = await menuApi.delete(id);
-      setMenuItems((prev) => prev.filter((m) => m.id !== id));
+      setMenuItems((prev) => prev.filter((m) => String(m.id) !== String(id)));
       addLog(`Menu Item Removed: ${item?.name || id}`, 'Menu', `Removed from catalog.`, 'Admin');
       return { success: true, message: res?.message || 'Dish removed from menu.' };
     } catch (err) {
       console.error('menuApi.delete error:', err);
+      if (err.status === 404 || err.message?.toLowerCase().includes('not found')) {
+        setMenuItems((prev) => prev.filter((m) => String(m.id) !== String(id)));
+        return { success: true, message: 'Dish removed from menu.' };
+      }
       return { success: false, message: err.message || 'Failed to remove menu item.' };
     }
   };
