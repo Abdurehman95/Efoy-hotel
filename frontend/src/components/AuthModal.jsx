@@ -197,6 +197,12 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) =
         } catch (apiErr) {
           console.warn('Backend login attempt:', apiErr.message);
 
+          if (apiErr.status === 429 || apiErr.isRateLimited) {
+            setLoading(false);
+            setErrorMessage(apiErr.message || 'Too many login attempts. Please wait 15 minutes before trying again.');
+            return;
+          }
+
           // Fallback to role mapping if demo credentials
           const fallback = DEMO_FALLBACK_ROLES[email];
           if (fallback) {

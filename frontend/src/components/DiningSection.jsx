@@ -476,7 +476,7 @@ const DiningSection = () => {
             items={SHARED_BOARDS}
             initialActiveIndex={0}
             onItemClick={(board) => handleAddToCart(board.title)}
-            containerHeight="h-[360px] sm:h-[400px] lg:h-[430px]"
+            containerHeight="h-[490px] sm:h-[400px] lg:h-[430px]"
           />
         </div>
 

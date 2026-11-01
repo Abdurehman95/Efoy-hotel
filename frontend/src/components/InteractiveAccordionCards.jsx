@@ -7,30 +7,46 @@ import { ArrowRight, Plus, Sparkles, Check } from 'lucide-react';
  * Reference: https://www.youtube.com/shorts/--y9BnoyOWI (@Edgedotdesign)
  * 
  * Features:
- * - Fluid flex-grow horizontal accordion expansion with custom bezier easing
- * - Active card expands (flex: 3.5) while inactive cards gracefully compress (flex: 1)
- * - Deep depth, parallax-like scale-105 zoom on active image, and subtle mood dimming on inactive cards
- * - Smooth bottom-anchored content slide-up and fade-in
- * - High-accessibility with keyboard navigation (Enter / Space), focus rings, and reduced motion
- * - Responsive: Smooth horizontal accordion on tablet/desktop; responsive touch-accordion on mobile
+ * - Fluid flex-grow horizontal accordion expansion on tablet/desktop
+ * - Optimized touch-responsive accordion on mobile with zero text clipping or jumping
+ * - Active card expands smoothly while inactive cards compress gracefully
+ * - Deep depth, parallax scale zoom on active image, and subtle ambient glow
+ * - Non-sticky hover behavior protected against mobile touch traps
+ * - Keyboard accessible (Enter / Space) and screen-reader compliant
  */
 const InteractiveAccordionCards = ({
   items = [],
   initialActiveIndex = 0,
   onItemClick,
   variant = 'image', // 'image' | 'service'
-  containerHeight = 'h-[380px] sm:h-[420px] lg:h-[450px]',
+  containerHeight = 'h-[460px] sm:h-[420px] lg:h-[450px]',
   className = '',
 }) => {
   const [activeIndex, setActiveIndex] = useState(initialActiveIndex);
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
-  // Active index prioritized by hover, falling back to selected/pinned active card
+  // Active index prioritized by mouse hover on fine pointer devices only
   const currentActive = hoveredIndex !== null ? hoveredIndex : activeIndex;
 
-  const handleCardClick = (item, idx) => {
-    setActiveIndex(idx);
-    if (onItemClick) {
+  const handleMouseEnter = (idx) => {
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      setHoveredIndex(idx);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      setHoveredIndex(null);
+    }
+  };
+
+  const handleCardClick = (e, item, idx) => {
+    // Always clear hover state on mobile touch or click
+    setHoveredIndex(null);
+
+    if (activeIndex !== idx) {
+      setActiveIndex(idx);
+    } else if (onItemClick) {
       onItemClick(item, idx);
     }
   };
@@ -38,28 +54,28 @@ const InteractiveAccordionCards = ({
   const handleKeyDown = (e, item, idx) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      handleCardClick(item, idx);
+      handleCardClick(e, item, idx);
     }
   };
 
   const renderCardIcon = (icon) => {
-    if (!icon) return <Sparkles className="w-6 h-6" />;
+    if (!icon) return <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />;
     if (React.isValidElement(icon)) return icon;
     const IconComponent = icon;
-    return <IconComponent className="w-6 h-6" />;
+    return <IconComponent className="w-5 h-5 sm:w-6 sm:h-6" />;
   };
-
 
   return (
     <div
       className={`w-full flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-5 ${containerHeight} ${className}`}
-      onMouseLeave={() => setHoveredIndex(null)}
+      onMouseLeave={handleMouseLeave}
       role="region"
       aria-label="Interactive Showcase Cards"
     >
       {items.map((item, idx) => {
         const isActive = currentActive === idx;
 
+        // ================= 'service' Variant (Curated Privileges & Spa/Butler) =================
         if (variant === 'service') {
           return (
             <div
@@ -68,14 +84,14 @@ const InteractiveAccordionCards = ({
               tabIndex={0}
               aria-expanded={isActive}
               aria-label={item.title}
-              onMouseEnter={() => setHoveredIndex(idx)}
-              onClick={() => handleCardClick(item, idx)}
+              onMouseEnter={() => handleMouseEnter(idx)}
+              onClick={(e) => handleCardClick(e, item, idx)}
               onKeyDown={(e) => handleKeyDown(e, item, idx)}
               style={{
-                flex: isActive ? '3.2 1 0%' : '1 1 0%',
-                transition: 'flex 650ms cubic-bezier(0.25, 1, 0.5, 1), transform 650ms cubic-bezier(0.25, 1, 0.5, 1), box-shadow 400ms ease, border-color 400ms ease',
+                flex: isActive ? '3.4 1 0%' : '1 1 0%',
+                transition: 'flex 550ms cubic-bezier(0.25, 1, 0.5, 1), transform 400ms ease, box-shadow 400ms ease, border-color 400ms ease',
               }}
-              className={`group relative rounded-2xl sm:rounded-3xl p-6 sm:p-8 flex flex-col justify-between overflow-hidden cursor-pointer select-none border transition-all duration-500 ${
+              className={`group relative rounded-2xl sm:rounded-3xl p-4 sm:p-7 lg:p-8 flex flex-col justify-between overflow-hidden cursor-pointer select-none border transition-all duration-500 ${
                 isActive
                   ? 'bg-gradient-to-br from-[#ffffff] via-[#fcfbf9] to-[#fbf7ee] border-gold-500/60 shadow-xl ring-1 ring-gold-500/20'
                   : 'bg-[#fafafa] hover:bg-white border-gray-200/80 shadow-xs hover:border-gold-500/40'
@@ -90,55 +106,83 @@ const InteractiveAccordionCards = ({
                 <div className="w-56 h-56 rounded-full bg-gold-400 blur-3xl" />
               </div>
 
-              {/* Top: Icon & Category Indicator */}
-              <div className="relative z-10 flex items-center justify-between">
-                <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-500 ${
-                    isActive
-                      ? 'bg-gold-500 text-white shadow-md shadow-gold-500/30 scale-105'
-                      : 'bg-gold-50 text-gold-600 group-hover:bg-gold-100 group-hover:text-gold-700'
-                  }`}
-                >
-                  {renderCardIcon(item.icon)}
+              {/* Compact Inactive Row for Mobile (< sm) */}
+              <div className={`sm:hidden w-full h-full flex items-center justify-between transition-opacity duration-300 ${isActive ? 'hidden' : 'flex'}`}>
+                <div className="flex items-center gap-3 min-w-0 pr-2">
+                  <div className="w-10 h-10 rounded-xl bg-gold-50 text-gold-600 flex items-center justify-center shrink-0">
+                    {renderCardIcon(item.icon)}
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <h4 className="font-serif text-sm font-medium text-dark-900 truncate">
+                      {item.title}
+                    </h4>
+                    <span className="text-[10px] text-gray-400 font-light block">Tap to expand</span>
+                  </div>
                 </div>
-
-                {/* Subtle Card Index / Tag for Inactive Cards */}
-                <span
-                  className={`text-[10px] font-mono tracking-widest uppercase transition-opacity duration-300 ${
-                    isActive ? 'opacity-0' : 'text-gray-400 opacity-70 group-hover:opacity-100'
-                  }`}
-                >
-                  0{idx + 1}
-                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[11px] font-mono text-gray-400">0{idx + 1}</span>
+                  <Plus size={15} className="text-gold-500" />
+                </div>
               </div>
 
-              {/* Middle / Bottom Content */}
-              <div className="relative z-10 mt-6">
-                <h3
-                  className={`font-serif text-dark-900 font-normal leading-tight transition-all duration-500 ${
-                    isActive
-                      ? 'text-xl sm:text-2xl lg:text-3xl text-dark-900 mb-3'
-                      : 'text-base sm:text-lg text-dark-800 line-clamp-2'
-                  }`}
-                >
-                  {item.title}
-                </h3>
+              {/* Main Card Content (Always visible when active, and visible on desktop when inactive) */}
+              <div className={`w-full h-full flex-col justify-between ${isActive ? 'flex' : 'hidden sm:flex'}`}>
+                {/* Top: Icon & Category Indicator */}
+                <div className="relative z-10 flex items-center justify-between">
+                  <div
+                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all duration-500 ${
+                      isActive
+                        ? 'bg-gold-500 text-white shadow-md shadow-gold-500/30 scale-105'
+                        : 'bg-gold-50 text-gold-600 group-hover:bg-gold-100 group-hover:text-gold-700'
+                    }`}
+                  >
+                    {renderCardIcon(item.icon)}
+                  </div>
 
-                {/* Description & Link - Smoothly Revealed on Expansion */}
-                <div
-                  className={`transition-all duration-500 ease-out overflow-hidden ${
-                    isActive
-                      ? 'max-h-48 opacity-100 translate-y-0 mt-2'
-                      : 'max-h-0 opacity-0 translate-y-4 pointer-events-none'
-                  }`}
-                >
-                  <p className="text-xs sm:text-sm text-gray-600 font-light leading-relaxed mb-6">
-                    {item.desc || item.description}
-                  </p>
+                  {/* Subtle Card Index */}
+                  <span
+                    className={`text-[10px] font-mono tracking-widest uppercase transition-opacity duration-300 ${
+                      isActive ? 'text-gold-600/70 font-semibold' : 'text-gray-400 opacity-70 group-hover:opacity-100'
+                    }`}
+                  >
+                    0{idx + 1}
+                  </span>
+                </div>
 
-                  <div className="inline-flex items-center gap-2 text-xs font-semibold text-gold-600 hover:text-gold-700 group/btn transition-colors">
-                    <span>{item.actionText || 'Learn more'}</span>
-                    <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+                {/* Middle / Bottom Content */}
+                <div className="relative z-10 mt-3 sm:mt-6">
+                  <h3
+                    className={`font-serif text-dark-900 font-normal leading-tight transition-all duration-500 ${
+                      isActive
+                        ? 'text-lg sm:text-2xl lg:text-3xl text-dark-900 mb-2 sm:mb-3'
+                        : 'text-base sm:text-lg text-dark-800 line-clamp-2'
+                    }`}
+                  >
+                    {item.title}
+                  </h3>
+
+                  {/* Description & Link - Smoothly Revealed on Expansion */}
+                  <div
+                    className={`transition-all duration-500 ease-out overflow-hidden ${
+                      isActive
+                        ? 'max-h-56 opacity-100 translate-y-0 mt-1 sm:mt-2'
+                        : 'max-h-0 opacity-0 translate-y-3 pointer-events-none'
+                    }`}
+                  >
+                    <p className="text-xs sm:text-sm text-gray-600 font-light leading-relaxed mb-4 sm:mb-6">
+                      {item.desc || item.description}
+                    </p>
+
+                    <div 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onItemClick) onItemClick(item, idx);
+                      }}
+                      className="inline-flex items-center gap-2 text-xs font-semibold text-gold-600 hover:text-gold-700 group/btn transition-colors cursor-pointer"
+                    >
+                      <span>{item.actionText || 'Learn more'}</span>
+                      <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -154,12 +198,12 @@ const InteractiveAccordionCards = ({
             tabIndex={0}
             aria-expanded={isActive}
             aria-label={item.title}
-            onMouseEnter={() => setHoveredIndex(idx)}
-            onClick={() => handleCardClick(item, idx)}
+            onMouseEnter={() => handleMouseEnter(idx)}
+            onClick={(e) => handleCardClick(e, item, idx)}
             onKeyDown={(e) => handleKeyDown(e, item, idx)}
             style={{
               flex: isActive ? '3.5 1 0%' : '1 1 0%',
-              transition: 'flex 650ms cubic-bezier(0.25, 1, 0.5, 1), transform 650ms cubic-bezier(0.25, 1, 0.5, 1), box-shadow 400ms ease',
+              transition: 'flex 550ms cubic-bezier(0.25, 1, 0.5, 1), transform 400ms ease, box-shadow 400ms ease',
             }}
             className={`group relative rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer select-none shadow-lg transition-all duration-500 ${
               isActive
@@ -190,9 +234,26 @@ const InteractiveAccordionCards = ({
               }`}
             />
 
-            {/* Inactive State Minimal Floating Badge/Number */}
+            {/* Inactive Compact Row for Mobile (< sm) */}
+            <div className={`sm:hidden absolute inset-0 z-20 flex items-center justify-between px-4 transition-opacity duration-300 ${isActive ? 'hidden' : 'flex'}`}>
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <span className="w-7 h-7 rounded-full bg-dark-900/80 backdrop-blur-md border border-white/20 text-[10px] font-mono text-gold-300 font-semibold flex items-center justify-center shrink-0">
+                  0{idx + 1}
+                </span>
+                <span className="text-xs font-serif font-medium text-white truncate drop-shadow-sm">
+                  {item.title}
+                </span>
+              </div>
+              {item.tag && (
+                <span className="text-[9px] font-mono tracking-widest text-gold-300 uppercase shrink-0 px-2 py-0.5 rounded-full bg-black/50 border border-white/10">
+                  {item.tag}
+                </span>
+              )}
+            </div>
+
+            {/* Inactive State Floating Badge/Number for Desktop */}
             <div
-              className={`absolute top-4 sm:top-5 left-4 sm:left-5 z-20 transition-all duration-500 ${
+              className={`hidden sm:block absolute top-4 sm:top-5 left-4 sm:left-5 z-20 transition-all duration-500 ${
                 isActive
                   ? 'opacity-0 scale-75 pointer-events-none'
                   : 'opacity-90 group-hover:opacity-100 scale-100'
@@ -203,9 +264,9 @@ const InteractiveAccordionCards = ({
               </span>
             </div>
 
-            {/* Inactive Vertical Title Preview (Figma Style) for Sleek Narrow Cards */}
+            {/* Inactive Vertical Title Preview for Desktop */}
             <div
-              className={`absolute inset-x-0 bottom-4 px-3 z-10 transition-all duration-400 text-center ${
+              className={`hidden sm:block absolute inset-x-0 bottom-4 px-3 z-10 transition-all duration-400 text-center ${
                 isActive
                   ? 'opacity-0 translate-y-4 pointer-events-none'
                   : 'opacity-80 group-hover:opacity-100 translate-y-0'
@@ -218,7 +279,7 @@ const InteractiveAccordionCards = ({
 
             {/* Active Card Bottom-Anchored Details (Slide-Up & Fade-In) */}
             <div
-              className={`absolute inset-x-0 bottom-0 p-5 sm:p-7 lg:p-8 z-20 text-white transition-all duration-500 ease-out ${
+              className={`absolute inset-x-0 bottom-0 p-4 sm:p-7 lg:p-8 z-20 text-white transition-all duration-500 ease-out ${
                 isActive
                   ? 'opacity-100 translate-y-0 delay-100'
                   : 'opacity-0 translate-y-6 pointer-events-none'
@@ -226,7 +287,7 @@ const InteractiveAccordionCards = ({
             >
               {/* Category / Subtitle Tag */}
               {item.tag && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gold-500/20 backdrop-blur-md border border-gold-400/30 mb-2.5">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gold-500/20 backdrop-blur-md border border-gold-400/30 mb-2 sm:mb-2.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-gold-400 animate-pulse" />
                   <span className="text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase text-gold-300">
                     {item.tag}
@@ -235,24 +296,31 @@ const InteractiveAccordionCards = ({
               )}
 
               {/* Main Title */}
-              <h4 className="font-serif text-lg sm:text-2xl lg:text-3xl font-bold leading-tight mb-2 text-white drop-shadow-sm">
+              <h4 className="font-serif text-base sm:text-2xl lg:text-3xl font-bold leading-tight mb-1.5 sm:mb-2 text-white drop-shadow-sm">
                 {item.title}
               </h4>
 
               {/* Description */}
               {item.desc && (
-                <p className="text-xs sm:text-sm text-white/85 font-light leading-relaxed max-w-lg mb-4 drop-shadow-xs line-clamp-2 sm:line-clamp-none">
+                <p className="text-xs sm:text-sm text-white/90 font-light leading-relaxed max-w-lg mb-3 sm:mb-4 drop-shadow-xs line-clamp-2 sm:line-clamp-none">
                   {item.desc}
                 </p>
               )}
 
               {/* Action Prompt Pill */}
-              <div className="flex items-center gap-3 pt-1">
-                <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 hover:bg-gold-500 hover:text-white backdrop-blur-md border border-white/25 text-xs font-semibold text-white tracking-wide transition-all duration-300 shadow-sm group/btn">
+              <div className="flex items-center gap-3 pt-0.5">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onItemClick) onItemClick(item, idx);
+                  }}
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/20 hover:bg-gold-500 hover:text-white backdrop-blur-md border border-white/25 text-xs font-semibold text-white tracking-wide transition-all duration-300 shadow-sm group/btn cursor-pointer"
+                >
                   <span>{item.actionLabel || 'Add to Order'}</span>
                   <Plus size={13} className="text-gold-300 group-hover/btn:text-white transition-transform group-hover/btn:rotate-90" />
-                </span>
-                <span className="text-[11px] text-white/60 font-light hidden sm:inline-block">
+                </button>
+                <span className="text-[11px] text-white/70 font-light hidden sm:inline-block">
                   Click to reserve table
                 </span>
               </div>

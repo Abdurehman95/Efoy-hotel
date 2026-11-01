@@ -354,7 +354,7 @@ const HomePage = ({ onNavigate }) => {
             variant="service"
             initialActiveIndex={0}
             onItemClick={() => onNavigate('services')}
-            containerHeight="h-[360px] sm:h-[390px]"
+            containerHeight="h-[460px] sm:h-[390px]"
           />
         </div>
       </section>

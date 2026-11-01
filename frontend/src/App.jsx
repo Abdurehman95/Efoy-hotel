@@ -45,6 +45,20 @@ function AppContent() {
   });
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [rateLimitToast, setRateLimitToast] = useState(null);
+
+  // Global listener for HTTP 429 Rate Limit notifications
+  useEffect(() => {
+    const handleRateLimit = (e) => {
+      const msg =
+        e.detail?.message ||
+        'Rate limit reached: Too many requests were sent. Please wait a few moments before trying again.';
+      setRateLimitToast(msg);
+      setTimeout(() => setRateLimitToast(null), 8000);
+    };
+    window.addEventListener('efoy_rate_limit_exceeded', handleRateLimit);
+    return () => window.removeEventListener('efoy_rate_limit_exceeded', handleRateLimit);
+  }, []);
 
   // Listen for dynamic auth changes (e.g. online booking -> guest session)
   useEffect(() => {
@@ -199,6 +213,20 @@ function AppContent() {
     if (dashboardElement) {
       return (
         <>
+          {rateLimitToast && (
+            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[250] max-w-lg w-[90%] bg-dark-900/95 text-white border border-rose-500/80 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md text-xs flex items-center justify-between gap-3 animate-slide-down">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping shrink-0" />
+                <p className="font-medium text-slate-100 leading-relaxed">{rateLimitToast}</p>
+              </div>
+              <button
+                onClick={() => setRateLimitToast(null)}
+                className="text-slate-400 hover:text-white px-1.5 py-0.5 rounded cursor-pointer font-bold"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           {dashboardElement}
           <ConfirmModal
             isOpen={showLogoutConfirm}
@@ -208,7 +236,7 @@ function AppContent() {
             message="Are you sure you want to end your current session and sign out of the portal?"
             confirmText="Yes, Log Out"
             cancelText="Cancel"
-            variant="danger"
+            variant="gold"
             icon="logout"
           />
         </>
@@ -235,6 +263,20 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-white overflow-x-hidden relative flex flex-col">
+      {rateLimitToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[250] max-w-lg w-[90%] bg-dark-900/95 text-white border border-rose-500/80 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md text-xs flex items-center justify-between gap-3 animate-slide-down">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping shrink-0" />
+            <p className="font-medium text-slate-100 leading-relaxed">{rateLimitToast}</p>
+          </div>
+          <button
+            onClick={() => setRateLimitToast(null)}
+            className="text-slate-400 hover:text-white px-1.5 py-0.5 rounded cursor-pointer font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <ConfirmModal
         isOpen={showLogoutConfirm}
         onClose={() => setShowLogoutConfirm(false)}
@@ -243,7 +285,7 @@ function AppContent() {
         message="Are you sure you want to end your current session and sign out of the portal?"
         confirmText="Yes, Log Out"
         cancelText="Cancel"
-        variant="danger"
+        variant="gold"
         icon="logout"
       />
       {/* Fixed Navigation & Operational Header */}

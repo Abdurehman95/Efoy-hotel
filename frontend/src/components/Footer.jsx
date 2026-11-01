@@ -91,7 +91,7 @@ const Footer = ({ onNavigate }) => {
       {/* Main 4-Column Footer Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12 relative z-10 text-xs">
         {/* Column 1: Brand & Credentials */}
-        <div className="space-y-4">
+        <div className="space-y-4 flex flex-col items-center md:items-start text-center md:text-left">
           <div className="bg-white inline-flex rounded-xl px-3 py-1.5 shadow-md items-center justify-center">
             <img
               src="/images/logo.png"
@@ -99,11 +99,11 @@ const Footer = ({ onNavigate }) => {
               className="h-10 sm:h-12 w-auto object-contain"
             />
           </div>
-          <p className="text-slate-300 font-light leading-relaxed">
+          <p className="text-slate-300 font-light leading-relaxed max-w-sm">
             Addis Ababa’s premier five-star luxury hotel and private residences, harmonizing bespoke Ethiopian warmth with world-class hospitality.
           </p>
 
-          <div className="pt-2 flex flex-col gap-2">
+          <div className="pt-2 flex flex-col items-center md:items-start gap-2">
             <div className="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1 text-[11px] text-gold-300 w-fit">
               <span className="text-amber-400">★★★★★</span>
               <span>Forbes Five Star 2026</span>
@@ -116,77 +116,77 @@ const Footer = ({ onNavigate }) => {
         </div>
 
         {/* Column 2: Navigation Pages */}
-        <div>
-          <h4 className="font-serif text-sm font-bold tracking-wider uppercase text-white mb-5 flex items-center gap-2">
+        <div className="flex flex-col items-center md:items-start text-center md:text-left">
+          <h4 className="font-serif text-sm font-bold tracking-wider uppercase text-white mb-5 flex items-center justify-center md:justify-start gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-gold-400" />
             <span>Discover The Sanctuary</span>
           </h4>
-          <ul className="space-y-3 font-light text-slate-300">
+          <ul className="space-y-3 font-light text-slate-300 w-full max-w-xs md:max-w-none text-center md:text-left">
             <li>
               <a
                 href="#"
                 onClick={(e) => handleLinkClick(e, 'home')}
-                className="hover:text-gold-400 transition-colors flex items-center justify-between group"
+                className="hover:text-gold-400 transition-colors flex items-center justify-center md:justify-between group"
               >
                 <span>Home Sanctuary</span>
-                <span className="text-white/20 group-hover:text-gold-400 group-hover:translate-x-0.5 transition-all">→</span>
+                <span className="hidden md:inline text-white/20 group-hover:text-gold-400 group-hover:translate-x-0.5 transition-all">→</span>
               </a>
             </li>
             <li>
               <a
                 href="#rooms"
                 onClick={(e) => handleLinkClick(e, 'rooms')}
-                className="hover:text-gold-400 transition-colors flex items-center justify-between group"
+                className="hover:text-gold-400 transition-colors flex items-center justify-center md:justify-between group"
               >
                 <span>Curated Rooms & Suites</span>
-                <span className="text-white/20 group-hover:text-gold-400 group-hover:translate-x-0.5 transition-all">→</span>
+                <span className="hidden md:inline text-white/20 group-hover:text-gold-400 group-hover:translate-x-0.5 transition-all">→</span>
               </a>
             </li>
             <li>
               <a
                 href="#dining"
                 onClick={(e) => handleLinkClick(e, 'dining')}
-                className="hover:text-gold-400 transition-colors flex items-center justify-between group"
+                className="hover:text-gold-400 transition-colors flex items-center justify-center md:justify-between group"
               >
                 <span>Haute Gastronomy & Dining</span>
-                <span className="text-white/20 group-hover:text-gold-400 group-hover:translate-x-0.5 transition-all">→</span>
+                <span className="hidden md:inline text-white/20 group-hover:text-gold-400 group-hover:translate-x-0.5 transition-all">→</span>
               </a>
             </li>
             <li>
               <a
                 href="#services"
                 onClick={(e) => handleLinkClick(e, 'services')}
-                className="hover:text-gold-400 transition-colors flex items-center justify-between group"
+                className="hover:text-gold-400 transition-colors flex items-center justify-center md:justify-between group"
               >
                 <span>Spa, Wellness & Butler Services</span>
-                <span className="text-white/20 group-hover:text-gold-400 group-hover:translate-x-0.5 transition-all">→</span>
+                <span className="hidden md:inline text-white/20 group-hover:text-gold-400 group-hover:translate-x-0.5 transition-all">→</span>
               </a>
             </li>
             <li>
               <a
                 href="#contact"
                 onClick={(e) => handleLinkClick(e, 'contact')}
-                className="hover:text-gold-400 transition-colors flex items-center justify-between group"
+                className="hover:text-gold-400 transition-colors flex items-center justify-center md:justify-between group"
               >
                 <span>Concierge & Contact</span>
-                <span className="text-white/20 group-hover:text-gold-400 group-hover:translate-x-0.5 transition-all">→</span>
+                <span className="hidden md:inline text-white/20 group-hover:text-gold-400 group-hover:translate-x-0.5 transition-all">→</span>
               </a>
             </li>
           </ul>
         </div>
 
         {/* Column 3: Guest Portal & Resident Services */}
-        <div>
-          <h4 className="font-serif text-sm font-bold tracking-wider uppercase text-white mb-5 flex items-center gap-2">
+        <div className="flex flex-col items-center md:items-start text-center md:text-left">
+          <h4 className="font-serif text-sm font-bold tracking-wider uppercase text-white mb-5 flex items-center justify-center md:justify-start gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-gold-400" />
             <span>Resident Privileges</span>
           </h4>
-          <ul className="space-y-3 font-light text-slate-300">
+          <ul className="space-y-3 font-light text-slate-300 w-full max-w-xs md:max-w-none">
             <li>
               <a
                 href="#rooms"
                 onClick={(e) => handleLinkClick(e, 'rooms')}
-                className="hover:text-gold-400 transition-colors flex items-center gap-2"
+                className="hover:text-gold-400 transition-colors flex items-center justify-center md:justify-start gap-2"
               >
                 <CalendarCheck size={14} className="text-gold-400 shrink-0" />
                 <span>Reserve a Suite Online</span>
@@ -199,7 +199,7 @@ const Footer = ({ onNavigate }) => {
                   e.preventDefault();
                   window.location.hash = 'login';
                 }}
-                className="hover:text-gold-400 transition-colors flex items-center gap-2"
+                className="hover:text-gold-400 transition-colors flex items-center justify-center md:justify-start gap-2"
               >
                 <Key size={14} className="text-gold-400 shrink-0" />
                 <span>Guest Portal & Digital NFC Key</span>
@@ -209,7 +209,7 @@ const Footer = ({ onNavigate }) => {
               <a
                 href="#dining"
                 onClick={(e) => handleLinkClick(e, 'dining')}
-                className="hover:text-gold-400 transition-colors flex items-center gap-2"
+                className="hover:text-gold-400 transition-colors flex items-center justify-center md:justify-start gap-2"
               >
                 <UtensilsCrossed size={14} className="text-gold-400 shrink-0" />
                 <span>24/7 In-Room Dining Menu</span>
@@ -219,7 +219,7 @@ const Footer = ({ onNavigate }) => {
               <a
                 href="#contact"
                 onClick={(e) => handleLinkClick(e, 'contact')}
-                className="hover:text-gold-400 transition-colors flex items-center gap-2"
+                className="hover:text-gold-400 transition-colors flex items-center justify-center md:justify-start gap-2"
               >
                 <Car size={14} className="text-gold-400 shrink-0" />
                 <span>Private Chauffeur Airport Pickup</span>
@@ -229,7 +229,7 @@ const Footer = ({ onNavigate }) => {
               <a
                 href="#services"
                 onClick={(e) => handleLinkClick(e, 'services')}
-                className="hover:text-gold-400 transition-colors flex items-center gap-2"
+                className="hover:text-gold-400 transition-colors flex items-center justify-center md:justify-start gap-2"
               >
                 <ShieldCheck size={14} className="text-gold-400 shrink-0" />
                 <span>Express Departure & Folio Settlement</span>
@@ -239,13 +239,13 @@ const Footer = ({ onNavigate }) => {
         </div>
 
         {/* Column 4: Location & Concierge Directory */}
-        <div>
-          <h4 className="font-serif text-sm font-bold tracking-wider uppercase text-white mb-5 flex items-center gap-2">
+        <div className="flex flex-col items-center md:items-start text-center md:text-left">
+          <h4 className="font-serif text-sm font-bold tracking-wider uppercase text-white mb-5 flex items-center justify-center md:justify-start gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-gold-400" />
             <span>Concierge & Location</span>
           </h4>
-          <div className="space-y-3 font-light text-slate-300">
-            <div className="flex items-start gap-2.5">
+          <div className="space-y-4 font-light text-slate-300 flex flex-col items-center md:items-start text-center md:text-left">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-2.5">
               <MapPin size={16} className="text-gold-400 shrink-0 mt-0.5" />
               <div>
                 <span className="font-medium text-white block">Efoy Hotel & Suites</span>
@@ -254,7 +254,7 @@ const Footer = ({ onNavigate }) => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 pt-1">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-2.5 pt-1">
               <Phone size={15} className="text-gold-400 shrink-0" />
               <div>
                 <span className="text-[10px] text-slate-400 block uppercase">24/7 Concierge Desk</span>
@@ -264,7 +264,7 @@ const Footer = ({ onNavigate }) => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 pt-1">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-2.5 pt-1">
               <Mail size={15} className="text-gold-400 shrink-0" />
               <div>
                 <span className="text-[10px] text-slate-400 block uppercase">Private Guest Inquiries</span>
@@ -279,9 +279,9 @@ const Footer = ({ onNavigate }) => {
 
       {/* Bottom Copyright & Legal Credentials */}
       <div className="border-t border-white/10 relative z-10 bg-black/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row items-center justify-between text-xs text-slate-400 gap-4 text-center md:text-left">
           <p>© 2026 Efoy Hotel & Suites Addis Ababa. All rights reserved.</p>
-          <div className="flex flex-wrap items-center gap-4 text-xs font-light">
+          <div className="flex flex-wrap items-center justify-center md:justify-end gap-x-4 gap-y-2 text-xs font-light">
             <a href="#privacy" onClick={(e) => { e.preventDefault(); alert('Efoy Hotel Data Protection and Guest Privacy Policy.'); }} className="hover:text-white transition-colors">
               Privacy Policy
             </a>
