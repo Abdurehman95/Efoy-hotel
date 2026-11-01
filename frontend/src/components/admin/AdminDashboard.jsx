@@ -78,20 +78,46 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
 
+  const [rateLimitNotice, setRateLimitNotice] = useState(null);
+
+  // Global HTTP 429 Rate Limit Listener
+  useEffect(() => {
+    const handleRateLimit = (e) => {
+      const msg = e.detail?.message || 'Rate limit reached: Too many requests. Please wait a few moments before trying again.';
+      setRateLimitNotice(msg);
+      showToast(`⚠️ ${msg}`);
+      setTimeout(() => setRateLimitNotice(null), 8000);
+    };
+    window.addEventListener('efoy_rate_limit_exceeded', handleRateLimit);
+    return () => window.removeEventListener('efoy_rate_limit_exceeded', handleRateLimit);
+  }, []);
+
   const handleConfirmDelete = async () => {
     if (!deleteConfirmTarget) return;
     if (deleteConfirmTarget.type === 'room') {
-      deleteRoom(deleteConfirmTarget.id);
-      showToast(`Room ${deleteConfirmTarget.id} removed from inventory`);
+      const res = await deleteRoom(deleteConfirmTarget.id);
+      if (res?.success) {
+        showToast(`✅ Room ${deleteConfirmTarget.id} removed from inventory`);
+      } else {
+        showToast(`⚠️ ${res?.message || 'Failed to remove room'}`);
+      }
     } else if (deleteConfirmTarget.type === 'category') {
-      deleteRoomCategory(deleteConfirmTarget.id);
-      showToast(`Category removed from room master`);
+      const res = await deleteRoomCategory(deleteConfirmTarget.id);
+      if (res?.success) {
+        showToast(`✅ Category removed from room master`);
+      } else {
+        showToast(`⚠️ ${res?.message || 'Failed to remove category'}`);
+      }
     } else if (deleteConfirmTarget.type === 'inventory') {
       deleteInventoryItem(deleteConfirmTarget.id);
       showToast(`Inventory item removed`);
     } else if (deleteConfirmTarget.type === 'dish') {
-      deleteMenuItem(deleteConfirmTarget.id);
-      showToast(`"${deleteConfirmTarget.name || 'Dish'}" removed from menu`);
+      const res = await deleteMenuItem(deleteConfirmTarget.id);
+      if (res?.success) {
+        showToast(`✅ "${deleteConfirmTarget.name || 'Dish'}" removed from menu`);
+      } else {
+        showToast(`⚠️ ${res?.message || 'Failed to remove menu item'}`);
+      }
     } else if (deleteConfirmTarget.type === 'staff') {
       deleteStaff(deleteConfirmTarget.id);
       showToast('Staff member removed from directory');
@@ -484,49 +510,65 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
   };
 
   // Handle Room Form
-  const handleSaveRoom = (e) => {
+  const handleSaveRoom = async (e) => {
     e.preventDefault();
     const rateNum = parseFloat(roomForm.rate) || 0;
     if (modalType === 'editRoom' && selectedItemForEdit) {
-      updateRoom({
+      const res = await updateRoom({
         ...selectedItemForEdit,
         ...roomForm,
         rate: rateNum,
       });
-      showToast(`Updated Room ${roomForm.roomNumber} parameters`);
+      if (res?.success) {
+        showToast(`Updated Room ${roomForm.roomNumber} parameters`);
+      } else {
+        showToast(res?.message || 'Failed to update room');
+      }
     } else {
       if (rooms.some((r) => r.roomNumber.toString() === roomForm.roomNumber.toString())) {
         showToast(`Room ${roomForm.roomNumber} already exists in inventory!`);
         return;
       }
-      addRoom({
+      const res = await addRoom({
         ...roomForm,
         rate: rateNum,
       });
-      showToast(`Room ${roomForm.roomNumber} added to inventory`);
+      if (res?.success) {
+        showToast(`Room ${roomForm.roomNumber} added to inventory`);
+      } else {
+        showToast(res?.message || 'Failed to add room');
+      }
     }
     setModalType(null);
     setSelectedItemForEdit(null);
   };
 
   // Handle Food Form
-  const handleSaveFood = (e) => {
+  const handleSaveFood = async (e) => {
     e.preventDefault();
     const priceNum = parseFloat(foodForm.price) || 0;
     if (modalType === 'editFood' && selectedItemForEdit) {
-      editMenuItem({
+      const res = await editMenuItem({
         ...selectedItemForEdit,
         ...foodForm,
         price: priceNum,
       });
-      showToast(`Updated dish ${foodForm.name}`);
+      if (res?.success) {
+        showToast(`Updated dish ${foodForm.name}`);
+      } else {
+        showToast(res?.message || 'Failed to update dish');
+      }
     } else {
-      addMenuItem({
+      const res = await addMenuItem({
         ...foodForm,
         price: priceNum,
         image: selectedItemForEdit?.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80',
       });
-      showToast(`Added ${foodForm.name} to in-room dining catalog`);
+      if (res?.success) {
+        showToast(`Added ${foodForm.name} to in-room dining catalog`);
+      } else {
+        showToast(res?.message || 'Failed to add dish');
+      }
     }
     setModalType(null);
     setSelectedItemForEdit(null);
@@ -2304,15 +2346,17 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
               <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (window.confirm('Reset all hotel data (rooms, bookings, orders, staff, menu) to default demo state?')) {
-                      resetDemoData();
-                      showToast('Hotel system reset to original demo state');
+                  onClick={async () => {
+                    const res = await resetDemoData();
+                    if (res?.success) {
+                      showToast('Database records synchronized successfully');
+                    } else {
+                      showToast(res?.message || 'Sync failed');
                     }
                   }}
-                  className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                 >
-                  Reset Demo Data
+                  Sync Database
                 </button>
                 <button
                   type="button"
