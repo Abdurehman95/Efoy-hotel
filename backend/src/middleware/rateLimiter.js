@@ -48,49 +48,76 @@ export const createLimiter = ({
   });
 };
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 /**
  * 1. General API Endpoints Limiter:
- * Maximum 100 requests per IP address every 15 minutes.
- * Does not block health checks or websocket traffic.
+ * In production: 100 requests per IP per 15 minutes.
+ * In development: bypassed so local testing and fast refresh are never locked out.
  */
 export const generalLimiter = createLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: isDev ? 10000 : 100,
   message: 'General API request limit exceeded. Maximum 100 requests per IP address every 15 minutes. Please try again later.',
   skip: (req) => {
-    // Health checks and internal monitoring bypass rate limiting
+    if (isDev) return true;
     return req.path === '/health' || req.path === '/api/health' || req.url === '/health';
   },
 });
 
 /**
  * 2. Login API Limiter:
- * Maximum 5 requests per IP address every 15 minutes.
+ * Maximum 5 requests per IP address every 15 minutes in production.
  */
 export const loginLimiter = createLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,
+  windowMs: 15 * 60 * 1000,
+  max: isDev ? 1000 : 5,
+  skip: () => isDev,
   message: 'Too many login attempts from this IP address. Maximum 5 requests per 15 minutes allowed. Please try again later.',
 });
 
 /**
  * 3. Registration API Limiter:
- * Maximum 5 requests per IP address every 15 minutes.
+ * Maximum 5 requests per IP address every 15 minutes in production.
  */
 export const registerLimiter = createLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,
+  windowMs: 15 * 60 * 1000,
+  max: isDev ? 1000 : 5,
+  skip: () => isDev,
   message: 'Too many registration attempts from this IP address. Maximum 5 requests per 15 minutes allowed. Please try again later.',
 });
 
 /**
  * 4. Room Search and Availability APIs Limiter:
- * Maximum 30 requests per IP address every 15 minutes.
+ * Maximum 30 requests per IP address every 15 minutes in production.
  */
 export const roomSearchLimiter = createLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30,
+  windowMs: 15 * 60 * 1000,
+  max: isDev ? 10000 : 30,
+  skip: () => isDev,
   message: 'Too many room search and availability requests from this IP address. Maximum 30 requests per 15 minutes allowed. Please try again later.',
+});
+
+/**
+ * 5. Booking Creation Limiter:
+ * Maximum 20 booking requests per IP address every 15 minutes in production.
+ */
+export const bookingLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: isDev ? 10000 : 20,
+  skip: () => isDev,
+  message: 'Too many booking requests from this IP address. Please try again later.',
+});
+
+/**
+ * 6. Payment Initialization Limiter:
+ * Maximum 15 payment initialization requests per IP address every 15 minutes in production.
+ */
+export const paymentLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: isDev ? 10000 : 15,
+  skip: () => isDev,
+  message: 'Too many payment requests from this IP address. Please wait a few moments before trying again.',
 });
 
 export default {
@@ -98,5 +125,7 @@ export default {
   loginLimiter,
   registerLimiter,
   roomSearchLimiter,
+  bookingLimiter,
+  paymentLimiter,
   createLimiter,
 };
