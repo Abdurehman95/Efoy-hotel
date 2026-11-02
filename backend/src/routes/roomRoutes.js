@@ -12,10 +12,15 @@ import {
   createRoomCategory,
   updateRoomCategory,
   deleteRoomCategory,
+  getRoomBlocks,
+  createRoomBlock,
+  releaseRoomBlock,
+  uploadRoomImage,
 } from '../controllers/roomController.js';
 import { authenticate, optionalAuth } from '../middleware/authMiddleware.js';
 import { authorize } from '../middleware/roleMiddleware.js';
 import { roomSearchLimiter } from '../middleware/rateLimiter.js';
+import { roomImageUpload } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
@@ -31,11 +36,19 @@ router.get('/', searchRateLimitMiddleware, optionalAuth, getRooms);
 // Room availability API: Maximum 30 requests per IP address every 15 minutes
 router.get('/available', roomSearchLimiter, optionalAuth, getAvailableRooms);
 
+// Room Blocks (Management holds, VIP, renovation)
+router.get('/blocks', optionalAuth, getRoomBlocks);
+router.post('/blocks', authenticate, authorize(['admin', 'receptionist']), createRoomBlock);
+router.patch('/blocks/:id/release', authenticate, authorize(['admin', 'receptionist']), releaseRoomBlock);
+
 // Room Categories (must precede /:roomNumber)
 router.get('/categories', optionalAuth, getRoomCategories);
 router.post('/categories', authenticate, authorize(['admin']), createRoomCategory);
 router.put('/categories/:id', authenticate, authorize(['admin']), updateRoomCategory);
 router.delete('/categories/:id', authenticate, authorize(['admin']), deleteRoomCategory);
+
+// Image Upload (must precede /:roomNumber)
+router.post('/upload-image', authenticate, authorize(['admin', 'receptionist']), roomImageUpload.single('image'), uploadRoomImage);
 
 router.get('/:roomNumber', optionalAuth, getRoomByNumber);
 router.post('/', authenticate, authorize(['admin']), createRoom);
