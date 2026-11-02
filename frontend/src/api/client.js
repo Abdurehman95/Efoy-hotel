@@ -23,36 +23,17 @@ export const setToken = (token) => {
 };
 
 export async function apiFetch(endpoint, options = {}) {
-  let token = getToken();
+  const token = getToken();
 
-  // If token is missing but admin is logged in, silently synchronize token
-  if (!token && typeof window !== 'undefined' && !endpoint.includes('/auth/login')) {
-    try {
-      const auth = localStorage.getItem('efoy_hotel_auth');
-      const user = auth ? JSON.parse(auth) : null;
-      if (user?.role === 'admin') {
-        const authRes = await fetch(`${BASE_URL}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: 'admin@efoyhotel.com', password: 'admin123' }),
-        });
-        if (authRes.ok) {
-          const authData = await authRes.json();
-          if (authData?.token) {
-            setToken(authData.token);
-            token = authData.token;
-          }
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
-
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers || {}),
   };
+
+  if (isFormData) {
+    delete headers['Content-Type'];
+  }
 
   if (token && !headers['Authorization']) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -71,25 +52,10 @@ export async function apiFetch(endpoint, options = {}) {
 
   if (!response.ok) {
     if (response.status === 401 && !options._retried && !endpoint.includes('/auth/login')) {
-      try {
-        const auth = localStorage.getItem('efoy_hotel_auth');
-        const user = auth ? JSON.parse(auth) : null;
-        if (user?.role === 'admin') {
-          const authRes = await fetch(`${BASE_URL}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: 'admin@efoyhotel.com', password: 'admin123' }),
-          });
-          if (authRes.ok) {
-            const authData = await authRes.json();
-            if (authData?.token) {
-              setToken(authData.token);
-              return apiFetch(endpoint, { ...options, _retried: true });
-            }
-          }
-        }
-      } catch {
-        // proceed with standard error handling
+      // Clear expired token if session is unauthorized
+      setToken(null);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('efoy_auth_expired'));
       }
     }
 
@@ -191,6 +157,14 @@ export const roomsApi = {
     apiFetch(`/rooms/categories/${id}`, {
       method: 'DELETE',
     }),
+  uploadImage: async (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return apiFetch('/rooms/upload-image', {
+      method: 'POST',
+      body: formData,
+    });
+  },
 };
 
 // Bookings API
@@ -440,6 +414,26 @@ export const usersApi = {
     }),
 };
 
+// Payments API (Chapa Integration)
+export const paymentsApi = {
+  initialize: (paymentData) =>
+    apiFetch('/payments/initialize', {
+      method: 'POST',
+      body: JSON.stringify(paymentData),
+    }),
+  verify: (txRef) => apiFetch(`/payments/verify/${encodeURIComponent(txRef)}`),
+  getStatus: (id) => apiFetch(`/payments/${encodeURIComponent(id)}`),
+  reconcile: (id) =>
+    apiFetch(`/payments/${encodeURIComponent(id)}/reconcile`, {
+      method: 'POST',
+    }),
+  refund: (id, refundData) =>
+    apiFetch(`/payments/${encodeURIComponent(id)}/refund`, {
+      method: 'POST',
+      body: JSON.stringify(refundData),
+    }),
+};
+
 export default {
   auth: authApi,
   rooms: roomsApi,
@@ -455,4 +449,5 @@ export default {
   logs: logsApi,
   settings: settingsApi,
   users: usersApi,
+  payments: paymentsApi,
 };
