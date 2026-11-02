@@ -1,7 +1,13 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import authRoutes from './routes/authRoutes.js';
 import roomRoutes from './routes/roomRoutes.js';
@@ -17,6 +23,7 @@ import userRoutes from './routes/userRoutes.js';
 import serviceRequestRoutes from './routes/serviceRequestRoutes.js';
 import maintenanceRoutes from './routes/maintenanceRoutes.js';
 import inventoryRoutes from './routes/inventoryRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 
 import { generalLimiter } from './middleware/rateLimiter.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
@@ -41,8 +48,15 @@ app.use(
   })
 );
 app.use(morgan('dev'));
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  },
+}));
 app.use(express.urlencoded({ extended: true }));
+
+// Serve uploaded media (bypasses rate limiting)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Health Check (Bypasses rate limiting)
 app.get('/api/health', (req, res) => {
@@ -72,6 +86,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/payments', paymentRoutes);
 
 
 // Fallback & Error Handling
