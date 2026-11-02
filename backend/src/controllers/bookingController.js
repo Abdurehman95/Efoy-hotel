@@ -203,21 +203,77 @@ export const createBooking = async (req, res, next) => {
           message: `Room ${roomNumber} is currently designated Out-of-Order for maintenance (${maintenanceCheck.rows[0].issue_description}). Cannot assign arriving guest.`,
         });
       }
+
+      // Check Room Blocks (Management holds, VIP, renovation)
+      const blockCheck = await client.query(
+        `SELECT id, reason 
+         FROM room_blocks 
+         WHERE room_number = $1 
+           AND status = 'ACTIVE'
+           AND start_date < $3::date
+           AND end_date > $2::date
+         LIMIT 1`,
+        [roomNumber, checkIn, checkOut]
+      );
+
+      if (blockCheck.rows.length > 0) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({
+          success: false,
+          isRoomBlocked: true,
+          message: `Room ${roomNumber} is currently blocked by hotel management (${blockCheck.rows[0].reason}). Cannot allocate.`,
+        });
+      }
+    }
+
+    // Link or auto-create guest CRM profile
+    let guestProfileId = null;
+    const profileLookup = await client.query(
+      `SELECT id, total_stays, lifetime_spend FROM guest_profiles WHERE email = $1 LIMIT 1`,
+      [email.trim().toLowerCase()]
+    );
+
+    const computedNights = nights || Math.max(1, Math.round((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)));
+    const estimatedSpend = parseFloat(roomRate) * computedNights;
+
+    if (profileLookup.rows.length > 0) {
+      guestProfileId = profileLookup.rows[0].id;
+      await client.query(
+        `UPDATE guest_profiles 
+         SET total_stays = total_stays + 1, 
+             lifetime_spend = lifetime_spend + $1,
+             updated_at = CURRENT_TIMESTAMP 
+         WHERE id = $2`,
+        [estimatedSpend, guestProfileId]
+      );
+    } else {
+      guestProfileId = `GP-${Math.floor(10000 + Math.random() * 90000)}`;
+      const nameParts = guestName.trim().split(' ');
+      const firstName = nameParts[0] || 'Valued';
+      const lastName = nameParts.slice(1).join(' ') || 'Guest';
+
+      await client.query(
+        `INSERT INTO guest_profiles (id, email, first_name, last_name, phone, total_stays, lifetime_spend)
+         VALUES ($1, $2, $3, $4, $5, 1, $6)
+         ON CONFLICT (email) DO NOTHING`,
+        [guestProfileId, email.trim().toLowerCase(), firstName, lastName, phone.trim(), estimatedSpend]
+      );
     }
 
     // Generate Booking ID
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const bookingId = req.body.id || `BK-${randomSuffix}`;
     const bookingStatus = status || 'CONFIRMED';
-    const computedNights = nights || Math.max(1, Math.round((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)));
+    const bookingSource = req.body.bookingSource || 'WEBSITE';
 
     const bookingRes = await client.query(
       `INSERT INTO bookings (
-        id, guest_name, email, phone, room_number, room_type, 
-        check_in, check_out, nights, room_rate, status, notes, paid, payment_method
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        id, guest_profile_id, guest_name, email, phone, room_number, room_type, 
+        check_in, check_out, nights, room_rate, currency, status, booking_source, notes, paid, payment_method
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'ETB', $12, $13, $14, $15, $16)
       RETURNING 
         id,
+        guest_profile_id AS "guestProfileId",
         guest_name AS "guestName",
         email,
         phone,
@@ -227,12 +283,15 @@ export const createBooking = async (req, res, next) => {
         TO_CHAR(check_out, 'YYYY-MM-DD') AS "checkOut",
         nights,
         room_rate::FLOAT AS "roomRate",
+        currency,
         status,
+        booking_source AS "bookingSource",
         notes,
         paid,
         payment_method AS "paymentMethod"`,
       [
         bookingId,
+        guestProfileId,
         guestName.trim(),
         email.trim(),
         phone.trim(),
@@ -243,6 +302,7 @@ export const createBooking = async (req, res, next) => {
         parseInt(computedNights, 10),
         parseFloat(roomRate),
         bookingStatus,
+        bookingSource,
         notes || null,
         paid === true,
         paymentMethod || null,
@@ -753,9 +813,25 @@ export const cancelBooking = async (req, res, next) => {
       );
     }
 
+    const { cancellationReason = 'Guest requested cancellation' } = req.body || {};
+
     const updatedRes = await client.query(
-      `UPDATE bookings SET status = 'CANCELLED', updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
-      [id]
+      `UPDATE bookings 
+       SET status = 'CANCELLED', 
+           cancellation_reason = $1, 
+           cancelled_at = CURRENT_TIMESTAMP, 
+           cancelled_by = $2, 
+           updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $3 
+       RETURNING *`,
+      [cancellationReason, req.user?.id || null, id]
+    );
+
+    // Record in booking_status_history
+    await client.query(
+      `INSERT INTO booking_status_history (booking_id, old_status, new_status, changed_by, reason)
+       VALUES ($1, $2, 'CANCELLED', $3, $4)`,
+      [id, booking.status, req.user?.id || null, cancellationReason]
     );
 
     // Cancel stay if any
@@ -767,7 +843,7 @@ export const cancelBooking = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: `Reservation ${id} has been cancelled.`,
+      message: `Reservation ${id} has been cancelled. Reason: ${cancellationReason}`,
       booking: updatedRes.rows[0],
     });
   } catch (error) {
@@ -994,6 +1070,19 @@ export const checkoutGuest = async (req, res, next) => {
 
     const booking = bookingRes.rows[0];
 
+    // Guest ownership check: Guest can only check out their own booking
+    if (req.user && req.user.role === 'guest') {
+      const userEmail = req.user.email?.toLowerCase().trim();
+      const bookingEmail = booking.email?.toLowerCase().trim();
+      if (userEmail && bookingEmail && userEmail !== bookingEmail) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({
+          success: false,
+          message: 'You are only authorized to check out of your own room reservation.',
+        });
+      }
+    }
+
     // Mark booking CHECKED_OUT and paid
     const updatedBooking = await client.query(
       `UPDATE bookings 
@@ -1044,6 +1133,31 @@ export const checkoutGuest = async (req, res, next) => {
         `UPDATE folios SET status = 'SETTLED', balance = 0, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
         [f.id]
       );
+
+      // Create formal invoice record in PostgreSQL
+      const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+      const nights = booking.nights || 1;
+      const roomTotal = parseFloat((booking.room_rate || 0) * nights);
+      const taxTotal = parseFloat((roomTotal * 0.12).toFixed(2));
+      const grandTotal = parseFloat((roomTotal + taxTotal).toFixed(2));
+
+      const invRes = await client.query(
+        `INSERT INTO invoices (
+          folio_id, invoice_number, issued_to_name, subtotal, tax_total, grand_total, currency, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, 'ETB', 'PAID')
+        ON CONFLICT (invoice_number) DO NOTHING
+        RETURNING id`,
+        [f.id, invoiceNumber, booking.guest_name, roomTotal, taxTotal, grandTotal]
+      );
+
+      if (invRes.rows.length > 0) {
+        const invId = invRes.rows[0].id;
+        await client.query(
+          `INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, tax_rate, line_total)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [invId, `Room Accommodation (${booking.room_type || 'Luxury Suite'} - ${nights} Nights)`, nights, booking.room_rate, 12.00, roomTotal]
+        );
+      }
     }
 
     // AUTOMATIC CHECKOUT -> HOUSEKEEPING TRANSITION (Requirement 10)
@@ -1158,6 +1272,56 @@ export const undoCheckout = async (req, res, next) => {
   }
 };
 
+export const getReservationCalendar = async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const start = startDate || new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+    const end = endDate || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+
+    const roomsRes = await query(
+      `SELECT room_number AS "roomNumber", type, floor, rate::FLOAT AS rate,
+              occupancy_status AS "occupancyStatus", housekeeping_status AS "housekeepingStatus", maintenance_status AS "maintenanceStatus"
+       FROM rooms
+       ORDER BY room_number ASC`
+    );
+
+    const bookingsRes = await query(
+      `SELECT id, guest_name AS "guestName", email, phone, room_number AS "roomNumber", room_type AS "roomType",
+              TO_CHAR(check_in, 'YYYY-MM-DD') AS "checkIn",
+              TO_CHAR(check_out, 'YYYY-MM-DD') AS "checkOut",
+              nights, status, paid, room_rate::FLOAT AS "roomRate",
+              cancellation_reason AS "cancellationReason"
+       FROM bookings
+       WHERE status NOT IN ('CANCELLED')
+         AND check_in < $2::date
+         AND check_out > $1::date
+       ORDER BY check_in ASC`,
+      [start, end]
+    );
+
+    const blocksRes = await query(
+      `SELECT id, room_number AS "roomNumber", TO_CHAR(start_date, 'YYYY-MM-DD') AS "startDate",
+              TO_CHAR(end_date, 'YYYY-MM-DD') AS "endDate", reason, status
+       FROM room_blocks
+       WHERE status = 'ACTIVE'
+         AND start_date < $2::date
+         AND end_date > $1::date`,
+      [start, end]
+    );
+
+    return res.status(200).json({
+      success: true,
+      startDate: start,
+      endDate: end,
+      rooms: roomsRes.rows,
+      bookings: bookingsRes.rows,
+      roomBlocks: blocksRes.rows,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getBookings,
   getBookingById,
@@ -1170,4 +1334,5 @@ export default {
   getFolio,
   checkoutGuest,
   undoCheckout,
+  getReservationCalendar,
 };
