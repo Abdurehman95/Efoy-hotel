@@ -1019,12 +1019,16 @@ export const HotelProvider = ({ children }) => {
       });
     });
 
-    socket.on('PMS_ROOM_UPDATED', (updatedRoom) => {
+    const handleRoomUpdate = (updatedRoom) => {
       if (!updatedRoom?.roomNumber) return;
       setRooms((prev) =>
         prev.map((r) => (r.roomNumber === updatedRoom.roomNumber ? { ...r, ...updatedRoom } : r))
       );
-    });
+    };
+
+    socket.on('PMS_ROOM_UPDATED', handleRoomUpdate);
+    socket.on('PMS_ROOM_STATUS_UPDATED', handleRoomUpdate);
+    socket.on('PMS_ROOM_CLEANLINESS_UPDATED', handleRoomUpdate);
 
     socket.on('PMS_ROOM_DELETED', ({ roomNumber }) => {
       if (!roomNumber) return;
