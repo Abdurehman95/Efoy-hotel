@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Efoy Hotel & Suites — Updated Database Architecture & System Specification</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0B0F19',
+        primaryColor: '#F59E0B',
+        primaryTextColor: '#FFFFFF',
+        primaryBorderColor: '#D97706',
+        lineColor: '#94A3B8',
+        secondaryColor: '#1E293B',
+        tertiaryColor: '#0F172A',
+        fontFamily: 'Plus Jakarta Sans, sans-serif'
+      }
+    });
+  </script>
+  <style>
+    :root {
+      --bg-dark: #07090E;
+      --card-bg: #0F1420;
+      --card-border: #1E293B;
+      --gold-primary: #D97706;
+      --gold-accent: #F59E0B;
+      --gold-light: #FDE68A;
+      --green-accent: #10B981;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --font-main: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-main);
+      line-height: 1.6;
+      padding: 2.5rem 1.5rem;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header {
+      background: linear-gradient(135deg, #111827 0%, #1E1B18 50%, #1E293B 100%);
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 2.5rem;
+      margin-bottom: 2.5rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    }
+    header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, #D97706, #F59E0B, #10B981);
+    }
+    .hotel-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: var(--gold-light);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.35rem 0.8rem;
+      border-radius: 9999px;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+    .subtitle {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      max-width: 850px;
+      margin-bottom: 1.5rem;
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 1rem; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.4rem;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border: none;
+    }
+    .btn-gold {
+      background: linear-gradient(135deg, #D97706 0%, #F59E0B 100%);
+      color: #111827;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+    }
+    .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5); }
+    .btn-outline {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid #475569;
+      color: #F8FAFC;
+    }
+    .section-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2.5rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .section-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid #1E293B;
+      padding-bottom: 0.75rem;
+    }
+    .diagram-container {
+      background: #0B0E17;
+      border: 1px solid #1E293B;
+      border-radius: 12px;
+      padding: 1.5rem;
+      overflow-x: auto;
+      margin: 1.25rem 0;
+    }
+    .mermaid { display: flex; justify-content: center; width: 100%; }
+    .checklist-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .checklist-item {
+      background: #0B0E17;
+      border: 1px solid #1E293B;
+      border-radius: 10px;
+      padding: 1rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .checklist-item.checked {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: rgba(16, 185, 129, 0.05);
+    }
+    .check-icon {
+      color: var(--green-accent);
+      font-size: 1.2rem;
+      line-height: 1;
+      font-weight: bold;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.92rem; }
+    th, td { padding: 0.85rem 1rem; text-align: left; border-bottom: 1px solid #1E293B; }
+    th { background: #111827; color: var(--gold-light); font-weight: 600; text-transform: uppercase; font-size: 0.8rem; }
+    code { font-family: var(--font-mono); background: rgba(245, 158, 11, 0.12); color: #FCD34D; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.85em; }
+    .badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+    .badge-pk { background: #065F46; color: #A7F3D0; }
+    .badge-fk { background: #1E3A8A; color: #BFDBFE; }
+    @media print {
+      body { background: white; color: black; padding: 0; }
+      header, .section-card, .checklist-item { background: white !important; border: 1px solid #ccc !important; color: black !important; }
+      .actions { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="hotel-badge">🏨 Efoy Hotel & Suites — Updated System Architecture</div>
+      <h1>Database Architecture & Chapa Payment Integration</h1>
+      <p class="subtitle">Complete functional specification implementing PostgreSQL 16 relational structure, explicit removals (no suppliers, no laundry), date-overlap room availability, recipe-based culinary inventory, and Chapa online checkout with verified server-to-server security.</p>
+      
+      <div class="actions">
+        <button class="btn btn-gold" onclick="window.print()">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+          Download / Save as PDF
+        </button>
+        <a class="btn btn-outline" href="/DATABASE_ARCHITECTURE.md" download="DATABASE_ARCHITECTURE.md">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+          Download .MD File
+        </a>
+      </div>
+    </header>
+
+    <!-- SECTION 1: SYSTEM ARCHITECTURE -->
+    <div class="section-card">
+      <div class="section-title"><span>🏗️</span> 1. System Architecture & Chapa Integration Flow</div>
+      <div class="diagram-container">
+        <pre class="mermaid">
+flowchart LR
+    Guest["Guest / Staff"] --> React["React Web App (Port 5173)"]
+    React --> API["Express REST API (Port 5000)"]
+    API --> Auth["Authentication & RBAC"]
+    API --> Services["Hotel Business Services"]
+    Services --> DB[("PostgreSQL 16")]
+    Services --> Chapa["Chapa API (Payment Gateway)"]
+    Chapa -->|"Webhook / Callback"| API
+    API -->|"Server-to-Server Verify"| Chapa
+    API -->|"Atomic Verified Result"| DB
+    API --> Realtime["Socket.IO WebSocket"]
+    Realtime --> React
+        </pre>
+      </div>
+    </div>
+
+    <!-- SECTION 2: CHAPA PAYMENT LIFECYCLE -->
+    <div class="section-card">
+      <div class="section-title"><span>💳</span> 2. Chapa Payment Lifecycle Sequence</div>
+      <div class="diagram-container">
+        <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Guest as 🌟 Guest
+    participant UI as React UI
+    participant API as Express API
+    participant DB as PostgreSQL (16)
+    participant Chapa as Chapa Gateway
+
+    Guest->>UI: Selects Pay & confirms booking amount (ETB)
+    UI->>API: POST /api/payments/initialize (Rate Limited)
+    API->>DB: INSERT INTO payments (status='PENDING', tx_ref, idempotency_key)
+    API->>Chapa: POST /transaction/initialize (Server-Side Secret Key)
+    Chapa-->>API: Returns checkout_url
+    API->>DB: UPDATE payments SET checkout_url
+    API-->>UI: Return checkout_url
+    UI->>Guest: Redirect to Chapa hosted payment page
+    Guest->>Chapa: Enters payment details & confirms
+    Chapa-->>API: POST /api/payments/chapa/webhook (or user return)
+    API->>API: Validate HMAC signature (x-chapa-signature)
+    API->>Chapa: GET /transaction/verify/:txRef (Server-to-Server Verification)
+    Chapa-->>API: Returns verified status, amount & currency
+    API->>API: Check amount & currency match local record
+    Note over API,DB: Atomic PostgreSQL Transaction
+    API->>DB: UPDATE payments SET status='SUCCESSFUL', paid_at=NOW()
+    API->>DB: INSERT INTO folio_transactions (type='PAYMENT', amount)
+    API->>DB: UPDATE folios SET balance = balance - amount
+    API->>DB: UPDATE bookings SET paid=TRUE, status='CONFIRMED'
+    API-->>UI: Realtime push: Payment confirmed!
+        </pre>
+      </div>
+    </div>
+
+    <!-- SECTION 3: SECURITY & PAYMENT SAFETY CHECKLIST -->
+    <div class="section-card">
+      <div class="section-title"><span>🛡️</span> 3. Security and Payment Safety Checklist (Implemented & Verified)</div>
+      <p style="color: var(--text-muted); margin-bottom: 1rem;">All 14 security, data integrity, and compliance requirements have been implemented and verified via automated test suites.</p>
+
+      <div class="checklist-grid">
+        <div class="checklist-item checked">
+          <span class="check-icon">✓</span>
+          <div><strong>Chapa Secret Key Backend Only:</strong> Loaded securely into <code>chapaService.js</code> from <code>process.env</code>; never exposed to React browser code.</div>
+        </div>
+        <div class="checklist-item checked">
+          <span class="check-icon">✓</span>
+          <div><strong>.env Git Exclusion:</strong> <code>.env</code> is excluded in <code>.gitignore</code> and clean <code>.env.example</code> template is committed.</div>
+        </div>
+        <div class="checklist-item checked">
+          <span class="check-icon">✓</span>
+          <div><strong>HTTPS in Production:</strong> Helmet CSP, HSTS headers, and proxy trust enabled in Express.</div>
+        </div>
+        <div class="checklist-item checked">
+          <span class="check-icon">✓</span>
+          <div><strong>Direct Server-Side Verification:</strong> Every successful payment is verified via <code>GET /transaction/verify/:txRef</code> before posting.</div>
+        </div>
+        <div class="checklist-item checked">
+          <span class="check-icon">✓</span>
+          <div><strong>Amount & Currency Matching:</strong> Backend rigorously validates that verified amount and ETB currency match local pending records.</div>
+        </div>
+        <div class="checklist-item checked">
+          <span class="check-icon">✓</span>
+          <div><strong>Strict Idempotency:</strong> Duplicate webhook/callback triggers are detected; cannot duplicate folio entries or payments.</div>
+        </div>
+        <div class="checklist-item checked">
+          <span class="check-icon">✓</span>
+          <div><strong>Webhook Signature Validation:</strong> HMAC SHA256 timing-safe validation on <code>x-chapa-signature</code>.</div>
+        </div>
+        <div class="checklist-item checked">
+          <span class="check-icon">✓</span>
+          <div><strong>Protected Payment Actions:</strong> Reconcile and refund endpoints require JWT authentication and Role-Based Access Control.</div>
+        </div>
+        <div class="checklist-item checked">
+          <span class="check-icon">✓</span>
+          <div><strong>Guest Scope Isolation:</strong> Authenticated guests can only inspect their own payments and bookings.</div>
+        </div>
+        <div class="checklist-item checked">
+          <span class="check-icon">✓</span>
+          <div><strong>Admin Audit Logging:</strong> Refunds and ledger adjustments are logged as immutable entries in <code>activity_logs</code>.</div>
+        </div>
+        <div class="checklist-item checked">
+          <span class="check-icon">✓</span>
+          <div><strong>Zero Card Data Retention:</strong> No credit card numbers, CVVs, or bank secrets are ever stored in PMS tables or logs.</div>
+        </div>
+        <div class="checklist-item checked">
+          <span class="check-icon">✓</span>
+          <div><strong>Active Rate Limiting:</strong> Enforced on <code>/api/auth/login</code>, <code>/api/bookings</code>, and <code>/api/payments/initialize</code>.</div>
+        </div>
+        <div class="checklist-item checked">
+          <span class="check-icon">✓</span>
+          <div><strong>SQL Parameterization:</strong> Parameterized queries (<code>$1, $2, ...</code>) eliminate SQL injection vulnerabilities.</div>
+        </div>
+        <div class="checklist-item checked">
+          <span class="check-icon">✓</span>
+          <div><strong>Sensitive Field Access Control:</strong> Passwords, ID scans, and personal secrets are excluded from standard audit logs.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
