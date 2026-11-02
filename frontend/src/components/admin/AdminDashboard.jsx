@@ -29,9 +29,13 @@ import {
   Package,
   Sparkles,
   AlertTriangle,
+  Upload,
+  Image as ImageIcon,
+  Loader2,
 } from 'lucide-react';
 import { Chart, registerables } from 'chart.js';
 import { useHotel } from '../../context/HotelContext';
+import { roomsApi } from '../../api/client';
 import ConfirmModal from '../shared/ConfirmModal';
 import Pagination from '../shared/Pagination';
 import usePagination from '../../hooks/usePagination';
@@ -155,11 +159,13 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
 
   const [roomForm, setRoomForm] = useState({
     roomNumber: '',
-    type: 'Single Classic',
+    type: 'Single Deluxe',
     floor: 'Floor 1 (West Wing)',
     capacity: '1 Person',
     rate: 180,
     features: 'Single Bed • City View',
+    imageUrl: '',
+    categoryId: '',
   });
 
   const [foodForm, setFoodForm] = useState({
@@ -176,8 +182,11 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     capacity: '2 Persons',
     features: 'King Bed • Balcony',
     description: '',
-    imageUrl: '/images/room1.jpg',
+    imageUrl: '',
   });
+
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState('');
 
   const [inventoryForm, setInventoryForm] = useState({
     name: '',
@@ -335,7 +344,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     { name: 'Room Categories', icon: Layers },
     { name: 'Menu Management', icon: UtensilsCrossed },
     { name: 'Culinary Inventory', icon: Package },
-    { name: 'User & Staff Management', icon: Users },
+    { name: 'Staff Management', icon: Users },
     { name: 'Activity Logs', icon: Clock },
     { name: 'Settings', icon: Settings },
   ];
@@ -515,10 +524,64 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
     setSelectedItemForEdit(null);
   };
 
+  // Handle Room & Category Image Uploads
+  const handleRoomImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingImage(true);
+    setImageUploadError('');
+    try {
+      const res = await roomsApi.uploadImage(file);
+      if (res?.imageUrl) {
+        setRoomForm((prev) => ({ ...prev, imageUrl: res.imageUrl }));
+        showToast('✅ Room photo uploaded successfully');
+      } else {
+        setImageUploadError('Failed to upload image');
+        showToast('⚠️ Failed to upload room image');
+      }
+    } catch (err) {
+      setImageUploadError(err.message || 'Image upload failed');
+      showToast(`⚠️ ${err.message || 'Image upload failed'}`);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleCategoryImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingImage(true);
+    setImageUploadError('');
+    try {
+      const res = await roomsApi.uploadImage(file);
+      if (res?.imageUrl) {
+        setCategoryForm((prev) => ({ ...prev, imageUrl: res.imageUrl }));
+        showToast('✅ Category photo uploaded successfully');
+      } else {
+        setImageUploadError('Failed to upload image');
+        showToast('⚠️ Failed to upload category image');
+      }
+    } catch (err) {
+      setImageUploadError(err.message || 'Image upload failed');
+      showToast(`⚠️ ${err.message || 'Image upload failed'}`);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
   // Handle Room Form
   const handleSaveRoom = async (e) => {
     e.preventDefault();
+    if (!roomForm.roomNumber || !roomForm.roomNumber.toString().trim()) {
+      showToast('⚠️ Please specify a valid Room Number');
+      return;
+    }
     const rateNum = parseFloat(roomForm.rate) || 0;
+    if (rateNum <= 0) {
+      showToast('⚠️ Please specify a valid nightly rate');
+      return;
+    }
+
     if (modalType === 'editRoom' && selectedItemForEdit) {
       const res = await updateRoom({
         ...selectedItemForEdit,
@@ -526,13 +589,15 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
         rate: rateNum,
       });
       if (res?.success) {
-        showToast(`Updated Room ${roomForm.roomNumber} parameters`);
+        showToast(`✅ Updated Room ${roomForm.roomNumber} parameters`);
+        setModalType(null);
+        setSelectedItemForEdit(null);
       } else {
-        showToast(res?.message || 'Failed to update room');
+        showToast(`⚠️ ${res?.message || 'Failed to update room'}`);
       }
     } else {
       if (rooms.some((r) => r.roomNumber.toString() === roomForm.roomNumber.toString())) {
-        showToast(`Room ${roomForm.roomNumber} already exists in inventory!`);
+        showToast(`⚠️ Room ${roomForm.roomNumber} already exists in inventory!`);
         return;
       }
       const res = await addRoom({
@@ -540,13 +605,13 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
         rate: rateNum,
       });
       if (res?.success) {
-        showToast(`Room ${roomForm.roomNumber} added to inventory`);
+        showToast(`✅ Room ${roomForm.roomNumber} added to inventory`);
+        setModalType(null);
+        setSelectedItemForEdit(null);
       } else {
-        showToast(res?.message || 'Failed to add room');
+        showToast(`⚠️ ${res?.message || 'Failed to add room'}`);
       }
     }
-    setModalType(null);
-    setSelectedItemForEdit(null);
   };
 
   // Handle Food Form
@@ -648,25 +713,44 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
   };
 
   // Handle Room Category Form
-  const handleSaveCategory = (e) => {
+  const handleSaveCategory = async (e) => {
     e.preventDefault();
+    if (!categoryForm.name || !categoryForm.name.trim()) {
+      showToast('⚠️ Please specify a Category Name');
+      return;
+    }
     const rateNum = parseFloat(categoryForm.baseRate) || 0;
+    if (rateNum <= 0) {
+      showToast('⚠️ Please specify a valid Base Rate');
+      return;
+    }
+
     if (modalType === 'editCategory' && selectedItemForEdit) {
-      editRoomCategory(selectedItemForEdit.id, {
+      const res = await editRoomCategory(selectedItemForEdit.id, {
         ...selectedItemForEdit,
         ...categoryForm,
         baseRate: rateNum,
       });
-      showToast(`Updated suite category: ${categoryForm.name}`);
+      if (res?.success) {
+        showToast(`✅ Updated suite category: ${categoryForm.name}`);
+        setModalType(null);
+        setSelectedItemForEdit(null);
+      } else {
+        showToast(`⚠️ ${res?.message || 'Failed to update category'}`);
+      }
     } else {
-      addRoomCategory({
+      const res = await addRoomCategory({
         ...categoryForm,
         baseRate: rateNum,
       });
-      showToast(`Added suite category: ${categoryForm.name}`);
+      if (res?.success) {
+        showToast(`✅ Added suite category: ${categoryForm.name}`);
+        setModalType(null);
+        setSelectedItemForEdit(null);
+      } else {
+        showToast(`⚠️ ${res?.message || 'Failed to add room category'}`);
+      }
     }
-    setModalType(null);
-    setSelectedItemForEdit(null);
   };
 
   // Handle Culinary Inventory Form
@@ -1017,7 +1101,10 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                       capacity: '4 Persons',
                       rate: 650,
                       features: '2 King Beds • Sky Terrace',
+                      imageUrl: '',
+                      categoryId: '',
                     });
+                    setImageUploadError('');
                     setModalType('addRoom');
                   }}
                   className="bg-gold-500 hover:bg-gold-600 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
@@ -1333,14 +1420,18 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
               </div>
               <button
                 onClick={() => {
+                  const defaultCat = roomCategories[0];
                   setRoomForm({
-                    roomNumber: `${Math.floor(100 + Math.random() * 899)}`,
-                    type: 'Luxury Suite',
-                    floor: 'Floor 4 (North Panorama)',
-                    capacity: '4 Persons',
-                    rate: 450,
-                    features: 'King Bed • Terrace View',
+                    roomNumber: '',
+                    type: defaultCat?.name || 'Single Deluxe',
+                    floor: 'Floor 1 (West Wing)',
+                    capacity: defaultCat?.capacity || '2 Persons',
+                    rate: defaultCat?.baseRate || 200,
+                    features: defaultCat?.features || 'Single Bed • City View',
+                    imageUrl: '',
+                    categoryId: defaultCat?.id || '',
                   });
+                  setImageUploadError('');
                   setModalType('addRoom');
                 }}
                 className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
@@ -1351,86 +1442,93 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200/80 shadow-2xs overflow-hidden">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#fbfbfb] border-b border-gray-200 text-gray-500 uppercase text-[10px] tracking-wider font-semibold">
-                  <tr>
-                    <th className="py-3 px-4">Room #</th>
-                    <th className="py-3 px-4">Category & Floor</th>
-                    <th className="py-3 px-4">Capacity</th>
-                    <th className="py-3 px-4">Nightly Rate</th>
-                    <th className="py-3 px-4">Occupancy Status</th>
-                    <th className="py-3 px-4">Housekeeping Status</th>
-                    <th className="py-3 px-4">Maintenance Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredRooms.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="py-8 text-center text-gray-500 text-xs">
-                        No rooms match your search query.
-                        {searchQuery && (
-                          <button
-                            onClick={() => setSearchQuery('')}
-                            className="ml-2 text-gold-600 underline font-medium cursor-pointer"
-                          >
-                            Clear search
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ) : (
-                    roomsPagination.paginatedItems.map((r) => (
-                      <tr key={r.roomNumber} className="hover:bg-amber-50/20">
-                        <td className="py-3 px-4 font-serif font-bold text-dark-900">
-                          Room {r.roomNumber}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-gray-800">{r.type}</div>
-                          <div className="text-[10px] text-gray-400">{r.floor}</div>
-                        </td>
-                        <td className="py-3 px-4 text-gray-600">{r.capacity}</td>
-                        <td className="py-3 px-4 font-mono font-bold text-gold-600">
-                          ${r.rate} / night
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              (r.occupancyStatus || r.occupancy?.toUpperCase()) === 'OCCUPIED'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-emerald-100 text-emerald-800'
-                            }`}
-                          >
-                            {r.occupancyStatus || r.occupancy?.toUpperCase() || 'VACANT'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              (r.housekeepingStatus || r.cleanliness?.toUpperCase()) === 'CLEAN' || (r.housekeepingStatus || r.cleanliness?.toUpperCase()) === 'INSPECTED'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : (r.housekeepingStatus || r.cleanliness?.toUpperCase()) === 'DIRTY'
-                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                : 'bg-blue-50 text-blue-700 border-blue-200'
-                            }`}
-                          >
-                            {r.housekeepingStatus || r.cleanliness?.toUpperCase() || 'CLEAN'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              (r.maintenanceStatus || 'AVAILABLE').toUpperCase() === 'AVAILABLE'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-red-800 text-white'
-                            }`}
-                          >
-                            {r.maintenanceStatus || 'AVAILABLE'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1">
+              {filteredRooms.length === 0 ? (
+                <div className="py-8 text-center text-gray-500 text-xs">
+                  No rooms match your search query.
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="ml-2 text-gold-600 underline font-medium cursor-pointer"
+                    >
+                      Clear search
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* MOBILE VIEW: Touch-friendly Room Cards */}
+                  <div className="block md:hidden divide-y divide-gray-100">
+                    {roomsPagination.paginatedItems.map((r) => {
+                      const matchedCat = roomCategories.find((c) => c.name?.toLowerCase() === r.type?.toLowerCase());
+                      const roomPhoto = r.imageUrl || matchedCat?.imageUrl || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=120&q=80';
+                      return (
+                        <div key={r.roomNumber} className="p-4 space-y-3 hover:bg-amber-50/20 transition-colors">
+                          <div className="flex items-start gap-3">
+                            <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shrink-0 shadow-2xs">
+                              <img
+                                src={roomPhoto}
+                                alt={`Room ${r.roomNumber}`}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=120&q=80';
+                                }}
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-1">
+                                <h3 className="font-serif font-bold text-dark-900 text-base">
+                                  Room {r.roomNumber}
+                                </h3>
+                                <span className="font-mono font-bold text-gold-600 text-sm shrink-0">
+                                  ${r.rate} <span className="text-[10px] text-gray-400 font-normal">/nt</span>
+                                </span>
+                              </div>
+                              <p className="text-xs font-semibold text-gray-800 truncate">{r.type}</p>
+                              <p className="text-[11px] text-gray-500">{r.floor || 'Floor 1'}</p>
+                            </div>
+                          </div>
+
+                          {/* Status badges */}
+                          <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                            <span
+                              className={`px-2 py-0.5 rounded font-bold uppercase ${
+                                (r.occupancyStatus || r.occupancy?.toUpperCase()) === 'OCCUPIED'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}
+                            >
+                              {r.occupancyStatus || r.occupancy?.toUpperCase() || 'VACANT'}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded font-bold uppercase border ${
+                                (r.housekeepingStatus || r.cleanliness?.toUpperCase()) === 'CLEAN' || (r.housekeepingStatus || r.cleanliness?.toUpperCase()) === 'INSPECTED'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : (r.housekeepingStatus || r.cleanliness?.toUpperCase()) === 'DIRTY'
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                  : 'bg-blue-50 text-blue-700 border-blue-200'
+                              }`}
+                            >
+                              {r.housekeepingStatus || r.cleanliness?.toUpperCase() || 'CLEAN'}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded font-bold uppercase border ${
+                                (r.maintenanceStatus || 'AVAILABLE').toUpperCase() === 'AVAILABLE'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-red-800 text-white border-red-800'
+                              }`}
+                            >
+                              {r.maintenanceStatus || 'AVAILABLE'}
+                            </span>
+                            <span className="text-[11px] text-gray-500 font-medium ml-auto">
+                              👥 {r.capacity || '2 Persons'}
+                            </span>
+                          </div>
+
+                          {/* Mobile Action Buttons: Full touch targets */}
+                          <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
                             <button
+                              type="button"
                               onClick={() => {
                                 setSelectedItemForEdit(r);
                                 setRoomForm({
@@ -1440,15 +1538,19 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                                   capacity: r.capacity || '2 Persons',
                                   rate: r.rate || 180,
                                   features: r.features || 'Single Bed • City View',
+                                  imageUrl: r.imageUrl || '',
+                                  categoryId: r.categoryId || '',
                                 });
+                                setImageUploadError('');
                                 setModalType('editRoom');
                               }}
-                              className="p-1.5 hover:bg-gray-100 text-gray-600 hover:text-dark-900 rounded cursor-pointer transition-colors"
-                              title="Edit Pricing & Capacity"
+                              className="flex-1 py-2 px-3 bg-gray-50 hover:bg-gold-50 text-dark-900 hover:text-gold-800 border border-gray-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                             >
-                              <Edit2 size={13} />
+                              <Edit2 size={13} className="text-gold-600" />
+                              <span>Edit Room</span>
                             </button>
                             <button
+                              type="button"
                               onClick={() => {
                                 setDeleteConfirmTarget({
                                   type: 'room',
@@ -1458,18 +1560,158 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                                   message: `Are you sure you want to delete Room ${r.roomNumber} (${r.type})? This will permanently remove the suite from active inventory.`,
                                 });
                               }}
-                              className="p-1.5 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded cursor-pointer transition-colors"
-                              title="Delete Room"
+                              className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                             >
                               <Trash2 size={13} />
+                              <span>Delete</span>
                             </button>
                           </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* DESKTOP / TABLET VIEW: Scrollable Data Table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left text-xs min-w-[800px]">
+                      <thead className="bg-[#fbfbfb] border-b border-gray-200 text-gray-500 uppercase text-[10px] tracking-wider font-semibold">
+                        <tr>
+                          <th className="py-3 px-4">Room # & Photo</th>
+                          <th className="py-3 px-4">Category & Floor</th>
+                          <th className="py-3 px-4">Capacity</th>
+                          <th className="py-3 px-4">Nightly Rate</th>
+                          <th className="py-3 px-4">Occupancy Status</th>
+                          <th className="py-3 px-4">Housekeeping Status</th>
+                          <th className="py-3 px-4">Maintenance Status</th>
+                          <th className="py-3 px-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {roomsPagination.paginatedItems.map((r) => {
+                          const matchedCat = roomCategories.find((c) => c.name?.toLowerCase() === r.type?.toLowerCase());
+                          const roomPhoto = r.imageUrl || matchedCat?.imageUrl || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=120&q=80';
+                          return (
+                            <tr key={r.roomNumber} className="hover:bg-amber-50/20">
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-11 h-10 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shrink-0 shadow-2xs">
+                                    <img
+                                      src={roomPhoto}
+                                      alt={`Room ${r.roomNumber}`}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=120&q=80';
+                                      }}
+                                    />
+                                  </div>
+                                  <div>
+                                    <div className="font-serif font-bold text-dark-900 text-sm">
+                                      Room {r.roomNumber}
+                                    </div>
+                                    {r.imageUrl ? (
+                                      <span className="text-[10px] text-emerald-600 font-medium">
+                                        ● Custom Photo
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] text-gray-400">
+                                        Tier Default
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="font-semibold text-gray-800">{r.type}</div>
+                                <div className="text-[10px] text-gray-400">{r.floor}</div>
+                              </td>
+                              <td className="py-3 px-4 text-gray-600">{r.capacity}</td>
+                              <td className="py-3 px-4 font-mono font-bold text-gold-600">
+                                ${r.rate} / night
+                              </td>
+                              <td className="py-3 px-4">
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    (r.occupancyStatus || r.occupancy?.toUpperCase()) === 'OCCUPIED'
+                                      ? 'bg-amber-100 text-amber-800'
+                                      : 'bg-emerald-100 text-emerald-800'
+                                  }`}
+                                >
+                                  {r.occupancyStatus || r.occupancy?.toUpperCase() || 'VACANT'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    (r.housekeepingStatus || r.cleanliness?.toUpperCase()) === 'CLEAN' || (r.housekeepingStatus || r.cleanliness?.toUpperCase()) === 'INSPECTED'
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                      : (r.housekeepingStatus || r.cleanliness?.toUpperCase()) === 'DIRTY'
+                                      ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                                  }`}
+                                >
+                                  {r.housekeepingStatus || r.cleanliness?.toUpperCase() || 'CLEAN'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    (r.maintenanceStatus || 'AVAILABLE').toUpperCase() === 'AVAILABLE'
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                      : 'bg-red-800 text-white'
+                                  }`}
+                                >
+                                  {r.maintenanceStatus || 'AVAILABLE'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedItemForEdit(r);
+                                      setRoomForm({
+                                        roomNumber: r.roomNumber,
+                                        type: r.type,
+                                        floor: r.floor || 'Floor 1 (West Wing)',
+                                        capacity: r.capacity || '2 Persons',
+                                        rate: r.rate || 180,
+                                        features: r.features || 'Single Bed • City View',
+                                        imageUrl: r.imageUrl || '',
+                                        categoryId: r.categoryId || '',
+                                      });
+                                      setImageUploadError('');
+                                      setModalType('editRoom');
+                                    }}
+                                    className="p-1.5 hover:bg-gray-100 text-gray-600 hover:text-dark-900 rounded cursor-pointer transition-colors"
+                                    title="Edit Pricing & Capacity"
+                                  >
+                                    <Edit2 size={13} />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setDeleteConfirmTarget({
+                                        type: 'room',
+                                        id: r.roomNumber,
+                                        name: `Room ${r.roomNumber}`,
+                                        title: 'Delete Room',
+                                        message: `Are you sure you want to delete Room ${r.roomNumber} (${r.type})? This will permanently remove the suite from active inventory.`,
+                                      });
+                                    }}
+                                    className="p-1.5 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded cursor-pointer transition-colors"
+                                    title="Delete Room"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
               <Pagination
                 currentPage={roomsPagination.currentPage}
                 totalPages={roomsPagination.totalPages}
@@ -1503,8 +1745,9 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                     capacity: '2 Persons',
                     features: 'King Bed • Marble Bath • City View',
                     description: '',
-                    imageUrl: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&q=80',
+                    imageUrl: '',
                   });
+                  setImageUploadError('');
                   setModalType('addCategory');
                 }}
                 className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
@@ -2517,7 +2760,7 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
           onClick={() => setModalType(null)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl border border-gray-100 max-w-md w-full p-6 relative overflow-hidden animate-scale-up"
+            className="bg-white rounded-xl shadow-2xl border border-gray-100 max-w-md w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6 relative animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-600 via-gold-400 to-amber-500" />
@@ -2567,19 +2810,39 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
-                    Room Type
+                    Room Category *
                   </label>
                   <select
                     value={roomForm.type}
-                    onChange={(e) => setRoomForm({ ...roomForm, type: e.target.value })}
+                    onChange={(e) => {
+                      const selectedCat = roomCategories.find((c) => c.name === e.target.value);
+                      setRoomForm({
+                        ...roomForm,
+                        type: e.target.value,
+                        categoryId: selectedCat?.id || '',
+                        rate: selectedCat?.baseRate ? selectedCat.baseRate : roomForm.rate,
+                        capacity: selectedCat?.capacity ? selectedCat.capacity : roomForm.capacity,
+                        features: selectedCat?.features ? selectedCat.features : roomForm.features,
+                        imageUrl: roomForm.imageUrl || '',
+                      });
+                    }}
                     className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20 bg-white"
                   >
-                    <option value="Single Classic">Single Classic</option>
-                    <option value="Single Deluxe">Single Deluxe</option>
-                    <option value="Double Deluxe">Double Deluxe</option>
-                    <option value="Double Executive">Double Executive</option>
-                    <option value="Luxury Suite">Luxury Suite</option>
-                    <option value="Penthouse Panoramic">Penthouse Panoramic</option>
+                    {roomCategories.length > 0 ? (
+                      roomCategories.map((cat) => (
+                        <option key={cat.id} value={cat.name}>
+                          {cat.name} (${cat.baseRate}/night)
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="Single Classic">Single Classic</option>
+                        <option value="Single Deluxe">Single Deluxe</option>
+                        <option value="Double Deluxe">Double Deluxe</option>
+                        <option value="Double Executive">Double Executive</option>
+                        <option value="Luxury Suite">Luxury Suite</option>
+                      </>
+                    )}
                   </select>
                 </div>
                 <div>
@@ -2622,6 +2885,117 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 />
               </div>
 
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                    Room Image / Photo
+                  </label>
+                  <span className="text-[11px] text-gray-500 font-light">
+                    Upload from folder (stored in DB)
+                  </span>
+                </div>
+
+                {imageUploadError && (
+                  <div className="mb-2 p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between">
+                    <span>{imageUploadError}</span>
+                    <button
+                      type="button"
+                      onClick={() => setImageUploadError('')}
+                      className="text-rose-500 hover:text-rose-800 font-bold ml-2 cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {/* If no image uploaded yet, show folder upload dropzone */}
+                {!roomForm.imageUrl ? (
+                  <label
+                    className={`relative flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                      isUploadingImage
+                        ? 'border-gold-300 bg-gold-50/40 pointer-events-none'
+                        : 'border-gray-300 hover:border-gold-500 bg-gray-50/70 hover:bg-gold-50/20'
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={isUploadingImage}
+                      onChange={handleRoomImageUpload}
+                      className="hidden"
+                    />
+                    {isUploadingImage ? (
+                      <div className="flex flex-col items-center py-2">
+                        <Loader2 size={22} className="animate-spin text-gold-600 mb-1.5" />
+                        <span className="text-xs font-semibold text-gold-800">Uploading image from folder...</span>
+                        <span className="text-[11px] text-gray-500 mt-0.5">Saving to server and preparing database link</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center text-center py-1">
+                        <div className="w-9 h-9 rounded-full bg-gold-100 flex items-center justify-center text-gold-700 mb-2 shadow-2xs">
+                          <Upload size={16} />
+                        </div>
+                        <span className="text-xs font-semibold text-dark-900">
+                          Upload Room Image from Folder
+                        </span>
+                        <span className="text-[11px] text-gray-500 mt-0.5">
+                          Choose JPG, PNG, WEBP, or AVIF from your device (Max 10MB)
+                        </span>
+                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-700">
+                          <span>✓ File is saved on server & stored directly in DB</span>
+                        </div>
+                      </div>
+                    )}
+                  </label>
+                ) : (
+                  /* Image uploaded: show preview card with change & remove buttons */
+                  <div className="relative rounded-xl border border-gray-200 bg-gray-50/90 p-3 flex flex-col sm:flex-row items-center gap-3 shadow-2xs">
+                    <img
+                      src={roomForm.imageUrl}
+                      alt="Room Preview"
+                      className="w-20 h-16 sm:w-20 sm:h-16 object-cover rounded-lg border border-gray-200 shadow-xs shrink-0"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=120&q=80';
+                      }}
+                    />
+                    <div className="min-w-0 flex-1 text-center sm:text-left">
+                      <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-semibold mb-1">
+                        <span>● Uploaded & Stored in Database</span>
+                      </div>
+                      <p className="text-[11px] font-mono text-gray-700 truncate max-w-full">
+                        {roomForm.imageUrl}
+                      </p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">
+                        Permanent file path saved to PostgreSQL inventory
+                      </p>
+                    </div>
+                    <div className="flex sm:flex-col items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end">
+                      <label className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-2.5 py-1.5 bg-white hover:bg-gold-50 border border-gray-300 hover:border-gold-400 text-gray-700 hover:text-gold-900 rounded-lg text-[11px] font-medium cursor-pointer transition-colors shadow-2xs">
+                        <Upload size={12} className="text-gold-600" />
+                        <span>Change</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={isUploadingImage}
+                          onChange={handleRoomImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setRoomForm({ ...roomForm, imageUrl: '' })}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-2.5 py-1.5 bg-white hover:bg-rose-50 border border-gray-300 hover:border-rose-300 text-rose-600 rounded-lg text-[11px] font-medium cursor-pointer transition-colors shadow-2xs"
+                        title="Remove uploaded image"
+                      >
+                        <Trash2 size={12} />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
                 <button
                   type="button"
@@ -2632,9 +3006,15 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-medium text-white bg-gold-500 hover:bg-gold-600 rounded-lg shadow-xs cursor-pointer transition-colors"
+                  disabled={isUploadingImage}
+                  className={`px-5 py-2 text-xs font-medium text-white rounded-lg shadow-xs cursor-pointer transition-colors flex items-center gap-1.5 ${
+                    isUploadingImage
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-gold-500 hover:bg-gold-600'
+                  }`}
                 >
-                  Save Room
+                  {isUploadingImage && <Loader2 size={13} className="animate-spin" />}
+                  <span>Save Room</span>
                 </button>
               </div>
             </form>
@@ -3117,16 +3497,114 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
-                  Preview Image URL
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://..."
-                  value={categoryForm.imageUrl}
-                  onChange={(e) => setCategoryForm({ ...categoryForm, imageUrl: e.target.value })}
-                  className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/20"
-                />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                    Category Photo / Cover Image
+                  </label>
+                  <span className="text-[11px] text-gray-500 font-light">
+                    Upload from folder (stored in DB)
+                  </span>
+                </div>
+
+                {imageUploadError && (
+                  <div className="mb-2 p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between">
+                    <span>{imageUploadError}</span>
+                    <button
+                      type="button"
+                      onClick={() => setImageUploadError('')}
+                      className="text-rose-500 hover:text-rose-800 font-bold ml-2 cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {/* If no image uploaded yet, show folder upload dropzone */}
+                {!categoryForm.imageUrl ? (
+                  <label
+                    className={`relative flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                      isUploadingImage
+                        ? 'border-gold-300 bg-gold-50/40 pointer-events-none'
+                        : 'border-gray-300 hover:border-gold-500 bg-gray-50/70 hover:bg-gold-50/20'
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={isUploadingImage}
+                      onChange={handleCategoryImageUpload}
+                      className="hidden"
+                    />
+                    {isUploadingImage ? (
+                      <div className="flex flex-col items-center py-2">
+                        <Loader2 size={22} className="animate-spin text-gold-600 mb-1.5" />
+                        <span className="text-xs font-semibold text-gold-800">Uploading photo from folder...</span>
+                        <span className="text-[11px] text-gray-500 mt-0.5">Saving to server and preparing database link</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center text-center py-1">
+                        <div className="w-9 h-9 rounded-full bg-gold-100 flex items-center justify-center text-gold-700 mb-2 shadow-2xs">
+                          <Upload size={16} />
+                        </div>
+                        <span className="text-xs font-semibold text-dark-900">
+                          Upload Category Image from Folder
+                        </span>
+                        <span className="text-[11px] text-gray-500 mt-0.5">
+                          Choose JPG, PNG, WEBP, or AVIF from your device (Max 10MB)
+                        </span>
+                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-700">
+                          <span>✓ File is saved on server & stored directly in DB</span>
+                        </div>
+                      </div>
+                    )}
+                  </label>
+                ) : (
+                  /* Image uploaded: show preview card with change & remove buttons */
+                  <div className="relative rounded-xl border border-gray-200 bg-gray-50/90 p-3 flex flex-col sm:flex-row items-center gap-3 shadow-2xs">
+                    <img
+                      src={categoryForm.imageUrl}
+                      alt="Category Preview"
+                      className="w-20 h-16 sm:w-20 sm:h-16 object-cover rounded-lg border border-gray-200 shadow-xs shrink-0"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=120&q=80';
+                      }}
+                    />
+                    <div className="min-w-0 flex-1 text-center sm:text-left">
+                      <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-semibold mb-1">
+                        <span>● Uploaded & Stored in Database</span>
+                      </div>
+                      <p className="text-[11px] font-mono text-gray-700 truncate max-w-full">
+                        {categoryForm.imageUrl}
+                      </p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">
+                        Permanent file path saved to PostgreSQL category record
+                      </p>
+                    </div>
+                    <div className="flex sm:flex-col items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end">
+                      <label className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-2.5 py-1.5 bg-white hover:bg-gold-50 border border-gray-300 hover:border-gold-400 text-gray-700 hover:text-gold-900 rounded-lg text-[11px] font-medium cursor-pointer transition-colors shadow-2xs">
+                        <Upload size={12} className="text-gold-600" />
+                        <span>Change</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={isUploadingImage}
+                          onChange={handleCategoryImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setCategoryForm({ ...categoryForm, imageUrl: '' })}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-2.5 py-1.5 bg-white hover:bg-rose-50 border border-gray-300 hover:border-rose-300 text-rose-600 rounded-lg text-[11px] font-medium cursor-pointer transition-colors shadow-2xs"
+                        title="Remove uploaded image"
+                      >
+                        <Trash2 size={12} />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
@@ -3142,9 +3620,15 @@ const AdminDashboard = ({ user, onLogout, onBackToSite }) => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-medium text-white bg-gold-500 hover:bg-gold-600 rounded-lg shadow-xs cursor-pointer transition-colors"
+                  disabled={isUploadingImage}
+                  className={`px-5 py-2 text-xs font-medium text-white rounded-lg shadow-xs cursor-pointer transition-colors flex items-center gap-1.5 ${
+                    isUploadingImage
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-gold-500 hover:bg-gold-600'
+                  }`}
                 >
-                  {modalType === 'addCategory' ? 'Create Tier' : 'Save Changes'}
+                  {isUploadingImage && <Loader2 size={13} className="animate-spin" />}
+                  <span>{modalType === 'addCategory' ? 'Create Tier' : 'Save Changes'}</span>
                 </button>
               </div>
             </form>
