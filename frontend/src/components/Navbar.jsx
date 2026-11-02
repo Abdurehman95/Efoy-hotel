@@ -172,15 +172,9 @@ const Navbar = ({
             <div className="flex items-center space-x-2 border-l border-gray-200 pl-4">
               <button
                 onClick={() => handleOpenAuth('login')}
-                className="text-sm font-medium text-gray-700 hover:text-dark-900 px-3 py-1.5 rounded transition-colors cursor-pointer"
-              >
-                Log In
-              </button>
-              <button
-                onClick={() => handleOpenAuth('signup')}
                 className="text-sm font-medium text-dark-900 border border-dark-900 hover:bg-dark-900 hover:text-white px-4 py-1.5 rounded-sm transition-all duration-200 cursor-pointer shadow-xs"
               >
-                Sign Up
+                Login
               </button>
             </div>
           )}
@@ -336,18 +330,12 @@ const Navbar = ({
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="mb-4">
                   <button
                     onClick={() => handleOpenAuth('login')}
-                    className="w-full py-2.5 px-4 text-center rounded border border-gray-300 font-medium text-sm text-dark-900 hover:bg-gray-50 transition-colors cursor-pointer"
-                  >
-                    Log In
-                  </button>
-                  <button
-                    onClick={() => handleOpenAuth('signup')}
                     className="w-full py-2.5 px-4 text-center rounded bg-dark-900 text-white font-medium text-sm hover:bg-dark-800 transition-colors cursor-pointer shadow-sm"
                   >
-                    Sign Up
+                    Login
                   </button>
                 </div>
               )}

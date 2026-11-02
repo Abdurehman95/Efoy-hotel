@@ -10,8 +10,13 @@ import {
   X,
   Sparkles,
   ShieldCheck,
+  CreditCard,
+  ExternalLink,
+  Loader2,
 } from 'lucide-react';
 import { useHotel } from '../context/HotelContext';
+import { paymentsApi } from '../api/client';
+import { formatChapaPhone } from '../utils/phoneUtils';
 
 const RoomsSection = () => {
   const { rooms: dbRooms, roomCategories, createGuestOnlineBooking } = useHotel();
@@ -30,6 +35,11 @@ const RoomsSection = () => {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [confirmedBooking, setConfirmedBooking] = useState(null);
+
+  // Chapa Payment States
+  const [chapaLoading, setChapaLoading] = useState(false);
+  const [chapaError, setChapaError] = useState('');
+  const [chapaSuccessUrl, setChapaSuccessUrl] = useState('');
 
   // Luxury visual assets for real hotel rooms
   const SUITE_METADATA = {
@@ -71,7 +81,7 @@ const RoomsSection = () => {
             : (cat?.description || 'Forbes 5-star certified luxury suite with panoramic terrace.'),
           guests: r.capacity?.includes('4') ? 4 : r.capacity?.includes('3') ? 3 : r.capacity?.includes('1') ? 1 : 2,
           price: Number(r.rate) || 2200,
-          image: meta.image || cat?.imageUrl || `/images/room${(idx % 8) + 1}.jpg`,
+          image: r.imageUrl || meta.image || cat?.imageUrl || `/images/room${(idx % 8) + 1}.jpg`,
           badge,
           occupancyStatus: r.occupancyStatus || (isOccupied ? 'OCCUPIED' : 'VACANT'),
           housekeepingStatus: r.housekeepingStatus || (isClean ? 'CLEAN' : 'DIRTY'),
@@ -126,6 +136,45 @@ const RoomsSection = () => {
     setSelectedRoom(null);
     setConfirmedBooking(null);
     setBookingError('');
+    setChapaError('');
+    setChapaSuccessUrl('');
+  };
+
+  const handlePayWithChapa = async () => {
+    try {
+      setChapaLoading(true);
+      setChapaError('');
+
+      // Enforce 10-digit mobile phone number (09xxxxxxxx or 07xxxxxxxx) per Chapa documentation
+      const formattedPhone = formatChapaPhone(bookingFormData.phone);
+      if (!formattedPhone) {
+        setChapaError('A valid 10-digit Ethiopian mobile number (09xxxxxxxx or 07xxxxxxxx) is required for Chapa payment.');
+        setChapaLoading(false);
+        return;
+      }
+
+      const res = await paymentsApi.initialize({
+        bookingId: confirmedBooking?.booking?.id || `BK-${Date.now()}`,
+        amount: grandTotal,
+        currency: 'ETB',
+        email: bookingFormData.email.trim(),
+        firstName: bookingFormData.name.trim().split(' ')[0] || 'Valued',
+        lastName: bookingFormData.name.trim().split(' ').slice(1).join(' ') || 'Guest',
+        phone: formattedPhone,
+      });
+
+      if (res?.checkoutUrl) {
+        setChapaSuccessUrl(res.checkoutUrl);
+        // Automatically redirect guest to Chapa payment link per developer documentation!
+        window.location.href = res.checkoutUrl;
+      } else {
+        throw new Error('No checkout URL received from Chapa.');
+      }
+    } catch (err) {
+      setChapaError(err.message || 'Payment initialization failed.');
+    } finally {
+      setChapaLoading(false);
+    }
   };
 
   const handleSubmitReservation = async (e) => {
@@ -360,6 +409,49 @@ const RoomsSection = () => {
                         {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB (incl. 12% tax)
                       </span>
                     </div>
+                  </div>
+
+                  {/* Chapa Instant Payment Action (Phase 1: Booking Guarantee) */}
+                  <div className="pt-2 pb-1 space-y-2">
+                    <button
+                      type="button"
+                      onClick={handlePayWithChapa}
+                      disabled={chapaLoading}
+                      className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 hover:from-emerald-700 hover:to-teal-900 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
+                    >
+                      {chapaLoading ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin" />
+                          <span>Connecting to Chapa Secure Gateway...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard size={16} />
+                          <span>Pay {grandTotal.toLocaleString()} ETB via Chapa (Telebirr / CBE / Cards)</span>
+                        </>
+                      )}
+                    </button>
+
+                    {chapaError && (
+                      <p className="text-[11px] text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200 leading-relaxed text-left">
+                        ⚠️ {chapaError}
+                      </p>
+                    )}
+
+                    {chapaSuccessUrl && (
+                      <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-900 text-xs flex items-center justify-between">
+                        <span>Chapa checkout link ready:</span>
+                        <a
+                          href={chapaSuccessUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-bold underline flex items-center gap-1 text-emerald-800 hover:text-emerald-950"
+                        >
+                          <span>Open Hosted Payment</span>
+                          <ExternalLink size={12} />
+                        </a>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-2 pt-1">
