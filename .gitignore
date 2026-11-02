@@ -8,10 +8,14 @@ dist/
 dist-ssr/
 **/dist-ssr/
 
-# Environment files
+# Environment & Secret files (Do NOT commit to version control)
 .env
-.env.local
-.env.*.local
+.env.*
+*.env
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
 
 # Logs
 logs/
@@ -30,3 +34,7 @@ Thumbs.db
 *.ntvs*
 *.njsproj
 *.sln
+
+# Uploads directory
+backend/uploads/rooms/*
+!backend/uploads/rooms/.gitkeep
