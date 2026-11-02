@@ -1,6 +1,28 @@
 import { query } from '../config/db.js';
 import { emitPmsEvent } from '../socket.js';
 
+export const uploadRoomImage = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No image file uploaded. Please select an image file.',
+      });
+    }
+
+    const imageUrl = `/uploads/rooms/${req.file.filename}`;
+
+    return res.status(200).json({
+      success: true,
+      message: 'Room image uploaded successfully.',
+      imageUrl,
+      filename: req.file.filename,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getRooms = async (req, res, next) => {
   try {
     const { page, limit } = req.query;
@@ -24,6 +46,8 @@ export const getRooms = async (req, res, next) => {
         END) AS "housekeepingStatus",
         COALESCE(maintenance_status, 'AVAILABLE') AS "maintenanceStatus",
         guest_id AS "guestId",
+        category_id AS "categoryId",
+        image_url AS "imageUrl",
         COUNT(*) OVER() AS total_count
       FROM rooms
       ORDER BY room_number ASC`;
@@ -79,7 +103,9 @@ export const getRoomByNumber = async (req, res, next) => {
           ELSE 'CLEAN' 
         END) AS "housekeepingStatus",
         COALESCE(maintenance_status, 'AVAILABLE') AS "maintenanceStatus",
-        guest_id AS "guestId"
+        guest_id AS "guestId",
+        category_id AS "categoryId",
+        image_url AS "imageUrl"
       FROM rooms
       WHERE room_number = $1`,
       [roomNumber]
@@ -110,6 +136,8 @@ export const createRoom = async (req, res, next) => {
       capacity, 
       rate, 
       features, 
+      imageUrl,
+      categoryId,
       occupancyStatus = 'VACANT', 
       housekeepingStatus = 'CLEAN', 
       maintenanceStatus = 'AVAILABLE' 
@@ -122,12 +150,26 @@ export const createRoom = async (req, res, next) => {
       });
     }
 
-    const existing = await query('SELECT room_number FROM rooms WHERE room_number = $1', [roomNumber]);
+    const existing = await query('SELECT room_number FROM rooms WHERE room_number = $1', [roomNumber.trim()]);
     if (existing.rows.length > 0) {
       return res.status(409).json({
         success: false,
         message: `Room ${roomNumber} already exists in inventory.`,
       });
+    }
+
+    // Resolve categoryId if not provided
+    let finalCategoryId = categoryId ? parseInt(categoryId, 10) : null;
+    let finalImageUrl = imageUrl && typeof imageUrl === 'string' && imageUrl.trim() ? imageUrl.trim() : null;
+
+    if (!finalCategoryId) {
+      const catLookup = await query(
+        'SELECT id FROM room_categories WHERE LOWER(name) = LOWER($1) LIMIT 1',
+        [type.trim()]
+      );
+      if (catLookup.rows.length > 0) {
+        finalCategoryId = catLookup.rows[0].id;
+      }
     }
 
     const legacyClean = housekeepingStatus === 'DIRTY' ? 'Dirty' : housekeepingStatus === 'CLEANING' ? 'Cleaning' : housekeepingStatus === 'INSPECTION' ? 'Inspected' : 'Clean';
@@ -136,8 +178,9 @@ export const createRoom = async (req, res, next) => {
     const result = await query(
       `INSERT INTO rooms (
         room_number, type, floor, capacity, rate, features, 
-        cleanliness, occupancy, occupancy_status, housekeeping_status, maintenance_status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        cleanliness, occupancy, occupancy_status, housekeeping_status, maintenance_status,
+        category_id, image_url
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING 
         room_number AS "roomNumber",
         type,
@@ -151,7 +194,9 @@ export const createRoom = async (req, res, next) => {
         occupancy_status AS "occupancyStatus",
         housekeeping_status AS "housekeepingStatus",
         maintenance_status AS "maintenanceStatus",
-        guest_id AS "guestId"`,
+        guest_id AS "guestId",
+        category_id AS "categoryId",
+        image_url AS "imageUrl"`,
       [
         roomNumber.trim(),
         type.trim(),
@@ -164,6 +209,8 @@ export const createRoom = async (req, res, next) => {
         occupancyStatus,
         housekeepingStatus,
         maintenanceStatus,
+        finalCategoryId,
+        finalImageUrl,
       ]
     );
 
@@ -198,6 +245,8 @@ export const updateRoom = async (req, res, next) => {
       capacity, 
       rate, 
       features, 
+      imageUrl,
+      categoryId,
       occupancyStatus, 
       housekeepingStatus, 
       maintenanceStatus, 
@@ -210,6 +259,17 @@ export const updateRoom = async (req, res, next) => {
     const legacyOcc = occupancyStatus 
       ? (occupancyStatus === 'OCCUPIED' ? 'Occupied' : 'Available') 
       : null;
+
+    let finalCategoryId = categoryId !== undefined ? (categoryId ? parseInt(categoryId, 10) : null) : null;
+    if (type && finalCategoryId === null) {
+      const catLookup = await query(
+        'SELECT id FROM room_categories WHERE LOWER(name) = LOWER($1) LIMIT 1',
+        [type.trim()]
+      );
+      if (catLookup.rows.length > 0) {
+        finalCategoryId = catLookup.rows[0].id;
+      }
+    }
 
     const result = await query(
       `UPDATE rooms 
@@ -225,8 +285,10 @@ export const updateRoom = async (req, res, next) => {
         dirty_reason = COALESCE($9, dirty_reason),
         cleanliness = COALESCE($10, cleanliness),
         occupancy = COALESCE($11, occupancy),
+        category_id = COALESCE($12, category_id),
+        image_url = COALESCE($13, image_url),
         updated_at = CURRENT_TIMESTAMP
-       WHERE room_number = $12
+       WHERE room_number = $14
        RETURNING 
         room_number AS "roomNumber",
         type,
@@ -240,7 +302,9 @@ export const updateRoom = async (req, res, next) => {
         occupancy_status AS "occupancyStatus",
         housekeeping_status AS "housekeepingStatus",
         maintenance_status AS "maintenanceStatus",
-        guest_id AS "guestId"`,
+        guest_id AS "guestId",
+        category_id AS "categoryId",
+        image_url AS "imageUrl"`,
       [
         type,
         floor,
@@ -253,6 +317,8 @@ export const updateRoom = async (req, res, next) => {
         dirtyReason,
         legacyClean,
         legacyOcc,
+        finalCategoryId,
+        imageUrl,
         roomNumber,
       ]
     );
@@ -264,6 +330,7 @@ export const updateRoom = async (req, res, next) => {
       });
     }
 
+    emitPmsEvent('PMS_ROOM_UPDATED', result.rows[0]);
     emitPmsEvent('PMS_ROOM_STATUS_UPDATED', result.rows[0]);
 
     return res.status(200).json({
@@ -322,7 +389,9 @@ export const updateCleanliness = async (req, res, next) => {
         occupancy_status AS "occupancyStatus",
         housekeeping_status AS "housekeepingStatus",
         maintenance_status AS "maintenanceStatus",
-        guest_id AS "guestId"`,
+        guest_id AS "guestId",
+        category_id AS "categoryId",
+        image_url AS "imageUrl"`,
       [normalizedHk, legacyClean, clearReason ? null : dirtyReason || null, roomNumber]
     );
 
@@ -346,6 +415,7 @@ export const updateCleanliness = async (req, res, next) => {
 
     // Broadcast real-time room cleanliness update to all terminals
     emitPmsEvent('PMS_ROOM_CLEANLINESS_UPDATED', result.rows[0]);
+    emitPmsEvent('PMS_ROOM_UPDATED', result.rows[0]);
 
     return res.status(200).json({
       success: true,
@@ -393,7 +463,9 @@ export const updateMaintenanceStatus = async (req, res, next) => {
         occupancy_status AS "occupancyStatus",
         housekeeping_status AS "housekeepingStatus",
         maintenance_status AS "maintenanceStatus",
-        guest_id AS "guestId"`,
+        guest_id AS "guestId",
+        category_id AS "categoryId",
+        image_url AS "imageUrl"`,
       [normStatus, reason || null, roomNumber]
     );
 
@@ -405,6 +477,7 @@ export const updateMaintenanceStatus = async (req, res, next) => {
     }
 
     emitPmsEvent('PMS_ROOM_STATUS_UPDATED', result.rows[0]);
+    emitPmsEvent('PMS_ROOM_UPDATED', result.rows[0]);
 
     return res.status(200).json({
       success: true,
@@ -482,7 +555,9 @@ export const getAvailableRooms = async (req, res, next) => {
         r.occupancy,
         COALESCE(r.occupancy_status, 'VACANT') AS "occupancyStatus",
         COALESCE(r.housekeeping_status, 'CLEAN') AS "housekeepingStatus",
-        COALESCE(r.maintenance_status, 'AVAILABLE') AS "maintenanceStatus"
+        COALESCE(r.maintenance_status, 'AVAILABLE') AS "maintenanceStatus",
+        r.category_id AS "categoryId",
+        r.image_url AS "imageUrl"
       FROM rooms r
       WHERE COALESCE(r.maintenance_status, 'AVAILABLE') = 'AVAILABLE'
       AND NOT EXISTS (
@@ -499,6 +574,13 @@ export const getAvailableRooms = async (req, res, next) => {
           AND m.inventory_impact IN ('OUT_OF_ORDER', 'OUT_OF_SERVICE')
           AND m.start_date < $2::date
           AND COALESCE(m.end_date, CURRENT_DATE + INTERVAL '30 days') > $1::date
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM room_blocks rb
+        WHERE rb.room_number = r.room_number
+          AND rb.status = 'ACTIVE'
+          AND rb.start_date < $2::date
+          AND rb.end_date > $1::date
       )
     `;
 
@@ -636,6 +718,89 @@ export const deleteRoomCategory = async (req, res, next) => {
   }
 };
 
+export const getRoomBlocks = async (req, res, next) => {
+  try {
+    const result = await query(
+      `SELECT rb.id, rb.room_number AS "roomNumber", 
+              TO_CHAR(rb.start_date, 'YYYY-MM-DD') AS "startDate",
+              TO_CHAR(rb.end_date, 'YYYY-MM-DD') AS "endDate",
+              rb.reason, rb.status, rb.created_by AS "createdBy", rb.created_at AS "createdAt",
+              r.type AS "roomType"
+       FROM room_blocks rb
+       LEFT JOIN rooms r ON rb.room_number = r.room_number
+       ORDER BY rb.start_date DESC`
+    );
+
+    return res.status(200).json({
+      success: true,
+      count: result.rowCount,
+      roomBlocks: result.rows,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createRoomBlock = async (req, res, next) => {
+  try {
+    const { roomNumber, startDate, endDate, reason } = req.body;
+
+    if (!roomNumber || !startDate || !endDate || !reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'roomNumber, startDate, endDate, and reason are required to create a room block.',
+      });
+    }
+
+    const result = await query(
+      `INSERT INTO room_blocks (room_number, start_date, end_date, reason, status, created_by)
+       VALUES ($1, $2, $3, $4, 'ACTIVE', $5)
+       RETURNING id, room_number AS "roomNumber", 
+                 TO_CHAR(start_date, 'YYYY-MM-DD') AS "startDate",
+                 TO_CHAR(end_date, 'YYYY-MM-DD') AS "endDate",
+                 reason, status, created_at AS "createdAt"`,
+      [roomNumber, startDate, endDate, reason, req.user?.id || null]
+    );
+
+    emitPmsEvent('PMS_ROOM_BLOCKED', result.rows[0]);
+
+    return res.status(201).json({
+      success: true,
+      message: `Room ${roomNumber} has been blocked from ${startDate} to ${endDate}.`,
+      roomBlock: result.rows[0],
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const releaseRoomBlock = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await query(
+      `UPDATE room_blocks 
+       SET status = 'RELEASED' 
+       WHERE id = $1 
+       RETURNING id, room_number AS "roomNumber", status`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Room block not found.' });
+    }
+
+    emitPmsEvent('PMS_ROOM_BLOCK_RELEASED', result.rows[0]);
+
+    return res.status(200).json({
+      success: true,
+      message: `Room block #${id} released.`,
+      roomBlock: result.rows[0],
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getRooms,
   getAvailableRooms,
@@ -649,5 +814,8 @@ export default {
   createRoomCategory,
   updateRoomCategory,
   deleteRoomCategory,
+  getRoomBlocks,
+  createRoomBlock,
+  releaseRoomBlock,
 };
 
